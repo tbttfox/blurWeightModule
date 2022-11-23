@@ -83,7 +83,11 @@
 //---------------------------------------------------------------------------
 class PointsDisplayData : public MUserData {
    public:
-    PointsDisplayData() : MUserData(false) {}  // don't delete after draw
+    PointsDisplayData()
+#if MAYA_API_VERSION < 20230000
+      : MUserData(false) // don't delete after draw
+#endif
+    {}
     ~PointsDisplayData() override {}
 
     MColor fColor;
@@ -106,8 +110,10 @@ class pointsDisplay : public MPxLocatorNode {
 
     MStatus compute(const MPlug& plug, MDataBlock& data) override;
     virtual void postConstructor();
+#ifdef MAYA_LEGACY_DISPLAY
     void draw(M3dView& view, const MDagPath& path, M3dView::DisplayStyle style,
               M3dView::DisplayStatus status) override;
+#endif
 
     bool isBounded() const override;
     MBoundingBox boundingBox() const override;

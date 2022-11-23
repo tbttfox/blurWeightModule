@@ -73,9 +73,9 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
     // through its "inmesh" plug
     MPlug inMeshPlug;
     if (MeshPath.apiType() == MFn::kMesh)
-        inMeshPlug = dagNode.findPlug("inMesh", &stat);
+        inMeshPlug = dagNode.findPlug("inMesh", false, &stat);
     else if (MeshPath.apiType() == MFn::kNurbsSurface)
-        inMeshPlug = dagNode.findPlug("create", &stat);
+        inMeshPlug = dagNode.findPlug("create", false, &stat);
 
     if (stat == MS::kSuccess && inMeshPlug.isConnected()) {
         // walk the tree of stuff upstream from this plug
@@ -87,7 +87,8 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
             int count = 0;
 
             for (; !dgIt.isDone(); dgIt.next()) {
-                MObject thisNode = dgIt.thisNode();
+                //MObject thisNode = dgIt.thisNode();
+                MObject thisNode = dgIt.currentItem();
                 // go until we find a skinCluster
                 if (thisNode.apiType() == MFn::kSkinClusterFilter) {
                     listSkinClusters.append(thisNode);
@@ -122,7 +123,8 @@ MStatus findMesh(MObject& skinCluster, MDagPath& theMeshPath, bool verbose) {
     if (objectsDeformedCount == 0) {
         int j = 0;
         // for (int j = 0; j < objectsDeformedCount; j++) {
-        theMeshPath.getAPathTo(objectsDeformed[j]);
+        //theMeshPath.getAPathTo(objectsDeformed[j]); // deprecated
+        MDagPath::getAPathTo(objectsDeformed[j], theMeshPath);
         if (verbose) {
             MFnDependencyNode deformedNameMesh(objectsDeformed[j]);
             MString deformedNameMeshSTR = deformedNameMesh.name();
@@ -162,7 +164,7 @@ MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors) {
     for (int i = 0; i < nbJoints; i++) {
     MFnDagNode jnt(listOfJoints[i]);
     //jnt = MFnDagNode (listOfJoints[iterator]);
-    MPlug lockInfluenceWeightsPlug = jnt.findPlug("wireColorRGB");
+    MPlug lockInfluenceWeightsPlug = jnt.findPlug("wireColorRGB", false);
     //MPlug lockInfluenceWeightsPlug(jnt, MFnDagNode::wireColorRGB);
 
     color[0] = lockInfluenceWeightsPlug.child(0).asFloat();
@@ -175,7 +177,7 @@ MStatus getListColorsJoints(MObject& skinCluster, MColorArray& jointsColors) {
     */
 
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor");
+    MPlug influenceColor_plug = skinClusterDep.findPlug("influenceColor", false);
     int nbElements = influenceColor_plug.numElements();
     // MGlobal::displayInfo(influenceColor_plug.name() + " - " +nbJoints);
     jointsColors.clear();
@@ -214,7 +216,7 @@ MStatus getListLockJoints(MObject& skinCluster, MIntArray& jointsLocks) {
     MStatus stat;
 
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug influenceColor_plug = skinClusterDep.findPlug("lockWeights");
+    MPlug influenceColor_plug = skinClusterDep.findPlug("lockWeights", false);
 
     int nbJoints = influenceColor_plug.numElements();
     jointsLocks.clear();
@@ -246,14 +248,14 @@ MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks) {
     MObjectArray objectsDeformed;
     theSkinCluster.getOutputGeometry(objectsDeformed);
     MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
-    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", &stat);
+    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", false, &stat);
     if (MS::kSuccess != stat) {
         MGlobal::displayError(MString("cant find lockerdVertices plug"));
         return stat;
     }
 
     MFnDependencyNode skinClusterDep(skinCluster);
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
 
     int nbVertices = weight_list_plug.numElements();
 
@@ -282,7 +284,7 @@ MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
     MObject prt = deformedNameMesh.parent(0);
 
     MFnDependencyNode prtDep(prt);
-    MPlug symVerticesPlug = prtDep.findPlug("symmetricVertices", &stat);
+    MPlug symVerticesPlug = prtDep.findPlug("symmetricVertices", false, &stat);
     if (MS::kSuccess != stat) {
         MGlobal::displayError(MString("cant find symmetricVertices plug"));
         return stat;
@@ -293,6 +295,7 @@ MStatus getSymetryAttributes(MObject& skinCluster, MIntArray& symetryList) {
 
     MFnIntArrayData intData(Data);
     symetryList = intData.array(&stat);
+    return stat;
 }
 
 MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
@@ -351,7 +354,7 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     MObjectArray objectsDeformed;
     theSkinCluster.getOutputGeometry(objectsDeformed);
     MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
-    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", &stat);
+    MPlug lockedVerticesPlug = deformedNameMesh.findPlug("lockedVertices", false, &stat);
     if (MS::kSuccess != stat) {
         MGlobal::displayError(MString("cant find lockerdVertices plug"));
         return stat;
@@ -371,7 +374,9 @@ MStatus editLocks(MObject& skinCluster, MIntArray& inputVertsToLock, bool addToL
     }
     // now set the value ---------------------------
     MFnIntArrayData tmpIntArray;
-    stat = lockedVerticesPlug.setValue(tmpIntArray.create(theArrayValues));  // to set the attribute
+
+    auto tmpAttrSetter = tmpIntArray.create(theArrayValues);
+    stat = lockedVerticesPlug.setValue(tmpAttrSetter);  // to set the attribute
     return stat;
 }
 
@@ -422,7 +427,7 @@ MStatus getListColors(MObject& skinCluster, int nbVertices, MColorArray& currCol
             }
         }
     } else {
-        MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
+        MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
         // MGlobal::displayInfo(weight_list_plug.name());
         int nbElements = weight_list_plug.numElements();
         currColors.clear();

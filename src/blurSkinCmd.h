@@ -78,7 +78,7 @@ class blurSkinCmd : public MPxCommand {
     MStatus useAllVertices();
     MStatus executeAction();
     MStatus setColors();
-    MStatus printWeigth(int vertex, int u = 0, int v = 0);
+    MStatus printWeight(int vertex, int u = 0, int v = 0);
     MStatus getSoftSelection(bool getSoft = true);
     bool isUndoable() const;
     static void* creator();

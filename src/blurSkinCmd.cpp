@@ -64,15 +64,11 @@ void DisplayHelp() {
     MString help;
     help += "Flags:\n";
     help += "-skinCluster         -skn   String     Name of the skinCluster\n";
-    help +=
-        "-meshName            -mn    String     Name of the mesh if skincluster is not passed\n";
-    help +=
-        "                                        If -skn and -mn are not passed uses selection\n";
+    help += "-meshName            -mn    String     Name of the mesh if skincluster is not passed\n";
+    help += "                                          If -skn and -mn are not passed uses selection\n";
     help += "-skinClusterIndex    -si    Int        Index of SkinCluster if -mn passed\n";
-    help += "                                        Default 0\n";
-    help +=
-        "-percentMvt          -pc    Float      Between 0. and 1. percent of value set default "
-        "1.\n";
+    help += "                                          Default 0\n";
+    help += "-percentMvt          -pc    Float      Between 0. and 1. percent of value set default 1.\n";
     help += "-verbose             -vrb   N/A        Verbose print\n";
     help += "-listCVsIndices      -lcv   Strings    List cvs indices [(u1, v1), (u2, v2), ...]\n";
     help += "-listVerticesIndices -li    Strings    List vertices indices\n";
@@ -81,13 +77,10 @@ void DisplayHelp() {
     help += "-listJointsValues    -ljw   Doubles    List joints weights\n";
     help += "-repeat              -rp    Int        Repeat the calculation             default 1\n";
     help += "-depth               -d     Int        Depth for the smooth               default 1\n";
-    help +=
-        "-respectLocks        -rl    N/A        Respect locks                      default True\n";
+    help += "-respectLocks        -rl    N/A        Respect locks                      default True\n";
     help += "-zeroInfluences      -zi    N/A        Get zero columns \n";
     help += "-command             -c     N/A        The command action correct inputs are :\n";
-    help +=
-        "                                        smooth - add - absolute - percentage - average - "
-        "colors - prune\n";
+    help += "                                          smooth - add - absolute - percentage - average - colors - prune\n";
     help += "-threshold           -th    Double     Threshold for the prune weights\n";
     help += "-help                -h     N/A        Display this text.\n";
     MGlobal::displayInfo(help);
@@ -160,7 +153,7 @@ MStatus blurSkinCmd::getListLockJoints() {
             jointsInputIndices_.append(i);
         };
         MFnDagNode jnt(listOfJoints[i]);
-        MPlug lockInfluenceWeightsPlug = jnt.findPlug("lockInfluenceWeights");
+        MPlug lockInfluenceWeightsPlug = jnt.findPlug("lockInfluenceWeights", false);
         bool isLockInfluenceWeights = lockInfluenceWeightsPlug.asBool();
 
         if (isLockInfluenceWeights)
@@ -198,8 +191,8 @@ MStatus blurSkinCmd::getListLockJoints() {
     return MS::kSuccess;
 }
 
-MStatus blurSkinCmd::printWeigth(int vertex, int u, int v) {
-    if (verbose) MGlobal::displayInfo(MString(" ---- printWeigth ----"));
+MStatus blurSkinCmd::printWeight(int vertex, int u, int v) {
+    if (verbose) MGlobal::displayInfo(MString(" ---- printWeight ----"));
     MFnSkinCluster theSkinCluster(skinCluster_);
 
     // 3 get the weights
@@ -561,7 +554,7 @@ MIntArray blurSkinCmd::getZeroInfluences() {
     // This plug is an array (one element for each vertex in your mesh
     MFnDependencyNode skinClusterDep(skinCluster_);
 
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
     MIntArray jointUsed(nbJoints, 0);
     int nbAt1 = 0;
     for (int i = 0; i < indicesVertices_.length(); ++i) {
@@ -621,7 +614,7 @@ MStatus blurSkinCmd::getAllWeights() {
         MDoubleArray wts;
 
         for (; !gIter.isDone(); gIter.next()) {
-            MObject comp = gIter.component(&stat);
+            MObject comp = gIter.currentItem(&stat);
             // Get the weights for this vertex (one per influence object)
             //
             unsigned int infCount;
@@ -1032,7 +1025,7 @@ MStatus blurSkinCmd::executeAction() {
                         MGlobal::displayInfo(MString("stored are          U :") + storedU +
                                              MString(" V :") + storedV);
 
-                    if (verbose) stat = printWeigth(index, storedU, storedV);
+                    if (verbose) stat = printWeight(index, storedU, storedV);
                     if (command_ != kCommandSmooth) {
                         addWeights(index);
                     } else {
@@ -1061,7 +1054,7 @@ MStatus blurSkinCmd::executeAction() {
                 int currentVertex = itVertex.index();
                 if (lockVertices_[currentVertex] != 1) {  // if not locked
                     if (verbose) MGlobal::displayInfo(MString(" vtx :") + currentVertex);
-                    if (verbose) stat = printWeigth(currentVertex);
+                    if (verbose) stat = printWeight(currentVertex);
 
                     if (command_ == kCommandSmooth) {
                         // here depth of get vertices connected

@@ -61,6 +61,7 @@ MStatus pointsDisplay::compute(const MPlug& plug /*plug*/, MDataBlock& dataBlock
 }
 
 // called by legacy default viewport
+#ifdef MAYA_LEGACY_DISPLAY
 void pointsDisplay::draw(M3dView& view, const MDagPath& /*path*/, M3dView::DisplayStyle style,
                          M3dView::DisplayStatus status) {
     PointsDisplayData data;
@@ -76,18 +77,6 @@ void pointsDisplay::draw(M3dView& view, const MDagPath& /*path*/, M3dView::Displ
     view.beginGL();
 
     // draw the vertices --------------------------
-    glBegin(GL_POINTS);
-    /*
-    if (status == M3dView::kLead) {
-            glColor4f(0., 1., 0., data.color[3]);	//green
-    }
-    else if (status == M3dView::kActive) {
-            glColor4f(1., 1., 1., data.color[3]);	//white
-    }
-    else {
-            glColor4fv(data.color);
-    }
-    */
     glColor4fv(data.color);
     glPointSize(data.pointWidth);
 
@@ -103,6 +92,7 @@ void pointsDisplay::draw(M3dView& view, const MDagPath& /*path*/, M3dView::Displ
     view.drawText( MString("Footprint"), MPoint( 0.0, 0.0, 0.0 ), M3dView::kCenter );
     */
 }
+#endif
 
 bool pointsDisplay::isBounded() const { return true; }
 
@@ -142,7 +132,7 @@ void PointsDisplayData::getData(const MObject& node) {
     this->enableSmooth = MPlug(node, pointsDisplay::_enableSmooth).asBool();
 
     MPlug inputColPlug =
-        MPlug(node, pointsDisplay::_inputColor);  // fn.findPlug("overrideColorRGB");
+        MPlug(node, pointsDisplay::_inputColor);  // fn.findPlug("overrideColorRGB", false);
     // MPlug inputColPlug = MPlug(node, MPxLocatorNode::overrideColorR);
     this->color[0] = inputColPlug.child(0).asFloat();
     this->color[1] = inputColPlug.child(1).asFloat();
@@ -170,7 +160,7 @@ void PointsDisplayData::getData(const MObject& node) {
 
         /*
         MFnDagNode fn(theNode);
-        MPlug matrixPlug = fn.findPlug("worldMatrix");
+        MPlug matrixPlug = fn.findPlug("worldMatrix", false);
         matrixPlug = matrixPlug.elementByLogicalIndex(0);
 
         MObject matrixObject;

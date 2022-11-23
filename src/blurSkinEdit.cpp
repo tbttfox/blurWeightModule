@@ -161,7 +161,7 @@ MStatus blurSkinDisplay::getAttributes(MDataBlock& dataBlock) {
             theSkinCluster.getOutputGeometry(objectsDeformed);
             MFnDependencyNode deformedNameMesh(objectsDeformed[0]);
             //setAttr - type "string" Mesh_X_HeadBody_Pc_Sd1_SdDsp_Shape.currentColorSet
-    "soloColorsSet"; MPlug currentColorSet = deformedNameMesh.findPlug("currentColorSet");
+    "soloColorsSet"; MPlug currentColorSet = deformedNameMesh.findPlug("currentColorSet", false);
 
             if (this->colorCommand == 0)
                     currentColorSet.setValue(this->fullColorSet);
@@ -854,7 +854,7 @@ void blurSkinDisplay::connectSkinClusterWL() {
     weight_list_plug.connectedTo(plugs, true, false, &status);
     if (plugs.length() == 0) {  // not connected to the weightList
         MFnDependencyNode skinDep(skinCluster_);
-        MPlug weight_list_skin_clus = skinDep.findPlug("weightList");
+        MPlug weight_list_skin_clus = skinDep.findPlug("weightList", false);
         MDGModifier dg;
         // status = dg.connect( weight_list_skin_clus, weight_list_plug);
         MGlobal::displayInfo(MString(" TRY CONNECT ") + weight_list_plug.name() + MString(" -> ") +
@@ -952,7 +952,7 @@ MStatus blurSkinDisplay::querySkinClusterValues(MIntArray& verticesIndices,
 
     MFnDependencyNode skinClusterDep(skinCluster_);
 
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
 
     for (int i = 0; i < verticesIndices.length(); ++i) {
         int vertexIndex = verticesIndices[i];
@@ -987,8 +987,8 @@ MStatus blurSkinDisplay::fillArrayValues(bool doColors) {
 
     MFnDependencyNode skinClusterDep(skinCluster_);
 
-    MPlug weight_list_plug = skinClusterDep.findPlug("weightList");
-    MPlug matrix_plug = skinClusterDep.findPlug("matrix");
+    MPlug weight_list_plug = skinClusterDep.findPlug("weightList", false);
+    MPlug matrix_plug = skinClusterDep.findPlug("matrix", false);
     // MGlobal::displayInfo(weight_list_plug.name());
     int nbElements = weight_list_plug.numElements();
     this->nbJoints = matrix_plug.numElements();
@@ -1139,13 +1139,13 @@ MStatus blurSkinDisplay::initialize() {
     MFnTypedAttribute tAttr;
     MFnNumericAttribute numAtt;
 
-    blurSkinDisplay::_inMesh = meshAttr.create("inMesh", "im", MFnMeshData::kMesh, &status);
+    blurSkinDisplay::_inMesh = meshAttr.create("inMesh", "im", MFnMeshData::kMesh, MObject::kNullObj, &status);
     meshAttr.setStorable(false);
     meshAttr.setConnectable(true);
     status = blurSkinDisplay::addAttribute(blurSkinDisplay::_inMesh);
 
     // mesh output
-    blurSkinDisplay::_outMesh = meshAttr.create("outMesh", "om", MFnMeshData::kMesh, &status);
+    blurSkinDisplay::_outMesh = meshAttr.create("outMesh", "om", MFnMeshData::kMesh, MObject::kNullObj, &status);
     meshAttr.setStorable(false);
     meshAttr.setConnectable(true);
     status = blurSkinDisplay::addAttribute(blurSkinDisplay::_outMesh);
@@ -1168,7 +1168,7 @@ MStatus blurSkinDisplay::initialize() {
     // paintable attributes
     ///////////////////////////////////////////////////////////////////////////
     blurSkinDisplay::_paintableAttr =
-        tAttr.create("paintAttr", "pa", MFnData::kDoubleArray, &status);
+        tAttr.create("paintAttr", "pa", MFnData::kDoubleArray, MObject::kNullObj, &status);
     meshAttr.setStorable(true);
     status = blurSkinDisplay::addAttribute(blurSkinDisplay::_paintableAttr);
 
@@ -1202,7 +1202,7 @@ MStatus blurSkinDisplay::initialize() {
     status = blurSkinDisplay::addAttribute(blurSkinDisplay::_mirrorActive);
 
     blurSkinDisplay::_mirrorInfluenceArray =
-        tAttr.create("mirrorInfluenceArray", "mia", MFnData::kIntArray, &status);
+        tAttr.create("mirrorInfluenceArray", "mia", MFnData::kIntArray, MObject::kNullObj, &status);
     meshAttr.setStorable(true);
     status = blurSkinDisplay::addAttribute(blurSkinDisplay::_mirrorInfluenceArray);
     ///////////////////////////////////////////////////////////////////////////
@@ -1387,66 +1387,4 @@ MStatus blurSkinDisplay::setDependentsDirty(const MPlug& plugBeingDirtied,
     }
     return (MS::kSuccess);
 }
-/*
-void blurSkinDisplay::beforeSave() {
-        MStatus status;
-        MPlug weight_list_plug(thisMObject(), blurSkinDisplay::_s_skin_weights);
-        MPlugArray plugs;
-        weight_list_plug.connectedTo(plugs, true, false, &status);
-        MGlobal::displayInfo(MString(" BEFORE SAVE disconnect"));
-        MDGModifier dg;
 
-        if (plugs.length() != 0) { // connected to a weightList
-                dg.disconnect(weight_list_plug, plugs[0]);
-                status = dg.doIt();
-        }
-
-        this->doConnectSkinCL = false;
-
-}
-
-MStatus blurSkinDisplay::shouldSave(const MPlug & plug, bool & ret)
-{
-        if (plug == _s_skin_weights)
-        {
-                ret = true;
-                return MS::kSuccess;
-        }
-        else if (plug == _s_per_joint_weights)
-        {
-                ret = true;
-                return MS::kSuccess;
-        }
-        return MPxNode::shouldSave(plug, ret);
-}
-
-bool blurSkinDisplay::doNotWrite() const
-{
-        return true;
-}
-*/
-
-/*
-MStatus blurSkinDisplay::postEvaluation(const MDGContext& context, const MEvaluationNode&
-evaluationNode, PostEvaluationType evalType)
-{
-        MGlobal::displayInfo(" postEvaluation ");
-
-        if (!context.isNormal())
-                return MStatus::kFailure;
-
-        MStatus status;
-
-        //http://around-the-corner.typepad.com/adn/2017/05/improve-performance-with-mpxnodepreevaluation-mpxnodepostevaluation.html
-        if (evaluationNode.dirtyPlugExists(_cpList, &status) && status)
-        {
-                MGlobal::displayInfo(" postEvaluation - _cpList ");
-
-                if( this->doConnectSkinCL )connectSkinClusterWL();
-
-        }
-        return MStatus::kSuccess;
-}
-
-
-*/
