@@ -198,13 +198,16 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only run on e.g. v0.1.0
-    #if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          submodules: true
+
+      # Get the *ACTUAL* latest checkouts
+      # The actions/checkout submodules doesn't do that, unfortunately
+      - name: Checkout submodules
+        run: git submodule update --init --recursive --remote
 
       - name: Download artifacts
         uses: actions/download-artifact@v3
