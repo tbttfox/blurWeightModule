@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from ..Qt import QtGui, QtCore, QtWidgets
 from ..Qt import QtCompat
-from ..Qt.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
+from ..Qt.QtWidgets import QApplication
 from maya import OpenMayaUI, cmds, mel
 import time
 import six
@@ -192,21 +192,21 @@ class CatchEventsWidget(QtWidgets.QWidget):
             btnMayaToSelect = "brSkinBrushSharpenRb"
         elif self.shiftPressed:
             if self.prevButton == "brSkinBrushAddRb":
-                btnMayaToSelect = "brSkinBrushRemoveRb"
+                btnMayaToSelect = "brSkinBrushSmoothRb"
             elif self.prevButton == "brSkinBrushLockVerticesRb":
                 btnMayaToSelect = "brSkinBrushUnLockVerticesRb"
             else:
                 btnMayaToSelect = self.prevButton
             if self.prevQtButton:
                 if self.prevQtButton == "add":
-                    btnQtToSelect = "rmv"
+                    btnQtToSelect = "smooth"
                 elif self.prevQtButton == "locks":
                     btnQtToSelect = "unLocks"
                 else:
                     btnQtToSelect = self.prevQtButton
         elif self.ctrlPressed:
-            btnQtToSelect = "smooth"
-            btnMayaToSelect = "brSkinBrushSmoothRb"
+            btnQtToSelect = "rmv"
+            btnMayaToSelect = "brSkinBrushRemoveRb"
         else:
             btnQtToSelect = self.prevQtButton
             btnMayaToSelect = self.prevButton
