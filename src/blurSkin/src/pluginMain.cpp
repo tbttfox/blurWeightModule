@@ -3,10 +3,11 @@
 #include "blurSkinCmd.h"
 #include "blurSkinEdit.h"
 #include "pointsDisplay.h"
+#include "version.h"
 
 MStatus initializePlugin(MObject obj) {
     MStatus status;
-    MFnPlugin plugin(obj, "blur studios", "1.0", "Any");
+    MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 
     status = plugin.registerCommand("blurSkinCmd", blurSkinCmd::creator, blurSkinCmd::newSyntax);
     CHECK_MSTATUS_AND_RETURN_IT(status);

@@ -1,6 +1,7 @@
 #include <maya/MFnPlugin.h>
 
 #include "wireframeDisplay.h"
+#include "version.h"
 
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -10,7 +11,7 @@
 
 MStatus initializePlugin(MObject obj) {
     MStatus status;
-    MFnPlugin plugin(obj, PLUGIN_COMPANY, "3.0", "Any");
+    MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 
     status = plugin.registerNode("wireframeDisplay", wireframeDisplay::id,
                                  &wireframeDisplay::creator, &wireframeDisplay::initialize,

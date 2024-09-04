@@ -3,7 +3,7 @@
 //  pluginMain.cpp
 //  brSkinBrush
 //
-//  Created by guillaume using code from ingo on 11/18/18.
+//  Created by Guillaume Babin using code from ingo on 11/18/18.
 //  https://github.com/IngoClemens/brSkinBrush?fbclid=IwAR0VxH-zX51EwtPtX4-bvAoESL7YhjYC3_BJcyHbwV1qrUMx3uVvCVOwGFg
 //  Copyright (c) 2018 ingo. All rights reserved.
 //
@@ -11,12 +11,11 @@
 
 #include <string>
 
-static const std::string kVERSION = "1.1.3";
-
 #include <maya/MFnPlugin.h>
 
 #include "functions.h"
 #include "skinBrushTool.h"
+#include "version.h"
 
 // ---------------------------------------------------------------------
 // initialization
@@ -24,7 +23,7 @@ static const std::string kVERSION = "1.1.3";
 
 MStatus initializePlugin(MObject obj) {
     MStatus status;
-    MFnPlugin plugin(obj, "Ingo Clemens", kVERSION.c_str(), "Any");
+    MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 
     status = plugin.registerContextCommand("brSkinBrushContext", SkinBrushContextCmd::creator,
                                            "brSkinBrushCmd", skinBrushTool::creator);
@@ -35,7 +34,7 @@ MStatus initializePlugin(MObject obj) {
 
 MStatus uninitializePlugin(MObject obj) {
     MStatus status;
-    MFnPlugin plugin(obj, "Ingo Clemens", kVERSION.c_str(), "Any");
+    MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 
     status = plugin.deregisterContextCommand("brSkinBrushContext", "brSkinBrushCmd");
     if (status != MStatus::kSuccess) status.perror("Deregister brSkinBrushContext failed.");
