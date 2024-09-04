@@ -1,0 +1,45 @@
+QWidget:disabled {
+    font:italic;
+}
+QSplitter::handle {
+    border-radius: 5px;
+    border: 1px solid gray;
+}
+QSplitter::handle::hover {
+    border-radius: 5px;
+    border: 1px solid lightGray;
+}
+QLineEdit{
+    color:black;
+}
+QMenu::item:disabled {
+    font: italic;
+}
+QPushButton:checked{
+    border: none;
+}
+QPushButton:hover{
+    border-style: outset;
+}
+QPushButton:pressed {
+    border-style: inset;
+}
+QGroupBox {
+    border: 1px solid grey;
+    margin-top: 1ex; /* leave space at the top for the title */
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    padding: 0 3px;
+}
+QGroupBox::indicator {
+    width: 0px;
+    height: 0px;
+}
+QCheckBox:hover
+{
+    background:rgb(120, 120, 120);
+}
+QComboBox{
+    border : 1px solid rgb(120, 120, 120);
+}
