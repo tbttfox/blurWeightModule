@@ -230,7 +230,6 @@ MStatus findSkinCluster(MDagPath MeshPath, MObject& theSkinCluster, int indSkinC
 
             return MS::kSuccess;
         }
-        // std::cout << "skinCluster: " << returnedSkinCluster.name().asChar() << "\n";
     }
     return MS::kFailure;
 }
@@ -244,15 +243,12 @@ MStatus findMesh(MObject& skinCluster, MDagPath& theMeshPath, bool verbose) {
     bool doContinue = false;
     if (objectsDeformedCount != 0) {
         int j = 0;
-        // for (int j = 0; j < objectsDeformedCount; j++) {
-        // theMeshPath.getAPathTo(objectsDeformed[j]); // depreated
         MDagPath::getAPathTo(objectsDeformed[j], theMeshPath);
         if (verbose) {
             MFnDependencyNode deformedNameMesh(objectsDeformed[j]);
             MString deformedNameMeshSTR = deformedNameMesh.name();
             if (verbose) MGlobal::displayInfo("     -> DEFORMING : " + deformedNameMeshSTR + "\n");
         }
-        //}
         return MS::kSuccess;
     }
     return MS::kFailure;
@@ -346,7 +342,6 @@ MStatus getListColorsJoints(MObject& skinCluster, int nbJoints,
                 jointsColors.set(black, logicalInd);
             }
         } else {
-            // MGlobal::displayInfo(colorPlug.name());
             float element[4] = {colorPlug.child(0).asFloat(), colorPlug.child(1).asFloat(),
                                 colorPlug.child(2).asFloat(), 1};
             if (verbose)
@@ -392,7 +387,6 @@ MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray indicesF
             continue;
         }
         jointsLocks.set(isLocked, logicalInd);
-        // MGlobal::displayInfo(lockPlug.name() + " " + isLocked);
     }
     return stat;
 }
@@ -426,8 +420,6 @@ MStatus getListLockVertices(MObject& skinCluster, MIntArray& vertsLocks, MIntArr
         vertsLocks[vertsLocksIndices[i]] = 1;
         lockedIndices.append(vertsLocksIndices[i]);
     }
-    // MGlobal::displayInfo(MString(" getListLockVertices | ") + currentColorSet.name () + MString("
-    // ") + vertsLocks.length());
     return stat;
 }
 
@@ -497,9 +489,6 @@ MStatus getMirrorVertices(MIntArray mirrorVertices, MIntArray& theEditVerts,
             }
         }
     }
-    // MGlobal::displayError(MString("theEditVerts ") + theEditVerts.length() + MString("
-    // theMirrorVerts ") + theMirrorVerts.length() + MString(" editAndMirrorVerts ") +
-    // editAndMirrorVerts.length() );
 
     return status;
 }
@@ -624,11 +613,6 @@ MStatus editArray(ModifierCommands command, int influence, int nbJoints, MIntArr
                 int indexArray_theWeight = i * nbJoints + jnt;
                 int indexArray_fullWeightArray = theVert * nbJoints + jnt;
 
-                // if (verbose) MGlobal::displayInfo(MString("-> editArray | jnt ") + jnt +
-                // MString("-> editArray | indexArray_theWeight ") + indexArray_theWeight); if
-                // (verbose) MGlobal::displayInfo(MString("-> editArray | indexArray_fullWeightArray
-                // ") + indexArray_fullWeightArray);
-
                 if (indexArray_theWeight > theWeights.length()) {
                     MGlobal::displayInfo(
                         MString(
@@ -644,8 +628,6 @@ MStatus editArray(ModifierCommands command, int influence, int nbJoints, MIntArr
                     return MStatus::kFailure;
                 }
 
-                // if (verbose) MGlobal::displayInfo(MString("-> editArray | lockJoints[") + jnt+
-                // MString("] : ") + lockJoints[jnt]);
                 if (lockJoints[jnt] == 0) {  // not locked
                     sumUnlockWeights += fullWeightArray[indexArray_fullWeightArray];
                 }
@@ -908,8 +890,6 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
     MStatus stat;
     int sizeVertices = verticesAround.size();
     unsigned int i, jnt, posi;
-    // MGlobal::displayInfo(MString(" paint smooth vtx [")+ currentVertex+ MString("] index - ") +
-    // indexCurrVert + MString(" aroundCount ") + sizeVertices);
 
     MDoubleArray sumWeigths(nbJoints, 0.0);
     // compute sum weights

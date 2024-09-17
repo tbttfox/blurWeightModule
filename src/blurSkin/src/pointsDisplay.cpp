@@ -27,26 +27,7 @@ void pointsDisplay::postConstructor() {
 
 MStatus pointsDisplay::compute(const MPlug& plug /*plug*/, MDataBlock& dataBlock /*data*/) {
     MStatus s;
-    /*
-    MDataHandle inputIDs = dataBlock.inputValue(_cpList, &s);
-    MObject compList = inputIDs.data();
-    MFnComponentListData compListFn(compList);
-    unsigned i;
-    int j;
-    cpIds.clear();
 
-    MFn::Type componentType = MFn::kMeshVertComponent;
-    for (i = 0; i < compListFn.length(); i++)
-    {
-            MObject comp = compListFn[i];
-            if (comp.apiType() == componentType)
-            {
-                    MFnSingleIndexedComponent siComp(comp);
-                    for (j = 0; j < siComp.elementCount(); j++)
-                            cpIds.append(siComp.element(j));
-            }
-    }
-    */
     if (plug == worldS) {
         if (plug.isElement()) {
             MArrayDataHandle outputArrayHandle = dataBlock.outputArrayValue(worldS);
@@ -86,11 +67,6 @@ void pointsDisplay::draw(M3dView& view, const MDagPath& /*path*/, M3dView::Displ
     glEnd();
 
     view.endGL();
-    /*
-    // Draw the name of the pointsDisplay
-    view.setDrawColor( MColor( 0.1f, 0.8f, 0.8f, 1.0f ) );
-    view.drawText( MString("Footprint"), MPoint( 0.0, 0.0, 0.0 ), M3dView::kCenter );
-    */
 }
 #endif
 
@@ -131,9 +107,7 @@ void PointsDisplayData::getData(const MObject& node) {
     this->pointWidth = MPlug(node, pointsDisplay::_pointWidth).asFloat();
     this->enableSmooth = MPlug(node, pointsDisplay::_enableSmooth).asBool();
 
-    MPlug inputColPlug =
-        MPlug(node, pointsDisplay::_inputColor);  // fn.findPlug("overrideColorRGB", false);
-    // MPlug inputColPlug = MPlug(node, MPxLocatorNode::overrideColorR);
+    MPlug inputColPlug = MPlug(node, pointsDisplay::_inputColor);
     this->color[0] = inputColPlug.child(0).asFloat();
     this->color[1] = inputColPlug.child(1).asFloat();
     this->color[2] = inputColPlug.child(2).asFloat();
@@ -148,8 +122,6 @@ void PointsDisplayData::getData(const MObject& node) {
     this->pointsVertices.clear();
 
     if (plugs.length() == 0) {
-        // MGlobal::displayError("Unable to rebind.  No geometry is connected.");
-        // MGlobal::displayInfo("Unable to rebind.  No geometry is connected.");
         this->theBoundingBox = MBoundingBox();
     } else {
         MPlug cpListPlug = MPlug(node, pointsDisplay::_cpList);
@@ -158,18 +130,6 @@ void PointsDisplayData::getData(const MObject& node) {
 
         MObject theNode = plugs[0].node();
 
-        /*
-        MFnDagNode fn(theNode);
-        MPlug matrixPlug = fn.findPlug("worldMatrix", false);
-        matrixPlug = matrixPlug.elementByLogicalIndex(0);
-
-        MObject matrixObject;
-        matrixObject = matrixPlug.asMObject();
-
-        MFnMatrixData worldMatrixData(matrixObject);
-        MMatrix worldMatrix = worldMatrixData.matrix();
-        */
-
         // get the transform  matrix
         MFnDagNode theShape(theNode);
         MObject prt = theShape.parent(0);
@@ -177,8 +137,6 @@ void PointsDisplayData::getData(const MObject& node) {
         MDagPath pth;
         status = MDagPath::getAPathTo(theNode, pth);
         MMatrix worldMatrix = pth.inclusiveMatrix();
-        // MGlobal::displayInfo(MString("   --> NAME : ")+ pth.fullPathName());
-
         // MMatrix worldMatrix;
 
         if (theNode.hasFn(MFn::kMesh)) {
@@ -204,18 +162,10 @@ void PointsDisplayData::getData(const MObject& node) {
                 MObject dataObject = meshData.create();
                 MObject smoothedObj = tmpMesh.generateSmoothMesh(dataObject, &options, &status);
                 MFnMesh smoothMesh(smoothedObj, &status);
-                // mayaRawPoints = smoothMesh.getRawPoints(&status);
                 smoothMesh.getPoints(pointsVerticesAll);
             } else {
-                // mayaRawPoints = tmpMesh.getRawPoints(&status);
                 tmpMesh.getPoints(pointsVerticesAll);
             }
-            // this->pointsVertices = pointsVerticesAll;
-
-            // get the stored vertices indices ------------------------------------------
-            // MFnDependencyNode depNode(node, &status);
-            // pointsDisplay* fpointsDisplay = status ?
-            // dynamic_cast<pointsDisplay*>(depNode.userNode()) : NULL;
 
             MFn::Type componentType = MFn::kMeshVertComponent;
             for (unsigned i = 0; i < compListFn.length(); i++) {
@@ -242,8 +192,6 @@ void PointsDisplayData::getData(const MObject& node) {
                     MFnDoubleIndexedComponent siComp(comp);
                     for (int j = 0; j < siComp.elementCount(); j++) {
                         int indexU, indexV;
-                        // MGlobal::displayInfo(MString(" indexU, indexV")+ indexU + MString(" ")+
-                        // indexV);
                         siComp.getElement(j, indexU, indexV);
                         int vertInd = numCVsInV * indexU + indexV;
 
@@ -257,9 +205,6 @@ void PointsDisplayData::getData(const MObject& node) {
 
             MPointArray cvPoints;
             curveFn.getCVs(cvPoints);
-
-            // MDataHandle inputIDs = dataBlock.inputValue(_cpList, &s);
-            // MObject compList = inputIDs.data();
 
             MFn::Type componentType = MFn::kCurveCVComponent;
             for (unsigned i = 0; i < compListFn.length(); i++) {
@@ -281,8 +226,6 @@ void PointsDisplayData::getData(const MObject& node) {
                     MFnTripleIndexedComponent siComp(comp);
                     for (int j = 0; j < siComp.elementCount(); j++) {
                         int s, t, u;
-                        // MGlobal::displayInfo(MString(" indexU, indexV")+ indexU + MString(" ")+
-                        // indexV);
                         siComp.getElement(j, s, t, u);
 
                         MPoint thePt = latticeFn.point(s, t, u, &status);
@@ -427,17 +370,6 @@ void PointsDisplayDrawOverride::addUIDrawables(const MDagPath& objPath,
     // draw the vertices
     drawManager.setPointSize(pLocatorData->pointWidth);
     drawManager.mesh(MHWRender::MUIDrawManager::kPoints, pLocatorData->pointsVertices);
-    // drawManager.points(pLocatorData->pointsVertices, true);
-
-    /*
-    // Draw a text "Foot"
-    MPoint pos( 0.0, 0.0, 0.0 ); // Position of the text
-    MColor textColor( 0.1f, 0.8f, 0.8f, 1.0f ); // Text color
-
-    drawManager.setColor( textColor );
-    drawManager.setFontSize( MHWRender::MUIDrawManager::kSmallFontSize );
-    drawManager.text( pos,  MString("Footprint"), MHWRender::MUIDrawManager::kCenter );
-    */
 
     drawManager.endDrawable();
 }
@@ -465,15 +397,7 @@ MStatus pointsDisplay::initialize() {
     MFnEnumAttribute enumAttr;
 
     MFnTypedAttribute inMeshAttrFn;
-    /*
-    _inMesh = inMeshAttrFn.create("inMesh", "inMesh", MFnData::kMesh);
-    CHECK_MSTATUS(inMeshAttrFn.setStorable(true));
-    CHECK_MSTATUS(inMeshAttrFn.setKeyable(false));
-    CHECK_MSTATUS(inMeshAttrFn.setReadable(true));
-    CHECK_MSTATUS(inMeshAttrFn.setWritable(true));
-    CHECK_MSTATUS(inMeshAttrFn.setCached(false));
-    CHECK_MSTATUS(addAttribute(_inMesh));
-    */
+
     _inGeometry = inMeshAttrFn.create("inGeometry", "inGeo", MFnGeometryData::kAny);
     inMeshAttrFn.setStorable(true);
     inMeshAttrFn.setKeyable(false);

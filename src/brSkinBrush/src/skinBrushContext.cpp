@@ -25,7 +25,7 @@ SkinBrushContext::SkinBrushContext() {
     curveVal = 2;
     drawBrushVal = true;
     drawRangeVal = true;
-    moduleImportString = MString("from brSkinBrush_pythonFunctions import ");
+    moduleImportString = MString("from mPaintEditor.brushTools.brushPythonFunctions import ");
     enterToolCommandVal = "";
     exitToolCommandVal = "";
     fractionOversamplingVal = false;
@@ -70,8 +70,16 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         MGlobal::displayInfo(MString(" --------->  moduleImportString : ") + moduleImportString);
     MGlobal::executePythonCommand(
         moduleImportString +
-        MString("toolOnSetupEnd, toolOffCleanup, toolOnSetupStart, fnFonts, headsUpMessage, "
-                "updateDisplayStrengthOrSize, afterPaint, cleanCloseUndo\n"));
+        MString(
+            "toolOnSetupEnd, "
+            "toolOffCleanup, "
+            "toolOnSetupStart, "
+            "fnFonts, "
+            "headsUpMessage, "
+            "updateDisplayStrengthOrSize, "
+            "afterPaint, "
+            "cleanCloseUndo\n"
+        ));
     MGlobal::executePythonCommand("toolOnSetupStart()");
 
     this->firstPaintDone = false;
@@ -249,7 +257,6 @@ void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
     meshFn.updateSurface();
 
     // refresh view and display
-    // meshFn.setDisplayColors(true);
     maya2019RefreshColors();
 
     this->previousPaint.clear();
@@ -458,7 +465,7 @@ MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &d
         // --------------------------------------------------------------------
         if (this->BBoxOfDeformers.size() == 0) {  // fill it
             double jointDisplayVal;
-            MGlobal::executeCommand("jointDisplayScale - q", jointDisplayVal);
+            MGlobal::executeCommand("jointDisplayScale -query", jointDisplayVal);
             MGlobal::displayInfo(MString("jointDisplayScale :  ") + jointDisplayVal);
 
             int lent = this->inflDagPaths.length();
@@ -651,7 +658,6 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
         drawManager.setColor(MColor((pow(colorVal.r, 0.454f)), (pow(colorVal.g, 0.454f)),
                                     (pow(colorVal.b, 0.454f))));
         drawManager.setLineWidth((float)lineWidthVal);
-        // MGlobal::displayInfo("MUIDrawManager doDraw ");
         // Draw the circle in regular paint mode.
         // The range circle doens't get drawn here to avoid visual
         // clutter.
@@ -907,7 +913,6 @@ MStatus SkinBrushContext::doPressCommon(MEvent event) {
         this->BBoxOfDeformers.clear();
 
         if (this->pickMaxInfluenceVal && biggestInfluence != -1) {
-            // MGlobal::displayInfo(this->orderedIndicesByWeights);
 
             MString pickInfluenceCommand = moduleImportString + MString("orderedInfluence\n");
             pickInfluenceCommand +=
@@ -3228,8 +3233,9 @@ bool SkinBrushContext::eventIsValid(MEvent event) {
 }
 
 void SkinBrushContext::setInViewMessage(bool display) {
+    MGlobal::executePythonCommand(moduleImportString + MString("hideInViewMessage, showInViewMessage\n"));
     if (display && messageVal)
-        MGlobal::executeCommand("brSkinBrushShowInViewMessage");
+        MGlobal::executePythonCommand("showInViewMessage()");
     else
-        MGlobal::executeCommand("brSkinBrushHideInViewMessage");
+        MGlobal::executePythonCommand("hideInViewMessage()");
 }
