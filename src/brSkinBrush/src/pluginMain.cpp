@@ -12,6 +12,9 @@
 #include <string>
 
 #include <maya/MFnPlugin.h>
+#include <maya/MFnPlugin.h>
+#include <maya/MUserEventMessage.h>
+
 
 #include "functions.h"
 #include "skinBrushTool.h"
@@ -27,7 +30,18 @@ MStatus initializePlugin(MObject obj) {
 
     status = plugin.registerContextCommand("brSkinBrushContext", SkinBrushContextCmd::creator,
                                            "brSkinBrushCmd", skinBrushTool::creator);
-    if (status != MStatus::kSuccess) status.perror("Register brSkinBrushContext failed.");
+    if (status != MStatus::kSuccess) {
+        status.perror("Register brSkinBrushContext failed.");
+    }
+    else {
+        MUserEventMessage::registerUserEvent("brSkinBrush_influencesReordered");
+        MUserEventMessage::registerUserEvent("brSkinBrush_pickedInfluence");
+        MUserEventMessage::registerUserEvent("brSkinBrush_updateDisplayStrength");
+        MUserEventMessage::registerUserEvent("brSkinBrush_updateDisplaySize");
+        MUserEventMessage::registerUserEvent("brSkinBrush_afterPaint");
+        MUserEventMessage::registerUserEvent("brSkinBrush_cleanCloseUndo");
+        MUserEventMessage::registerUserEvent("brSkinBrush_cleanOpenUndo");
+    }
 
     return status;
 }
@@ -37,7 +51,18 @@ MStatus uninitializePlugin(MObject obj) {
     MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 
     status = plugin.deregisterContextCommand("brSkinBrushContext", "brSkinBrushCmd");
-    if (status != MStatus::kSuccess) status.perror("Deregister brSkinBrushContext failed.");
+    if (status != MStatus::kSuccess) {
+        status.perror("Deregister brSkinBrushContext failed.");
+    }
+    else {
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_influencesReordered");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_pickedInfluence");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_updateDisplayStrength");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_updateDisplaySize");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_afterPaint");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_cleanCloseUndo");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_cleanOpenUndo");
+    }
 
     return status;
 }

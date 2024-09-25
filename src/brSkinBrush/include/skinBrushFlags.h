@@ -159,3 +159,11 @@
 
 #define kVerboseFlag "-vrb"
 #define kVerboseFlagLong "-verbose"
+
+#define kWeightOrderedIndicesFlag "-woi"
+#define kWeightOrderedIndicesFlagLong "-weightOrderedIndices"
+
+#define kAdjustValueFlag "-dv"
+#define kAdjustValueFlagLong "-dragValue"
+
+

@@ -75,9 +75,6 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
             "toolOffCleanup, "
             "toolOnSetupStart, "
             "fnFonts, "
-            "headsUpMessage, "
-            "updateDisplayStrengthOrSize, "
-            "afterPaint, "
             "cleanCloseUndo\n"
         ));
     MGlobal::executePythonCommand("toolOnSetupStart()");
@@ -183,7 +180,7 @@ void SkinBrushContext::toolOffCleanup() {
     MGlobal::executePythonCommand("toolOffCleanup()");
     if (!this->firstPaintDone) {
         this->firstPaintDone = true;
-        MGlobal::executePythonCommand("cleanCloseUndo()");
+        MUserEventMessage::postUserEvent("brSkinBrush_cleanCloseUndo");
     }
 }
 
@@ -419,8 +416,10 @@ int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint &hitPoint) {
 
     // now we transfer that to our UI
     this->orderedIndicesByWeights = MString("");
+    this->orderedIndicesByWeightsVals.clear();
     for (int ind : indices) {
         this->orderedIndicesByWeights += MString("") + ind + MString(" ");
+        this->orderedIndicesByWeightsVals.append(ind);
     }
     return biggestInfluence;
 }
@@ -913,11 +912,7 @@ MStatus SkinBrushContext::doPressCommon(MEvent &event) {
         this->BBoxOfDeformers.clear();
 
         if (this->pickMaxInfluenceVal && biggestInfluence != -1) {
-
-            MString pickInfluenceCommand = moduleImportString + MString("orderedInfluence\n");
-            pickInfluenceCommand +=
-                MString("orderedInfluence ('") + this->orderedIndicesByWeights + MString("')");
-            MGlobal::executePythonCommand(pickInfluenceCommand);
+            MUserEventMessage::postUserEvent("brSkinBrush_influencesReordered");
         }
 
         if (biggestInfluence != this->influenceIndex && biggestInfluence != -1) {
@@ -1319,17 +1314,22 @@ MStatus SkinBrushContext::doDragCommon(MEvent &event) {
 
         int precision = 2;
         if (event.isModifierShift()) precision = 3;
-        MString headsUpCommand = MString("headsUpMessage(") + offsetX + MString(", ") + offsetY +
-                                 MString(", '") + message + MString("', ") + adjustValue +
-                                 MString(", ") + precision + MString(")\n");
 
-        MGlobal::executePythonCommand(headsUpCommand);
+        std::string stdMessage = std::string(message.asChar());
+        std::string theMessage = std::format("{}: {:.{}f}", stdMessage, adjustValue, precision);
+        std::string headsUpFmt = std::format("headsUpMessage -horizontalOffset {} -verticalOffset {} -time 0.1 {}", offsetX, offsetY, theMessage);
+
+        MGlobal::executeCommand(MString(headsUpFmt.c_str(), headsUpFmt.length()));
+
         // Also, adjust the slider in the tool settings window if it's
         // currently open.
-        MString UIupdate = MString("updateDisplayStrengthOrSize(") + sizeAdjust + MString(", ") +
-                           adjustValue + MString(")\n");
-        // MGlobal::displayInfo(UIupdate);
-        MGlobal::executePythonCommand(UIupdate);
+        if (sizeAdjust){
+            MUserEventMessage::postUserEvent("brSkinBrush_updateDisplaySize");
+        }
+        else {
+            MUserEventMessage::postUserEvent("brSkinBrush_updateDisplayStrength");
+        }
+
     }
     return status;
 }
@@ -1533,7 +1533,7 @@ void SkinBrushContext::doTheAction() {
     cmd->finalize();
     if (verbose) MGlobal::displayInfo(MString("maya2019RefreshColors"));
     maya2019RefreshColors();
-    MGlobal::executePythonCommand("afterPaint()");
+    MUserEventMessage::postUserEvent("brSkinBrush_afterPaint");
 }
 
 ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
@@ -3234,9 +3234,17 @@ bool SkinBrushContext::eventIsValid(MEvent &event) {
 }
 
 void SkinBrushContext::setInViewMessage(bool display) {
-    MGlobal::executePythonCommand(moduleImportString + MString("hideInViewMessage, showInViewMessage\n"));
-    if (display && messageVal)
-        MGlobal::executePythonCommand("showInViewMessage()");
-    else
-        MGlobal::executePythonCommand("hideInViewMessage()");
+    // TODO: Update this dynamically based on hotkey prefs
+    if (display && messageVal){
+        MString cmd = "inViewMessage -position topCenter -statusMessage \""
+            "<hl>LMB</hl> to add  |  "
+            "<hl>MMB</hl> to adjust  |  "
+            "<hl>Ctrl</hl> to remove  |  "
+            "<hl>Shift</hl> to smooth"
+            "\"";
+        MGlobal::executeCommand(cmd);
+    }
+    else{
+        MGlobal::executeCommand("inViewMessage -clear topCenter");
+    }
 }

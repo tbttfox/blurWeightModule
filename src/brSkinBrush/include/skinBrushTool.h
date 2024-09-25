@@ -54,6 +54,7 @@
 #include <maya/MToolsInfo.h>
 #include <maya/MUIDrawManager.h>
 #include <maya/MUintArray.h>
+#include <maya/MUserEventMessage.h>
 
 #include <algorithm>
 #include <iostream>
@@ -62,6 +63,8 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <format>
+#include <string>
 
 // Macro for the press/drag/release methods in case there is nothing
 // selected or the tool gets applied outside any geometry. If the actual
@@ -421,6 +424,9 @@ class SkinBrushContext : public MPxContext {
     double getMinColor();
     double getMaxColor();
 
+    MIntArray getWeightOrderedIndices();
+    double getAdjustValue();
+
    private:
     bool verbose = false;
     double interactiveValue = 1.0;   // for whateverUse in the code
@@ -471,6 +477,8 @@ class SkinBrushContext : public MPxContext {
     // if we're asking to pick max influence
     bool pickMaxInfluenceVal = false, pickInfluenceVal = false;
     MString orderedIndicesByWeights;
+    MIntArray orderedIndicesByWeightsVals;
+
     // for me yep ----
     int influenceIndex = 0, smoothRepeat = 4;
     ModifierCommands commandIndex = ModifierCommands::Add;

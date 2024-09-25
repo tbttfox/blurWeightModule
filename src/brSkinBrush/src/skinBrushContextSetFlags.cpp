@@ -310,10 +310,7 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
             msg += MString(" name is ") + influenceName;
 
             if (selectInUI) {
-                MString pickInfluenceCommand = moduleImportString + MString("pickedInfluence\n");
-                pickInfluenceCommand +=
-                    MString("pickedInfluence ('") + influenceName + MString("')");
-                MGlobal::executePythonCommand(pickInfluenceCommand);
+                MUserEventMessage::postUserEvent("brSkinBrush_pickedInfluence");
             }
         }
         if (verbose) MGlobal::displayInfo(msg);
@@ -419,3 +416,5 @@ MString SkinBrushContext::getSkinClusterName() {
 
 MString SkinBrushContext::getMeshName() { return this->meshDag.fullPathName(); }
 bool SkinBrushContext::getPostSetting() { return postSetting; }
+MIntArray SkinBrushContext::getWeightOrderedIndices() { return orderedIndicesByWeightsVals; }
+double SkinBrushContext::getAdjustValue() { return adjustValue; }
