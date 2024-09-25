@@ -101,7 +101,7 @@ class skinBrushTool : public MPxToolCommand {
     MStatus doIt(const MArgList &args);
     MStatus redoIt();
     MStatus undoIt();
-    MStatus setWeights(bool isUndo);
+    MStatus setWeightsForDoit(bool isUndo);
     MStatus callBrushRefresh();
     MStatus finalize();
 
@@ -148,8 +148,8 @@ class skinBrushTool : public MPxToolCommand {
     MStatus getSkinClusterObj();
 
     void setWeights(MDoubleArray &weights);
-    void setUnoVertices(MIntArray &editVertsIndices);
-    void setUnoLocks(MIntArray &locks);
+    void setUndoVertices(MIntArray &editVertsIndices);
+    void setUndoLocks(MIntArray &locks);
     void setRedoLocks(MIntArray &locks);
 
     void setMirrorTolerance(double value);

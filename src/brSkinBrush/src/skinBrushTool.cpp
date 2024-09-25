@@ -266,10 +266,10 @@ MStatus skinBrushTool::doIt(const MArgList& args) {
 
 MStatus skinBrushTool::redoIt() {
     MGlobal::displayInfo(MString("skinBrushTool::redoIt is CALLED !!!! commandIndex : ") + static_cast<int>(this->commandIndex));
-    return setWeights(true);
+    return setWeightsForDoit(true);
 }
 
-MStatus skinBrushTool::setWeights(bool isUndo) {
+MStatus skinBrushTool::setWeightsForDoit(bool isUndo) {
     MStatus status = MStatus::kSuccess;
 
     int theWeightsLength;
@@ -378,7 +378,7 @@ MStatus skinBrushTool::setWeights(bool isUndo) {
 MStatus skinBrushTool::undoIt() {
     MGlobal::displayInfo(MString("skinBrushTool::undoIt is CALLED ! commandIndex : ") +
                          static_cast<int>(this->commandIndex));
-    return setWeights(true);
+    return setWeightsForDoit(true);
 }
 
 MStatus skinBrushTool::callBrushRefresh() {
@@ -625,8 +625,8 @@ void skinBrushTool::setSkinClusterName(MString &skinClusterName) { skinName = sk
 
 void skinBrushTool::setWeights(MDoubleArray &weights) { undoWeights = weights; }
 
-void skinBrushTool::setUnoVertices(MIntArray &editVertsIndices) { undoVertices = editVertsIndices; }
+void skinBrushTool::setUndoVertices(MIntArray &editVertsIndices) { undoVertices = editVertsIndices; }
 
-void skinBrushTool::setUnoLocks(MIntArray &locks) { undoLocks = locks; }
+void skinBrushTool::setUndoLocks(MIntArray &locks) { undoLocks = locks; }
 
 void skinBrushTool::setRedoLocks(MIntArray &locks) { redoLocks = locks; }

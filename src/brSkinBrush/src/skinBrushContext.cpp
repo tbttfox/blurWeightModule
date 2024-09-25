@@ -1499,7 +1499,7 @@ void SkinBrushContext::doTheAction() {
     cmd->setVolume(volumeVal);
     cmd->setCommandIndex(theCommandIndex);
 
-    cmd->setUnoLocks(undoLocks);
+    cmd->setUndoLocks(undoLocks);
     cmd->setRedoLocks(redoLocks);
 
     MFnDependencyNode skinDep(this->skinObj);
@@ -1517,7 +1517,7 @@ void SkinBrushContext::doTheAction() {
     MString iname = getInfluenceName();
     cmd->setInfluenceName(iname);
 
-    cmd->setUnoVertices(editVertsIndices);
+    cmd->setUndoVertices(editVertsIndices);
     if (!this->postSetting) {
         cmd->setWeights(prevWeights);
     } else {
