@@ -74,7 +74,7 @@ MStatus SkinBrushContext::doDrag(MEvent &event) {
     return status;
 }
 
-void SkinBrushContext::drawCircle(MPoint point, MMatrix mat, double radius) {
+void SkinBrushContext::drawCircle(MPoint point, MMatrix &mat, double radius) const {
     unsigned int i;
     glBegin(GL_LINE_LOOP);
     for (i = 0; i < 360; i += 2) {

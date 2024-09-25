@@ -33,17 +33,17 @@ void SkinBrushContext::setDrawRange(bool value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setPythonImportPath(MString value) {
+void SkinBrushContext::setPythonImportPath(MString &value) {
     moduleImportString = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setEnterToolCommand(MString value) {
+void SkinBrushContext::setEnterToolCommand(MString &value) {
     enterToolCommandVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setExitToolCommand(MString value) {
+void SkinBrushContext::setExitToolCommand(MString &value) {
     exitToolCommandVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
@@ -331,7 +331,7 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
     }
 }
 
-void SkinBrushContext::setInfluenceByName(MString value) {
+void SkinBrushContext::setInfluenceByName(MString &value) {
     if (verbose) MGlobal::displayInfo("setInfluenceByName CALLED \"" + value + "\"\n");
     if (this->pickMaxInfluenceVal) return;
 

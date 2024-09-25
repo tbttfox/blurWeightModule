@@ -197,7 +197,7 @@ void SkinBrushContext::refreshJointsLocks() {
     }
 }
 
-void SkinBrushContext::refreshMirrorInfluences(MIntArray inputMirrorInfluences) {
+void SkinBrushContext::refreshMirrorInfluences(MIntArray &inputMirrorInfluences) {
     this->mirrorInfluences.clear();
     this->mirrorInfluences.copy(inputMirrorInfluences);
 
@@ -216,7 +216,7 @@ void SkinBrushContext::refreshMirrorInfluences(MIntArray inputMirrorInfluences) 
     }
 }
 
-void SkinBrushContext::refreshTheseVertices(MIntArray verticesIndices) {
+void SkinBrushContext::refreshTheseVertices(MIntArray &verticesIndices) {
     // this command is used when undo is called
     if (verbose) {
         MGlobal::displayInfo(" - refreshThisVertices-");
@@ -380,7 +380,7 @@ int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
     return closestInfluence;
 }
 
-int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint hitPoint) {
+int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint &hitPoint) {
     // get closest vertex
     auto verticesSet = getSurroundingVerticesPerFace(faceHit);
     int indexVertex = -1;
@@ -425,7 +425,7 @@ int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint hitPoint) {
     return biggestInfluence;
 }
 
-MStatus SkinBrushContext::drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector worldVector) {
+MStatus SkinBrushContext::drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector &worldVector) {
     drawManager.setColor(MColor(0.5, 0.5, 0.5, 1.0));
     drawManager.setLineWidth(1);
 
@@ -900,7 +900,7 @@ MStatus SkinBrushContext::refreshPointsNormals() {
 // ---------------------------------------------------------------------
 // common methods for legacy viewport and viewport 2.0
 // ---------------------------------------------------------------------
-MStatus SkinBrushContext::doPressCommon(MEvent event) {
+MStatus SkinBrushContext::doPressCommon(MEvent &event) {
     MStatus status = MStatus::kSuccess;
 
     unsigned int i;
@@ -1084,7 +1084,7 @@ void SkinBrushContext::growArrayOfHitsFromCenters(std::unordered_map<int, float>
     }
 }
 
-MStatus SkinBrushContext::doDragCommon(MEvent event) {
+MStatus SkinBrushContext::doDragCommon(MEvent &event) {
     MStatus status = MStatus::kSuccess;
 
     // -----------------------------------------------------------------
@@ -1334,7 +1334,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent event) {
     return status;
 }
 
-MStatus SkinBrushContext::doReleaseCommon(MEvent event) {
+MStatus SkinBrushContext::doReleaseCommon(MEvent &event) {
     // Don't continue if no mesh has been set.
     if (meshFn.object().isNull()) return MS::kFailure;
     if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
@@ -1514,7 +1514,8 @@ void SkinBrushContext::doTheAction() {
     cmd->setIsNurbs(isNurbs);
 
     cmd->setInfluenceIndices(influenceIndices);
-    cmd->setInfluenceName(getInfluenceName());
+    MString iname = getInfluenceName();
+    cmd->setInfluenceName(iname);
 
     cmd->setUnoVertices(editVertsIndices);
     if (!this->postSetting) {
@@ -2354,7 +2355,7 @@ MStatus SkinBrushContext::getSelection(MDagPath &dagPath) {
 //      MStatus             The MStatus for the setting up the
 //                          dependency graph iterator.
 //
-MStatus SkinBrushContext::getSkinCluster(MDagPath meshDag, MObject &skinClusterObj) {
+MStatus SkinBrushContext::getSkinCluster(MDagPath &meshDag, MObject &skinClusterObj) {
     MStatus status;
 
     MObject meshObj = meshDag.node();
@@ -2381,7 +2382,7 @@ MStatus SkinBrushContext::getSkinCluster(MDagPath meshDag, MObject &skinClusterO
     return status;
 }
 
-MStatus SkinBrushContext::fillArrayValues(MObject skinCluster, bool doColors) {
+MStatus SkinBrushContext::fillArrayValues(MObject &skinCluster, bool doColors) {
     MStatus status = MS::kSuccess;
     if (verbose) MGlobal::displayInfo(" FILLED ARRAY VALUES ");
 
@@ -2459,7 +2460,7 @@ MStatus SkinBrushContext::displayWeightValue(int vertexIndex, bool displayZero) 
     return MS::kSuccess;
 }
 
-MStatus SkinBrushContext::fillArrayValuesDEP(MObject skinCluster, bool doColors) {
+MStatus SkinBrushContext::fillArrayValuesDEP(MObject &skinCluster, bool doColors) {
     MStatus status = MS::kSuccess;
     if (verbose) MGlobal::displayInfo(" FILLED ARRAY VALUES ");
 
@@ -2590,7 +2591,7 @@ MIntArray SkinBrushContext::getInfluenceIndices() {
     return influenceIndices;
 }
 
-MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray &verticesIndices,
+MStatus SkinBrushContext::querySkinClusterValues(MObject &skinCluster, MIntArray &verticesIndices,
                                                  bool doColors) {
     MStatus status = MS::kSuccess;
 
@@ -2655,7 +2656,7 @@ MStatus SkinBrushContext::querySkinClusterValues(MObject skinCluster, MIntArray 
 // Return Value:
 //      None
 //
-void SkinBrushContext::getSkinClusterAttributes(MObject skinCluster, unsigned int &maxInfluences,
+void SkinBrushContext::getSkinClusterAttributes(MObject &skinCluster, unsigned int &maxInfluences,
                                                 bool &maintainMaxInfluences,
                                                 unsigned int &normalize) {
     // Get the settings from the skin cluster node.
@@ -2772,7 +2773,7 @@ bool SkinBrushContext::computeHit(short screenPixelX, short screenPixelY, bool g
     return true;
 }
 
-bool SkinBrushContext::expandHit(int faceHit, MFloatPoint hitPoint,
+bool SkinBrushContext::expandHit(int faceHit, MFloatPoint &hitPoint,
                                  std::unordered_map<int, float> &dicVertsDist) {
     // ----------- compute the vertices around ---------------------
     auto verticesSet = getSurroundingVerticesPerFace(faceHit);
@@ -3141,7 +3142,7 @@ MIntArray SkinBrushContext::getVerticesInVolume() {
 // Return Value:
 //      None
 //
-void SkinBrushContext::getVerticesInVolumeRange(int index, MIntArray volumeIndices,
+void SkinBrushContext::getVerticesInVolumeRange(int index, MIntArray &volumeIndices,
                                                 MIntArray &rangeIndices, MFloatArray &values) {
     unsigned int i;
 
@@ -3225,7 +3226,7 @@ double SkinBrushContext::getFalloffValue(double value, double strength) {
 // Return Value:
 //      bool                True, if the event is valid.
 //
-bool SkinBrushContext::eventIsValid(MEvent event) {
+bool SkinBrushContext::eventIsValid(MEvent &event) {
     MStatus status;
     event.mouseButton(&status);
     if (!status) return false;

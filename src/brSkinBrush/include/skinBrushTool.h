@@ -105,13 +105,13 @@ class skinBrushTool : public MPxToolCommand {
     bool isUndoable() const;
 
     // setting the attributes
-    void setColor(MColor color);
+    void setColor(MColor &color);
     void setCurve(int value);
     void setDrawBrush(bool value);
     void setDrawRange(bool value);
-    void setPythonImportPath(MString value);
-    void setEnterToolCommand(MString value);
-    void setExitToolCommand(MString value);
+    void setPythonImportPath(MString &value);
+    void setEnterToolCommand(MString &value);
+    void setExitToolCommand(MString &value);
     void setFractionOversampling(bool value);
     void setIgnoreLock(bool value);
     void setLineWidth(int value);
@@ -131,23 +131,23 @@ class skinBrushTool : public MPxToolCommand {
     void setCoverage(bool value);
     void setPostSetting(bool value);
 
-    void setInfluenceIndices(MIntArray indices);
-    void setInfluenceName(MString name);
-    void setMesh(MDagPath dagPath);
-    void setNurbs(MDagPath dagPath);
+    void setInfluenceIndices(MIntArray &indices);
+    void setInfluenceName(MString &name);
+    void setMesh(MDagPath &dagPath);
+    void setNurbs(MDagPath &dagPath);
     void setNormalize(bool value);
 
-    void setSkinCluster(MObject skinCluster);
+    void setSkinCluster(MObject &skinCluster);
     void setIsNurbs(bool value);
     void setnumCVInV(int value);
 
-    void setSkinClusterName(MString skinClusterName);
+    void setSkinClusterName(MString &skinClusterName);
     MStatus getSkinClusterObj();
 
-    void setWeights(MDoubleArray weights);
-    void setUnoVertices(MIntArray editVertsIndices);
-    void setUnoLocks(MIntArray locks);
-    void setRedoLocks(MIntArray locks);
+    void setWeights(MDoubleArray &weights);
+    void setUnoVertices(MIntArray &editVertsIndices);
+    void setUnoLocks(MIntArray &locks);
+    void setRedoLocks(MIntArray &locks);
 
     void setMirrorTolerance(double value);
     void setPaintMirror(int value);
@@ -232,7 +232,7 @@ class SkinBrushContext : public MPxContext {
     MStatus doDrag(MEvent &event);
     MStatus doRelease(MEvent &event);
 
-    void drawCircle(MPoint point, MMatrix mat, double radius);
+    void drawCircle(MPoint point, MMatrix &mat, double radius) const;
 
     // VP2.0
     MStatus doPress(MEvent &event, MHWRender::MUIDrawManager &drawManager,
@@ -241,18 +241,18 @@ class SkinBrushContext : public MPxContext {
                    const MHWRender::MFrameContext &context);
     MStatus doRelease(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                       const MHWRender::MFrameContext &context);
-    MStatus drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector worldVector);
+    MStatus drawTheMesh(MHWRender::MUIDrawManager &drawManager, MVector &worldVector);
     MStatus drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager);
 
     MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawManager,
                        const MHWRender::MFrameContext &context);
-    int getHighestInfluence(int faceHit, MFloatPoint hitPoint);
+    int getHighestInfluence(int faceHit, MFloatPoint &hitPoint);
     int getClosestInfluenceToCursor(int screenX, int screenY);
     // common methods
-    MStatus doPressCommon(MEvent event);
+    MStatus doPressCommon(MEvent &event);
     // doDragCommon where the magic happens
-    MStatus doDragCommon(MEvent event);
-    MStatus doReleaseCommon(MEvent event);
+    MStatus doDragCommon(MEvent &event);
+    MStatus doReleaseCommon(MEvent &event);
     void doTheAction();
     ModifierCommands getCommandIndexModifiers();
     MStatus getMesh();
@@ -268,12 +268,12 @@ class SkinBrushContext : public MPxContext {
 
     void getFromMeshNormals();
     MStatus getSelection(MDagPath &dagPath);
-    MStatus getSkinCluster(MDagPath meshDag, MObject &skinClusterObj);
+    MStatus getSkinCluster(MDagPath &meshDag, MObject &skinClusterObj);
     void refreshJointsLocks();
     void refresh();
     void refreshDeformerColor(int influenceInd);
-    void refreshTheseVertices(MIntArray verticesIndices);
-    void refreshMirrorInfluences(MIntArray inputMirrorInfluences);
+    void refreshTheseVertices(MIntArray &verticesIndices);
+    void refreshMirrorInfluences(MIntArray &inputMirrorInfluences);
 
     void mergeMirrorArray(std::unordered_map<int, float> &valuesBase,
                           std::unordered_map<int, float> &valuesMirrored);
@@ -293,17 +293,17 @@ class SkinBrushContext : public MPxContext {
                             MIntArray &editVertsIndices, MColorArray &multiEditColors,
                             MColorArray &soloEditColors);
 
-    MStatus querySkinClusterValues(MObject skinCluster, MIntArray &verticesIndices, bool doColors);
-    MStatus fillArrayValues(MObject skinCluster, bool doColors);
+    MStatus querySkinClusterValues(MObject &skinCluster, MIntArray &verticesIndices, bool doColors);
+    MStatus fillArrayValues(MObject &skinCluster, bool doColors);
     MStatus displayWeightValue(int vertexIndex, bool displayZero = false);
-    MStatus fillArrayValuesDEP(MObject skinCluster, bool doColors);
-    void getSkinClusterAttributes(MObject skinCluster, unsigned int &maxInfluences,
+    MStatus fillArrayValuesDEP(MObject &skinCluster, bool doColors);
+    void getSkinClusterAttributes(MObject &skinCluster, unsigned int &maxInfluences,
                                   bool &maintainMaxInfluences, unsigned int &normalize);
     MIntArray getInfluenceIndices();
     bool getMirrorHit(bool getNormal, int &faceHit, MFloatPoint &hitPoint);
     bool computeHit(short screenPixelX, short screenPixelY, bool getNormal, int &faceHit,
                     MFloatPoint &hitPoint);
-    bool expandHit(int faceHit, MFloatPoint hitPoint, std::unordered_map<int, float> &dicVertsDist);
+    bool expandHit(int faceHit, MFloatPoint &hitPoint, std::unordered_map<int, float> &dicVertsDist);
 
     void growArrayOfHitsFromCenters(std::unordered_map<int, float> &dicVertsDist,
                                     MFloatPointArray &AllHitPoints);
@@ -320,11 +320,11 @@ class SkinBrushContext : public MPxContext {
 
     MObject allVertexComponents();
     MIntArray getVerticesInVolume();
-    void getVerticesInVolumeRange(int index, MIntArray volumeIndices, MIntArray &rangeIndices,
+    void getVerticesInVolumeRange(int index, MIntArray &volumeIndices, MIntArray &rangeIndices,
                                   MFloatArray &values);
 
     double getFalloffValue(double value, double strength);
-    bool eventIsValid(MEvent event);
+    bool eventIsValid(MEvent &event);
 
     void setInViewMessage(bool display);
 
@@ -335,9 +335,9 @@ class SkinBrushContext : public MPxContext {
     void setCurve(int value);
     void setDrawBrush(bool value);
     void setDrawRange(bool value);
-    void setPythonImportPath(MString value);
-    void setEnterToolCommand(MString value);
-    void setExitToolCommand(MString value);
+    void setPythonImportPath(MString &value);
+    void setEnterToolCommand(MString &value);
+    void setExitToolCommand(MString &value);
     void setFlood();
     void setVerbose(bool value);
     void setPickMaxInfluence(bool value);
@@ -367,7 +367,7 @@ class SkinBrushContext : public MPxContext {
     void setSoloColor(int value);
     void maya2019RefreshColors(bool toggle = true);
     void setSoloColorType(int value);
-    void setInfluenceByName(MString value);
+    void setInfluenceByName(MString &value);
     void setPostSetting(bool value);
 
     void setMinColor(double value);

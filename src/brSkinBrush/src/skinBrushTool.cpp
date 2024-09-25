@@ -517,7 +517,7 @@ MStatus skinBrushTool::finalize() {
 // getting values from the command flags
 // ---------------------------------------------------------------------
 
-void skinBrushTool::setColor(MColor value) { colorVal = value; }
+void skinBrushTool::setColor(MColor &value) { colorVal = value; }
 
 void skinBrushTool::setCurve(int value) { curveVal = value; }
 
@@ -529,11 +529,11 @@ void skinBrushTool::setMaxColor(double value) { maxSoloColor = value; }
 
 void skinBrushTool::setDrawRange(bool value) { drawRangeVal = value; }
 
-void skinBrushTool::setPythonImportPath(MString value) { moduleImportString = value; }
+void skinBrushTool::setPythonImportPath(MString &value) { moduleImportString = value; }
 
-void skinBrushTool::setEnterToolCommand(MString value) { enterToolCommandVal = value; }
+void skinBrushTool::setEnterToolCommand(MString &value) { enterToolCommandVal = value; }
 
-void skinBrushTool::setExitToolCommand(MString value) { exitToolCommandVal = value; }
+void skinBrushTool::setExitToolCommand(MString &value) { exitToolCommandVal = value; }
 
 void skinBrushTool::setFractionOversampling(bool value) { fractionOversamplingVal = value; }
 
@@ -591,9 +591,9 @@ void skinBrushTool::setPostSetting(bool value) { postSetting = value; }
 // public methods for setting the undo/redo variables
 // ---------------------------------------------------------------------
 
-void skinBrushTool::setInfluenceIndices(MIntArray indices) { influenceIndices = indices; }
+void skinBrushTool::setInfluenceIndices(MIntArray &indices) { influenceIndices = indices; }
 
-void skinBrushTool::setInfluenceName(MString name) { influenceName = name; }
+void skinBrushTool::setInfluenceName(MString &name) { influenceName = name; }
 
 MStatus skinBrushTool::getSkinClusterObj() {
     MStatus status = MS::kSuccess;
@@ -611,22 +611,22 @@ MStatus skinBrushTool::getSkinClusterObj() {
     return status;
 }
 
-void skinBrushTool::setMesh(MDagPath dagPath) { meshDag = dagPath; }
+void skinBrushTool::setMesh(MDagPath &dagPath) { meshDag = dagPath; }
 
-void skinBrushTool::setNurbs(MDagPath dagPath) { nurbsDag = dagPath; }
+void skinBrushTool::setNurbs(MDagPath &dagPath) { nurbsDag = dagPath; }
 
 void skinBrushTool::setNormalize(bool value) { normalize = value; }
 
-void skinBrushTool::setSkinCluster(MObject skinCluster) { skinObj = skinCluster; }
+void skinBrushTool::setSkinCluster(MObject &skinCluster) { skinObj = skinCluster; }
 void skinBrushTool::setIsNurbs(bool value) { isNurbs = value; }
 void skinBrushTool::setnumCVInV(int value) { numCVsInV_ = value; }
 
-void skinBrushTool::setSkinClusterName(MString skinClusterName) { skinName = skinClusterName; }
+void skinBrushTool::setSkinClusterName(MString &skinClusterName) { skinName = skinClusterName; }
 
-void skinBrushTool::setWeights(MDoubleArray weights) { undoWeights = weights; }
+void skinBrushTool::setWeights(MDoubleArray &weights) { undoWeights = weights; }
 
-void skinBrushTool::setUnoVertices(MIntArray editVertsIndices) { undoVertices = editVertsIndices; }
+void skinBrushTool::setUnoVertices(MIntArray &editVertsIndices) { undoVertices = editVertsIndices; }
 
-void skinBrushTool::setUnoLocks(MIntArray locks) { undoLocks = locks; }
+void skinBrushTool::setUnoLocks(MIntArray &locks) { undoLocks = locks; }
 
-void skinBrushTool::setRedoLocks(MIntArray locks) { redoLocks = locks; }
+void skinBrushTool::setRedoLocks(MIntArray &locks) { redoLocks = locks; }
