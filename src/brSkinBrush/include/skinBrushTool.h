@@ -124,7 +124,6 @@ class skinBrushTool : public MPxToolCommand {
     void setSize(double value);
     void setStrength(double value);
     void setSmoothStrength(double value);
-    void setPruneWeights(double value);
     void setUndersampling(int value);
     void setVolume(bool value);
     void setCommandIndex(ModifierCommands value);
@@ -180,7 +179,6 @@ class skinBrushTool : public MPxToolCommand {
     double rangeVal;
     double sizeVal;
     double strengthVal, smoothStrengthVal;
-    double pruneWeights;
     int undersamplingVal;
     bool volumeVal;
 
@@ -376,7 +374,6 @@ class SkinBrushContext : public MPxContext {
     void setMinColor(double value);
     void setMaxColor(double value);
 
-    void setPruneWeights(double value);
     void setInteractiveValue(double value, int ind);
 
     // getting the attributes
@@ -399,7 +396,6 @@ class SkinBrushContext : public MPxContext {
     double getSize();
     double getStrength();
     double getSmoothStrength();
-    double getPruneWeights();
     double getInteractiveValue(int ind);
     int getUndersampling();
     bool getVolume();

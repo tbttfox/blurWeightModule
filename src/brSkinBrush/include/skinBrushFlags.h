@@ -59,8 +59,6 @@
 #define kStrengthFlag "-st"
 #define kStrengthFlagLong "-strength"
 ///// Added by Guillaume
-#define kPruneWeightsFlag "-pw"
-#define kPruneWeightsFlagLong "-pruneWeights"
 
 #define kSmoothStrengthFlag "-sst"
 #define kSmoothStrengthFlagLong "-smoothStrength"

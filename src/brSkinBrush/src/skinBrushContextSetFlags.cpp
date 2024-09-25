@@ -133,11 +133,6 @@ void SkinBrushContext::setSmoothStrength(double value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setPruneWeights(double value) {
-    this->pruneWeight = value;
-    MToolsInfo::setDirtyFlag(*this);
-}
-
 void SkinBrushContext::setInteractiveValue(double value, int ind) {
     if (ind == 0)
         this->interactiveValue = value;
@@ -367,7 +362,6 @@ double SkinBrushContext::getRange() { return rangeVal; }
 double SkinBrushContext::getSize() { return sizeVal; }
 double SkinBrushContext::getStrength() { return strengthVal; }
 double SkinBrushContext::getSmoothStrength() { return smoothStrengthVal; }
-double SkinBrushContext::getPruneWeights() { return this->pruneWeight; }
 
 double SkinBrushContext::getInteractiveValue(int ind) {
     if (ind == 0) return this->interactiveValue;

@@ -41,7 +41,6 @@ skinBrushTool::skinBrushTool() {
     volumeVal = false;
     coverageVal = true;
 
-    pruneWeights = 0.0001;
     commandIndex = ModifierCommands::Add;
     soloColorTypeVal = 1;  // 1 lava
     soloColorVal = 0;
@@ -77,7 +76,6 @@ MSyntax skinBrushTool::newSyntax() {
     syntax.addFlag(kUndersamplingFlag, kUndersamplingFlagLong, MSyntax::kLong);
     syntax.addFlag(kVolumeFlag, kVolumeFlagLong, MSyntax::kBoolean);
 
-    syntax.addFlag(kPruneWeightsFlag, kPruneWeightsFlagLong, MSyntax::kDouble);
     syntax.addFlag(kSmoothStrengthFlag, kSmoothStrengthFlagLong, MSyntax::kDouble);
     syntax.addFlag(kCommandIndexFlag, kCommandIndexFlagLong, MSyntax::kLong);
     syntax.addFlag(kSoloColorFlag, kSoloColorFlagLong, MSyntax::kLong);
@@ -181,10 +179,6 @@ MStatus skinBrushTool::parseArgs(const MArgList& args) {
     }
     if (argData.isFlagSet(kStrengthFlag)) {
         status = argData.getFlagArgument(kStrengthFlag, 0, strengthVal);
-        CHECK_MSTATUS_AND_RETURN_IT(status);
-    }
-    if (argData.isFlagSet(kPruneWeightsFlag)) {
-        status = argData.getFlagArgument(kPruneWeightsFlag, 0, pruneWeights);
         CHECK_MSTATUS_AND_RETURN_IT(status);
     }
     if (argData.isFlagSet(kUndersamplingFlag)) {
@@ -467,8 +461,6 @@ MStatus skinBrushTool::finalize() {
     cmd += strengthVal;
     cmd += " " + MString(kSmoothStrengthFlag) + " ";
     cmd += smoothStrengthVal;
-    cmd += " " + MString(kPruneWeightsFlag) + " ";
-    cmd += pruneWeights;
     cmd += " " + MString(kUndersamplingFlag) + " ";
     cmd += undersamplingVal;
     cmd += " " + MString(kVolumeFlag) + " ";
@@ -552,8 +544,6 @@ void skinBrushTool::setSize(double value) { sizeVal = value; }
 void skinBrushTool::setStrength(double value) { strengthVal = value; }
 
 void skinBrushTool::setSmoothStrength(double value) { smoothStrengthVal = value; }
-
-void skinBrushTool::setPruneWeights(double value) { pruneWeights = value; }
 
 void skinBrushTool::setUndersampling(int value) { undersamplingVal = value; }
 

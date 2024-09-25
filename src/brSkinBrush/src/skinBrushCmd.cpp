@@ -51,7 +51,6 @@ MStatus SkinBrushContextCmd::appendSyntax() {
 
     syn.addFlag(kSmoothStrengthFlag, kSmoothStrengthFlagLong, MSyntax::kDouble);
 
-    syn.addFlag(kPruneWeightsFlag, kPruneWeightsFlagLong, MSyntax::kDouble);
     syn.addFlag(kCommandIndexFlag, kCommandIndexFlagLong, MSyntax::kLong);
     syn.addFlag(kSoloColorFlag, kSoloColorFlagLong, MSyntax::kLong);
     syn.addFlag(kSoloColorTypeFlag, kSoloColorTypeFlagLong, MSyntax::kLong);
@@ -297,13 +296,6 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         status = argData.getFlagArgument(kSmoothStrengthFlag, 0, value);
         smoothContext->setSmoothStrength(value);
     }
-
-    if (argData.isFlagSet(kPruneWeightsFlag)) {
-        double value;
-        status = argData.getFlagArgument(kPruneWeightsFlag, 0, value);
-        smoothContext->setPruneWeights(value);
-    }
-
     if (argData.isFlagSet(kInteractiveValueFlag)) {
         double value;
         status = argData.getFlagArgument(kInteractiveValueFlag, 0, value);
@@ -457,8 +449,6 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kStrengthFlag)) setResult(smoothContext->getStrength());
 
     if (argData.isFlagSet(kSmoothStrengthFlag)) setResult(smoothContext->getSmoothStrength());
-
-    if (argData.isFlagSet(kPruneWeightsFlag)) setResult(smoothContext->getPruneWeights());
 
     if (argData.isFlagSet(kInteractiveValueFlag)) setResult(smoothContext->getInteractiveValue(0));
     if (argData.isFlagSet(kInteractiveValue1Flag)) setResult(smoothContext->getInteractiveValue(1));
