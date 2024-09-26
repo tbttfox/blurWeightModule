@@ -44,7 +44,7 @@ class blurSkinDisplay : public MPxNode {
         soloCurrentColors;  // lock vertices color are not stored inside these arrays
     MIntArray deformersIndices;
     int nbJointsBig = 0;
-    MColor lockVertColor = MColor(0.2, 0.2, 0.2);
+    MColor lockVertColor = MColor(0.2f, 0.2f, 0.2f);
 
     MDoubleArray soloColorsValues;
     MString fullColorSet = MString("multiColorsSet");
@@ -66,8 +66,8 @@ class blurSkinDisplay : public MPxNode {
     bool refreshLockWeights = false;
     bool doNormalize = true;
     bool autoExpand = false;
-    float minSoloColor = 0.0;
-    float maxSoloColor = 1.0;
+    float minSoloColor = 0.0f;
+    float maxSoloColor = 1.0f;
     int colorCommand = 0;      // multi
     int soloColorTypeVal = 1;  // 1 lava
     int nbAutoExpand = 3;      // autoExpand mode how many time we repeat it

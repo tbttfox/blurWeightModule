@@ -1029,7 +1029,7 @@ MStatus blurSkinDisplay::fillArrayValues(bool doColors) {
             int indexInfluence = weight_plug.logicalIndex();
             double theWeight = weight_plug.asDouble();
 
-            skin_weights_[i][j] = std::make_pair(indexInfluence, theWeight);
+            skin_weights_[i][j] = std::make_pair(indexInfluence, (float)theWeight);
             this->skinWeightList[vertexIndex * this->nbJoints + indexInfluence] = theWeight;
             if (doColors)  // and not locked
                 theColor += this->jointsColors[indexInfluence] * theWeight;

@@ -367,7 +367,7 @@ void wireframeDisplayDrawOverride::addUIDrawables(const MDagPath& objPath,
         drawManager.setColor(color);
     }
 
-    drawManager.setLineWidth(pLocatorData->lineWidth);
+    drawManager.setLineWidth((float)pLocatorData->lineWidth);
     drawManager.setDepthPriority(5);
 
     // Draw the wireframe

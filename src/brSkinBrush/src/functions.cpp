@@ -597,7 +597,7 @@ MStatus editArray(ModifierCommands command, int influence, int nbJoints, MIntArr
         // do the command --------------------------
         int i = -1;  // i is a short index instead of theVert
         if (verbose)
-            MGlobal::displayInfo(MString("-> editArray | valuesToSet ") + valuesToSet.size());
+            MGlobal::displayInfo(MString("-> editArray | valuesToSet ") + (unsigned int)valuesToSet.size());
         if (verbose) MGlobal::displayInfo(MString("-> editArray | mutliplier ") + mutliplier);
         for (const auto& elem : valuesToSet) {
             i++;
@@ -774,8 +774,7 @@ MStatus editArrayMirror(ModifierCommands command, int influence, int influenceMi
         // do the other command --------------------------
         int i = -1;  // i is a short index instead of theVert
         if (verbose)
-            MGlobal::displayInfo(MString("-> editArrayMirror | valuesToSet ") +
-                                 valuesToSetMirror.size());
+            MGlobal::displayInfo(MString("-> editArrayMirror | valuesToSet ") + (unsigned int)valuesToSetMirror.size());
         if (verbose) MGlobal::displayInfo(MString("-> editArrayMirror | mutliplier ") + mutliplier);
         for (const auto& elem : valuesToSetMirror) {
             i++;
@@ -984,42 +983,6 @@ MStatus doPruneWeight(MDoubleArray& theWeights, int nbJoints, double pruneCutWei
     }
     return MS::kSuccess;
 };
-
-void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>>& posi) {
-    // Bresenham's line algorithm
-    bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
-    if (steep) {
-        std::swap(x1, y1);
-        std::swap(x2, y2);
-    }
-
-    if (x1 > x2) {
-        std::swap(x1, x2);
-        std::swap(y1, y2);
-    }
-
-    float dx = x2 - x1;
-    float dy = fabs(y2 - y1);
-
-    float error = dx / 2.0f;
-    int ystep = (y1 < y2) ? 1 : -1;
-    int y = (int)y1;
-
-    int maxX = (int)x2;
-
-    for (int x = (int)x1; x < maxX; x++) {
-        if (steep) {
-            posi.push_back(std::make_pair(y, x));
-        } else {
-            posi.push_back(std::make_pair(x, y));
-        }
-        error -= dy;
-        if (error < 0) {
-            y += ystep;
-            error += dx;
-        }
-    }
-}
 
 void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>>& posi) {
     short dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
