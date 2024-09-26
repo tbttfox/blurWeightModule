@@ -56,6 +56,11 @@
 #include <maya/MUintArray.h>
 #include <maya/MUserEventMessage.h>
 
+#include <QtGui/QFont>
+#include <QtGui/QFontMetrics>
+#include <QtCore/QRect>
+#include <QtCore/QString>
+
 #include <algorithm>
 #include <iostream>
 #include <map>

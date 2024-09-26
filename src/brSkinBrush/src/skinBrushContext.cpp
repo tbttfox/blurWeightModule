@@ -2565,30 +2565,31 @@ MIntArray SkinBrushContext::getInfluenceIndices() {
     this->indicesForInfluenceObjects.setLength(lent);
     MStatus stat;
     this->nbJoints = lent;
+
+    QFontMetrics fontMetrics(QFont("MS Shell Dlg 2", 14));
+
     for (i = 0; i < lent; i++) {
         influenceIndices.append((int)i);
         MFnDependencyNode influenceFn(this->inflDagPaths[i].node(), &stat);
         if (stat != MS::kSuccess) {
             MGlobal::displayError(MString("Crashing query influence ") + i);
         }
-        this->inflNames[i] = influenceFn.name();
-        // get pixels size ----------
-        MIntArray result;
-        MString cmd2 = MString("fnFonts (\"") + this->inflNames[i] + MString("\")");
-        MGlobal::executePythonCommand(cmd2, result);
-        if (result.length() >= 2) {
-            this->inflNamePixelSize[2 * i] = result[0];
-            this->inflNamePixelSize[2 * i + 1] = result[1];
-        } else {
-            this->inflNamePixelSize[2 * i] = 5;
-            this->inflNamePixelSize[2 * i + 1] = 5;
-        }
+        MString iname = influenceFn.name();
+        this->inflNames[i] = iname;
+
+        QRect sz = fontMetrics.boundingRect(iname.asChar());
+        int wid = sz.width() + 2;
+        int height = sz.height() + 2;
+
+        wid = wid > 5 ? wid : 5;
+        height = height > 5 ? height : 5;
+
+        this->inflNamePixelSize[2 * i] = wid;
+        this->inflNamePixelSize[2 * i + 1] = height;
+
         int indexLogical = skinFn.indexForInfluenceObject(this->inflDagPaths[i]);
         this->indicesForInfluenceObjects[indexLogical] = i;
-        // MGlobal::displayInfo(MString(" [") + i + MString(" || ") + indexLogical + MString("] ") +
-        // this->inflNames[i] + MString(" "));
     }
-
     return influenceIndices;
 }
 
