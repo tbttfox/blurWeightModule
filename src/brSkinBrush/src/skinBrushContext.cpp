@@ -73,9 +73,7 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         MString(
             "toolOnSetupEnd, "
             "toolOffCleanup, "
-            "toolOnSetupStart, "
-            "fnFonts, "
-            "cleanCloseUndo\n"
+            "toolOnSetupStart\n"
         ));
     MGlobal::executePythonCommand("toolOnSetupStart()");
 
@@ -1459,7 +1457,7 @@ void SkinBrushContext::doTheAction() {
 
     if (!this->firstPaintDone) {
         this->firstPaintDone = true;
-        MGlobal::executePythonCommand("cleanCloseUndo()");
+        MUserEventMessage::postUserEvent("brSkinBrush_cleanCloseUndo");
     }
 
     cmd = (skinBrushTool *)newToolCommand();

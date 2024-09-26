@@ -386,27 +386,7 @@ MStatus skinBrushTool::callBrushRefresh() {
     */
 
     ctxt->refreshTheseVertices(undoVertices);
-    MGlobal::executePythonCommand("afterPaint()");
-
-    /*
-    MString cmd;
-
-    MString lst = "";
-    int i, nbElements;
-    nbElements = this->undoVertices.length();
-    if (nbElements > 0) {
-        for (i = 0; i < (nbElements - 1); ++i) {
-            lst += this->undoVertices[i];
-            lst += MString(", ");
-        }
-        lst += this->undoVertices[nbElements - 1];
-        cmd = MString("cmds.brSkinBrushContext('brSkinBrushContext1', e=True,");
-        cmd += MString("listVerticesIndices = [") + lst + MString("])");
-
-        MGlobal::executePythonCommandOnIdle(cmd);
-        MGlobal::executePythonCommand("afterPaint()");
-    }
-    */
+    MUserEventMessage::postUserEvent("brSkinBrush_afterPaint");
     return MStatus::kSuccess;
 }
 
