@@ -1524,6 +1524,7 @@ void SkinBrushContext::doTheAction() {
         cmd->setWeights(this->skinWeightsForUndo);
     }
     cmd->setNormalize(normalize);
+    cmd->setContextPointer(this);
 
     // Regular context implementations usually call
     // (MPxToolCommand)::redoIt at this point but in this case it

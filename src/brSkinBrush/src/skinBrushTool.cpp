@@ -385,6 +385,10 @@ MStatus skinBrushTool::callBrushRefresh() {
     ----------------
     */
 
+    ctxt->refreshTheseVertices(undoVertices);
+    MGlobal::executePythonCommand("afterPaint()");
+
+    /*
     MString cmd;
 
     MString lst = "";
@@ -402,6 +406,7 @@ MStatus skinBrushTool::callBrushRefresh() {
         MGlobal::executePythonCommandOnIdle(cmd);
         MGlobal::executePythonCommand("afterPaint()");
     }
+    */
     return MStatus::kSuccess;
 }
 
@@ -620,3 +625,5 @@ void skinBrushTool::setUndoVertices(MIntArray &editVertsIndices) { undoVertices 
 void skinBrushTool::setUndoLocks(MIntArray &locks) { undoLocks = locks; }
 
 void skinBrushTool::setRedoLocks(MIntArray &locks) { redoLocks = locks; }
+
+void skinBrushTool::setContextPointer(SkinBrushContext *c) { ctxt = c; }

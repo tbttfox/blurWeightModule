@@ -88,6 +88,8 @@ struct drawingDeformers {
 // the tool
 // ---------------------------------------------------------------------
 
+class SkinBrushContext;
+
 class skinBrushTool : public MPxToolCommand {
    public:
     skinBrushTool();
@@ -161,12 +163,15 @@ class skinBrushTool : public MPxToolCommand {
 
     void setMinColor(double value);
     void setMaxColor(double value);
+    void setContextPointer(SkinBrushContext *c);
 
    private:
     MColor colorVal;
     int curveVal;
     bool drawBrushVal;
     bool drawRangeVal;
+
+    SkinBrushContext *ctxt;
 
     MString moduleImportString;
     MString enterToolCommandVal;
