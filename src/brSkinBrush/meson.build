@@ -9,6 +9,7 @@ skin_brush_files = files([
 ])
 
 gl_dep = dependency('gl')
+rapidjson_dep = dependency('rapidjson')
 
 if fs.is_file('src/version.h')
   message('Using existing version.h')
@@ -31,7 +32,7 @@ skin_brush_lib = shared_library(
   install: true,
   install_dir : meson.global_source_root() / 'output_Maya' + maya_version,
   include_directories : skin_brush_inc,
-  dependencies : [maya_dep, gl_dep],
+  dependencies : [maya_dep, gl_dep, rapidjson_dep],
   name_prefix : '',
   name_suffix : maya_name_suffix,
 )

@@ -17,7 +17,7 @@ option(
   'maya_link_qt',
   type : 'boolean',
   description : 'Whether to link to the Qt libraries that maya provides in their devkit/install',
-  value: false,
+  value: true,
   yield : true,
 )
 

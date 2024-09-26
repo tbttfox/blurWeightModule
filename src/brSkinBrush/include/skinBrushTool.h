@@ -61,6 +61,9 @@
 #include <QtCore/QRect>
 #include <QtCore/QString>
 
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
+
 #include <algorithm>
 #include <iostream>
 #include <map>

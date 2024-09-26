@@ -393,94 +393,127 @@ MStatus skinBrushTool::callBrushRefresh() {
 MStatus skinBrushTool::finalize() {
     // Store the current settings as an option var. This way they are
     // properly available for the next usage.
-    // MGlobal::displayInfo("skinBrushTool::finalize\n");
-    MString cmd;
-    cmd = "brSkinBrushContext -edit ";
-    cmd += "-image1 \"brSkinBrush.svg\" -image2 \"vacantCell.png\" -image3 \"vacantCell.png\"";
-    cmd += " " + MString(kColorRFlag) + " ";
-    cmd += colorVal.r;
-    cmd += " " + MString(kColorGFlag) + " ";
-    cmd += colorVal.g;
-    cmd += " " + MString(kColorBFlag) + " ";
-    cmd += colorVal.b;
-    cmd += " " + MString(kCurveFlag) + " ";
-    cmd += curveVal;
 
-    cmd += " " + MString(kCommandIndexFlag) + " ";
-    cmd += static_cast<int>(commandIndex);
-    cmd += " " + MString(kSoloColorFlag) + " ";
-    cmd += soloColorVal;
+    rapidjson::StringBuffer s;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+    writer.StartObject();
 
-    cmd += " " + MString(kCoverageFlag) + " ";
-    cmd += coverageVal;
+    writer.Key("image2");
+    writer.String("vacantCell.svg");
 
-    cmd += " " + MString(kSoloColorTypeFlag) + " ";
-    cmd += soloColorTypeVal;
+    writer.Key("image3");
+    writer.String("vacantCell.svg");
 
-    cmd += " " + MString(kMessageFlag) + " ";
-    cmd += messageVal;
+    writer.Key(kColorRFlag);
+    writer.Double(colorVal.r);
 
-    cmd += " " + MString(kDrawBrushFlag) + " ";
-    cmd += drawBrushVal;
-    cmd += " " + MString(kDrawRangeFlag) + " ";
-    cmd += drawRangeVal;
-    cmd += " " + MString(kImportPythonFlag) + " ";
-    cmd += "\"" + moduleImportString + "\"";
-    cmd += " " + MString(kEnterToolCommandFlag) + " ";
-    cmd += "\"" + enterToolCommandVal + "\"";
-    cmd += " " + MString(kExitToolCommandFlag) + " ";
-    cmd += "\"" + exitToolCommandVal + "\"";
-    cmd += " " + MString(kFractionOversamplingFlag) + " ";
-    cmd += fractionOversamplingVal;
-    cmd += " " + MString(kIgnoreLockFlag) + " ";
-    cmd += ignoreLockVal;
-    cmd += " " + MString(kLineWidthFlag) + " ";
-    cmd += lineWidthVal;
-    cmd += " " + MString(kOversamplingFlag) + " ";
-    cmd += oversamplingVal;
-    cmd += " " + MString(kRangeFlag) + " ";
-    cmd += rangeVal;
-    cmd += " " + MString(kSizeFlag) + " ";
-    cmd += sizeVal;
-    cmd += " " + MString(kStrengthFlag) + " ";
-    cmd += strengthVal;
-    cmd += " " + MString(kSmoothStrengthFlag) + " ";
-    cmd += smoothStrengthVal;
-    cmd += " " + MString(kUndersamplingFlag) + " ";
-    cmd += undersamplingVal;
-    cmd += " " + MString(kVolumeFlag) + " ";
-    cmd += volumeVal;
-    cmd += " " + MString(kPostSettingFlag) + " ";
-    cmd += postSetting;
-    cmd += " " + MString(kInfluenceNameFlag) + " ";
-    cmd += influenceName;
+    writer.Key(kColorGFlag);
+    writer.Double(colorVal.g);
 
-    cmd += " " + MString(kSmoothRepeatFlag) + " ";
-    cmd += smoothRepeat;
+    writer.Key(kColorBFlag);
+    writer.Double(colorVal.b);
 
-    cmd += " " + MString(kPaintMirrorToleranceFlag) + " ";
-    cmd += mirrorMinDist;
-    cmd += " " + MString(kPaintMirrorFlag) + " ";
-    cmd += paintMirror;
-    cmd += " " + MString(kUseColorSetWhilePaintingFlag) + " ";
-    cmd += useColorSetsWhilePainting;
-    cmd += " " + MString(kMeshDragDrawTrianglesFlag) + " ";
-    cmd += drawTriangles;
-    cmd += " " + MString(kMeshDragDrawEdgesFlag) + " ";
-    cmd += drawEdges;
-    cmd += " " + MString(kMeshDragDrawPointsFlag) + " ";
-    cmd += drawPoints;
-    cmd += " " + MString(kMeshDragDrawTransFlag) + " ";
-    cmd += drawTransparency;
+    writer.Key(kCommandIndexFlag);
+    writer.Int(static_cast<int>(commandIndex));
 
-    cmd += " " + MString(kMinColorFlag) + " ";
-    cmd += minSoloColor;
-    cmd += " " + MString(kMaxColorFlag) + " ";
-    cmd += maxSoloColor;
+    writer.Key(kCoverageFlag);
+    writer.Bool(coverageVal);
 
-    cmd += " brSkinBrushContext1;";
+    writer.Key(kCurveFlag);
+    writer.Int(curveVal);
 
-    MGlobal::setOptionVarValue("brSkinBrushContext1", cmd);
+    writer.Key(kDrawBrushFlag);
+    writer.Bool(drawBrushVal);
+
+    writer.Key(kDrawRangeFlag);
+    writer.Bool(drawRangeVal);
+
+    writer.Key(kEnterToolCommandFlag);
+    writer.String(enterToolCommandVal.asChar());
+
+    writer.Key(kExitToolCommandFlag);
+    writer.String(exitToolCommandVal.asChar());
+
+    writer.Key(kFractionOversamplingFlag);
+    writer.Bool(fractionOversamplingVal);
+
+    writer.Key(kIgnoreLockFlag);
+    writer.Bool(ignoreLockVal);
+
+    writer.Key(kImportPythonFlag);
+    writer.String(moduleImportString.asChar());
+
+    writer.Key(kInfluenceNameFlag);
+    writer.String(influenceName.asChar());
+
+    writer.Key(kLineWidthFlag);
+    writer.Int(lineWidthVal);
+
+    writer.Key(kMaxColorFlag);
+    writer.Double(maxSoloColor);
+
+    writer.Key(kMeshDragDrawEdgesFlag);
+    writer.Bool(drawEdges);
+
+    writer.Key(kMeshDragDrawPointsFlag);
+    writer.Bool(drawPoints);
+
+    writer.Key(kMeshDragDrawTransFlag);
+    writer.Bool(drawTransparency);
+
+    writer.Key(kMeshDragDrawTrianglesFlag);
+    writer.Bool(drawTriangles);
+
+    writer.Key(kMessageFlag);
+    writer.Int(messageVal);
+
+    writer.Key(kMinColorFlag);
+    writer.Double(minSoloColor);
+
+    writer.Key(kOversamplingFlag);
+    writer.Int(oversamplingVal);
+
+    writer.Key(kPaintMirrorFlag);
+    writer.Int(paintMirror);
+
+    writer.Key(kPaintMirrorToleranceFlag);
+    writer.Double(mirrorMinDist);
+
+    writer.Key(kPostSettingFlag);
+    writer.Bool(postSetting);
+
+    writer.Key(kRangeFlag);
+    writer.Double(rangeVal);
+
+    writer.Key(kSizeFlag);
+    writer.Double(sizeVal);
+
+    writer.Key(kSmoothRepeatFlag);
+    writer.Int(smoothRepeat);
+
+    writer.Key(kSmoothStrengthFlag);
+    writer.Double(smoothStrengthVal);
+
+    writer.Key(kSoloColorFlag);
+    writer.Int(soloColorVal);
+
+    writer.Key(kSoloColorTypeFlag);
+    writer.Int(soloColorTypeVal);
+
+    writer.Key(kStrengthFlag);
+    writer.Double(strengthVal);
+
+    writer.Key(kUndersamplingFlag);
+    writer.Int(undersamplingVal);
+
+    writer.Key(kUseColorSetWhilePaintingFlag);
+    writer.Bool(useColorSetsWhilePainting);
+
+    writer.Key(kVolumeFlag);
+    writer.Bool(volumeVal);
+
+    writer.EndObject();
+    MGlobal::setOptionVarValue("brSkinBrushContextOptions", s.GetString());
 
     // Finalize the command by adding it to the undo queue and the
     // journal.
