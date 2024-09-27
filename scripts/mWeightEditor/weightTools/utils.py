@@ -669,14 +669,24 @@ def addNameChangedCallback(callback):
     return OpenMaya.MNodeMessage.addNameChangedCallback(listenTo, omcallback)
 
 
-def addNameDeletedCallback(callback):
-    def omcallback(mobject, _):
-        nodeName = OpenMaya.MFnDependencyNode(mobject).name()
-        callback(nodeName)
-
-    listenTo = OpenMaya.MObject()
-    return OpenMaya.MNodeMessage.addNodeAboutToDeleteCallback(listenTo, omcallback)
-
-
 def removeNameChangedCallback(callbackId):
     OpenMaya.MNodeMessage.removeCallback(callbackId)
+
+
+def addUserEventCallback(eventName, callback):
+    """
+    brSkinBrush_influencesReordered
+    brSkinBrush_updateDisplayStrength
+    brSkinBrush_updateDisplaySize
+    """
+
+    # Go through this closure to strip out the client data
+    def omcallback(clientData=None):
+        callback()
+
+    # Add the callback to the list of functions which should execute when your plugin event is posted
+    return OpenMaya.MUserEventMessage.addUserEventCallback(eventName, omcallback)
+
+
+def removeUserEventCallback(callbackId):
+    OpenMaya.MUserEventMessage.removeCallback(callbackId)

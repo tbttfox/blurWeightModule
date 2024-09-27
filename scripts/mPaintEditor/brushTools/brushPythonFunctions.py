@@ -3,7 +3,6 @@ from __future__ import absolute_import
 
 import json
 import random
-import re
 import six
 import time
 
@@ -11,7 +10,7 @@ from Qt import QtGui
 from collections import OrderedDict
 from contextlib import contextmanager
 
-from maya import cmds, mel
+from maya import cmds
 from six.moves import map, range, zip
 
 from ..utils import rootWindow, GlobalContext
@@ -95,7 +94,8 @@ def setColorsOnJoints():
 
 def doRemoveColorSets():
     with UndoContext("doRemoveColorSets"):
-        msh = mel.eval("global string $gSkinBrushMesh; $tmp = $gSkinBrushMesh;")
+        # TODO: GET RID OF THE GLOBAL VARIABLE
+        msh = LAST_MESH
         if cmds.objExists(msh):
             skinnedMesh_history = cmds.listHistory(msh, levels=0, pruneDagObjects=True) or []
             cmds.setAttr(msh + ".displayColors", 0)
@@ -132,15 +132,6 @@ def getShapesSelected(returnTransform=False):
     if selectionShapes and returnTransform:
         return cmds.listRelatives(selectionShapes, path=True, parent=True)
     return selectionShapes
-
-
-######################################################
-# used by cpp tool to get the font size for display
-def fnFonts(txt):
-    from PySide2.QtGui import QFont, QFontMetrics
-
-    sz = QFontMetrics(QFont("MS Shell Dlg 2", 14)).boundingRect(txt)
-    return [sz.width() + 2, sz.height() + 2]
 
 
 def setToDgMode():
@@ -187,7 +178,8 @@ def toolOnSetupStart():
             cmds.optionVar(stringValueAppend=["brushPreviousSelection", obj])
         shapeSelected = getShapesSelected(returnTransform=True)
         if not shapeSelected:  # if nothing selected
-            mshShape = mel.eval("global string $gSkinBrushMesh; $temp = $gSkinBrushMesh")
+            # TODO: GET RID OF THE GLOBAL VARIABLE
+            mshShape = LAST_MESH
             if mshShape and cmds.objExists(mshShape):
                 (theMesh,) = cmds.listRelatives(mshShape, parent=True, path=True)
                 cmds.select(theMesh)
@@ -350,16 +342,16 @@ def showBackNurbs(theMesh):
         cmds.showHidden(shps)
 
 
-def cleanTheNurbs(force=False):
+def cleanTheNurbs(force=False):  # Called directly by cpp
     if cmds.currentCtx() != "brSkinBrushContext1" or force:
         nurbsTessellateAttrs = cmds.ls("*.nurbsTessellate")
-        if nurbsTessellateAttrs:
-            nurbsTessellateAttrsNodes = [
-                el.split(".nurbsTessellate")[0] for el in nurbsTessellateAttrs
-            ]
-            prts = set(cmds.listRelatives(nurbsTessellateAttrsNodes, parent=True, path=True))
-            for prt in prts:
-                showBackNurbs(prt)
+        if not nurbsTessellateAttrs:
+            return
+
+        nurbsTessellateAttrsNodes = [el.split(".nurbsTessellate")[0] for el in nurbsTessellateAttrs]
+        prts = set(cmds.listRelatives(nurbsTessellateAttrsNodes, parent=True, path=True))
+        for prt in prts:
+            showBackNurbs(prt)
 
 
 def callEventCatcher():
@@ -378,14 +370,18 @@ def closeEventCatcher():
         catchEventsUI.EVENTCATCHER.close()
 
 
+LAST_MESH = None
+
+
 def toolOnSetupEndDeferred():
     with GlobalContext(message="toolOnSetupEndDeferred", doPrint=False):
         disconnectNurbs()
-        addWireFrameToMesh()
         cmds.select(clear=True)
         currentContext = cmds.currentCtx()
         mshShape = cmds.brSkinBrushContext(currentContext, query=True, meshName=True)
-        mel.eval('global string $gSkinBrushMesh; $gSkinBrushMesh="' + mshShape + '";')
+        # TODO: GET RID OF THE GLOBAL VARIABLE
+        global LAST_MESH
+        LAST_MESH = mshShape
         cmds.evalDeferred(doUpdateWireFrameColorSoloMode)
         # compute time
         startTime = cmds.optionVar(query="startTime")
@@ -438,13 +434,6 @@ def toolOffCleanupDeferred():
             cmds.select(cmds.optionVar(query="brushPreviousSelection"))
 
 
-def addWireFrameToMesh():
-    wireframeCB = callPaintEditorFunction("wireframe_cb")
-    if wireframeCB and not wireframeCB.isChecked():
-        print("no wireframe")
-        return
-
-
 def updateWireFrameColorSoloMode(soloColor):
     with disableUndoContext():
         if cmds.objExists("SkinningWireframeShape"):
@@ -467,83 +456,78 @@ def setSoloMode(soloColor):
         updateWireFrameColorSoloMode(soloColor)
 
 
-def toggleSoloMode():
-    ctx = cmds.currentCtx()
-    soloColor = cmds.brSkinBrushContext(ctx, query=True, soloColor=True)
-    setSoloMode(not soloColor)
-    callPaintEditorFunction("upateSoloModeRBs", not soloColor)
-
-
 def fixOptionVarContext(**inputKargsToChange):
     with UndoContext("fixOptionVarContext"):
         kwargs = OrderedDict()
-        if cmds.optionVar(exists="brSkinBrushContext1"):
-            cmd = cmds.optionVar(query="brSkinBrushContext1")
-            # remove command name and command object at the
-            # end : brSkinBrushContext and brSkinBrushContext1;
-            splitofspaces = cmd.split(" ")
-            cmd2 = " ".join(splitofspaces[1:-1])
-            spl = cmd2.split("-")
-            hlp = cmds.help("brSkinBrushContext")
+        if not cmds.optionVar(exists="brSkinBrushContext1"):
+            return kwargs
 
-            dicOfName = {}
-            dicExpectedArgs = {}
-            lsMulti = set()
-            for ln in hlp.split("\n"):
-                for expectedStuff in [
-                    "(Query Arg Mandatory)",
-                    "(Query Arg Optional)",
-                    "[...]",
-                    "(Query Arg Optional)",
-                ]:
-                    ln = ln.replace(expectedStuff, "")
-                ln = ln.strip()
-                res = ln.split()
-                if len(res) >= 2 and res[0].startswith("-") and res[1].startswith("-"):
-                    nmFlag = res[1][1:]
-                    dicOfName[res[0][1:]] = nmFlag
-                    dicOfName[res[1][1:]] = nmFlag
-                    if "(multi-use)" in res:
-                        lsMulti.add(nmFlag)
-                        res.remove("(multi-use)")
-                    dicExpectedArgs[nmFlag] = res[2:]
+        cmd = cmds.optionVar(query="brSkinBrushContext1")
+        # remove command name and command object at the
+        # end : brSkinBrushContext and brSkinBrushContext1;
+        splitofspaces = cmd.split(" ")
+        cmd2 = " ".join(splitofspaces[1:-1])
+        spl = cmd2.split("-")
+        hlp = cmds.help("brSkinBrushContext")
 
-            newSpl = []
-            for lne in spl:
-                lineSplit = lne.strip().split(" ")
+        dicOfName = {}
+        dicExpectedArgs = {}
+        lsMulti = set()
+        for ln in hlp.split("\n"):
+            for expectedStuff in [
+                "(Query Arg Mandatory)",
+                "(Query Arg Optional)",
+                "[...]",
+                "(Query Arg Optional)",
+            ]:
+                ln = ln.replace(expectedStuff, "")
+            ln = ln.strip()
+            res = ln.split()
+            if len(res) >= 2 and res[0].startswith("-") and res[1].startswith("-"):
+                nmFlag = res[1][1:]
+                dicOfName[res[0][1:]] = nmFlag
+                dicOfName[res[1][1:]] = nmFlag
+                if "(multi-use)" in res:
+                    lsMulti.add(nmFlag)
+                    res.remove("(multi-use)")
+                dicExpectedArgs[nmFlag] = res[2:]
 
-                if len(lineSplit) > 1:
-                    kArg = "-" + lineSplit[0]
-                    if kArg not in hlp:
-                        continue
-                    else:
-                        value = " ".join(lineSplit[1:])
-                        value = value.strip()
-                        if value.startswith('"') and value.endswith('"'):
-                            value = value[1:-1]
-                        if lineSplit[0] in dicOfName:
-                            keyToCheck = dicOfName[lineSplit[0]]
-                            if keyToCheck in kwargs:
-                                kwargs[keyToCheck] = value
+        newSpl = []
+        for lne in spl:
+            lineSplit = lne.strip().split(" ")
+
+            if len(lineSplit) > 1:
+                kArg = "-" + lineSplit[0]
+                if kArg not in hlp:
+                    continue
                 else:
+                    value = " ".join(lineSplit[1:])
+                    value = value.strip()
+                    if value.startswith('"') and value.endswith('"'):
+                        value = value[1:-1]
                     if lineSplit[0] in dicOfName:
-                        kwargs[dicOfName[lineSplit[0]]] = True
-                newSpl.append(lne)
+                        keyToCheck = dicOfName[lineSplit[0]]
+                        if keyToCheck in kwargs:
+                            kwargs[keyToCheck] = value
+            else:
+                if lineSplit[0] in dicOfName:
+                    kwargs[dicOfName[lineSplit[0]]] = True
+            newSpl.append(lne)
 
-            # now rebuild command
-            kwargs.update(inputKargsToChange)
-            cmdNew = "brSkinBrushContext "
-            for key, value in six.iteritems(kwargs):
-                if isinstance(value, bool):
-                    cmdNew += "-{} ".format(key)
-                else:
-                    try:
-                        float(value)
-                        cmdNew += "-{} {} ".format(key, value)
-                    except ValueError:
-                        cmdNew += '-{} "{}" '.format(key, value)
-            cmdNew += splitofspaces[-1]
-            cmds.optionVar(stringValue=["brSkinBrushContext1", cmdNew])
+        # now rebuild command
+        kwargs.update(inputKargsToChange)
+        cmdNew = "brSkinBrushContext "
+        for key, value in six.iteritems(kwargs):
+            if isinstance(value, bool):
+                cmdNew += "-{} ".format(key)
+            else:
+                try:
+                    float(value)
+                    cmdNew += "-{} {} ".format(key, value)
+                except ValueError:
+                    cmdNew += '-{} "{}" '.format(key, value)
+        cmdNew += splitofspaces[-1]
+        cmds.optionVar(stringValue=["brSkinBrushContext1", cmdNew])
         return kwargs
 
 
@@ -565,12 +549,6 @@ def deleteExistingColorSets():
             ]:
                 if colSet in existingColorSets:
                     cmds.polyColorSet(obj, delete=True, colorSet=colSet)
-
-
-# CALL FROM BRUSH
-def cleanCloseUndo():
-    # called from cpp ... why??
-    print("CALL cleanCloseUndo - pass")
 
 
 def getPaintEditor():
@@ -602,41 +580,3 @@ def callPaintEditorFunction(function, *args, **kwargs):
             else:
                 return fn
         return None
-
-
-def headsUpMessage(offsetX, offsetY, message, valueDisplay, precision):
-    with UndoContext("headsUpMessage"):
-        theMessage = "{}: {:.{}f}".format(message, valueDisplay, precision)
-        cmds.headsUpMessage(theMessage, horizontalOffset=offsetX, verticalOffset=offsetY, time=0.1)
-
-
-def orderedInfluence(strl):
-    orderOfJoints = list(map(int, strl[:-1].split(" ")))
-    callPaintEditorFunction("updateOrderOfInfluences", orderOfJoints)
-
-
-def pickedInfluence(jointName):
-    with UndoContext("pickedInfluence"):
-        callPaintEditorFunction("updateCurrentInfluence", jointName)
-
-
-def updateDisplayStrengthOrSize(sizeAdjust, value):
-    with UndoContext("updateDisplayStrengthOrSize"):
-        if sizeAdjust:
-            callPaintEditorFunction("updateSizeVal", value)
-        else:
-            callPaintEditorFunction("updateStrengthVal", value)
-
-
-def hideInViewMessage():
-    cmds.inViewMessage(clear="topCenter")
-
-
-def showInViewMessage():
-    msg = [
-        "<hl>LMB</hl> to add",
-        "<hl>MMB</hl> to adjust",
-        "<hl>Ctrl</hl> to remove",
-        "<hl>Shift</hl> to smooth ",
-    ]
-    cmds.inViewMessage(statusMessage="  |  ".join(msg), position="topCenter")

@@ -7,7 +7,6 @@ from maya import OpenMayaUI, cmds, mel
 from .brushPythonFunctions import (
     callPaintEditorFunction,
     doRemoveColorSets,
-    toggleSoloMode,
     disableUndoContext,
 )
 from . import meshFnIntersection
@@ -159,6 +158,22 @@ class HandleEventsQt:
         self.catcher.MarkingMenuButtonPressed.connect(self.markingMenuPaintEditorButtonClick)
         self.catcher.MarkingMenuSoloChanged.connect(self.markingMenuUpdateSoloColor)
 
+        # self.catcher.PaintStart.connect()
+        # self.catcher.PaintEnd.connect()
+
+    def disconnect(self):
+        self.catcher.RemoveKeyReleased.disconnect(self.removeKeyReleased)
+        self.catcher.SmoothKeyReleased.disconnect(self.smoothKeyReleased)
+        self.catcher.RemoveKeyPressed.disconnect(self.removeKeyPressed)
+        self.catcher.SmoothKeyPressed.disconnect(self.smoothKeyPressed)
+        self.catcher.ExitKeyPressed.disconnect(self.exitKeyPressed)
+        self.catcher.SoloModeKeyPressed.disconnect(self.soloModeKeyPressed)
+        self.catcher.SoloOpaqueKeyPressed.disconnect(self.soloOpaqueKeyPressed)
+        self.catcher.MirrorKeyPressed.disconnect(self.mirrorKeyPressed)
+
+        self.catcher.MarkingMenuButtonPressed.disconnect(self.markingMenuPaintEditorButtonClick)
+        self.catcher.MarkingMenuSoloChanged.disconnect(self.markingMenuUpdateSoloColor)
+
     def highlightBtns(self):
         btnToSelect = self.prevButton
         if self.isSmoothKeyPressed and self.isRemoveKeyPressed:
@@ -212,7 +227,12 @@ class HandleEventsQt:
         self.paintEditor.mirrorActive_cb.toggle()
 
     def soloModeKeyPressed(self):
-        toggleSoloMode()
+        from .brushPythonFunctions import setSoloMode
+
+        ctx = cmds.currentCtx()
+        soloColor = cmds.brSkinBrushContext(ctx, query=True, soloColor=True)
+        setSoloMode(not soloColor)
+        self.paintEditor.upateSoloModeRBs(not soloColor)
 
     def markingMenuPaintEditorButtonClick(self, cmdInd):
         self.paintEditor.buttonByCommandIndex(cmdInd).click()
@@ -246,6 +266,23 @@ class HandleEventsMaya:
 
         self.catcher.MarkingMenuButtonPressed.connect(self.markingMenuPaintEditorButtonClick)
         self.catcher.MarkingMenuSoloChanged.connect(self.markingMenuUpdateSoloColor)
+
+    def disconnect(self):
+        self.catcher.SetPanelDisplayOn.disconnect(self.setPanelsDisplayOn)
+        self.catcher.SetPanelDisplayOff.disconnect(self.setPanelsDisplayOff)
+        self.catcher.ShowMarkingMenu.disconnect(self.showMarkingMenu)
+        self.catcher.HideMarkingMenu.disconnect(self.hideMarkingMenu)
+
+        self.catcher.ExitKeyPressed.disconnect(self.exitKeyPressed)
+        self.catcher.PickMaxInfluenceKeyPressed.disconnect(self.pickMaxInfluenceKeyPressed)
+        self.catcher.PickInfluenceKeyPressed.disconnect(self.pickInfluenceKeyPressed)
+        self.catcher.ToggleWireframeKeyPressed.disconnect(self.toggleWireframeKeyPressed)
+
+        self.catcher.SetOrbitPosKeyPressed.disconnect(self.setOrbitKeyPressed)
+        self.catcher.SetToggleXrayKeyPressed.disconnect(self.toggleXrayKeyPressed)
+
+        self.catcher.MarkingMenuButtonPressed.disconnect(self.markingMenuPaintEditorButtonClick)
+        self.catcher.MarkingMenuSoloChanged.disconnect(self.markingMenuUpdateSoloColor)
 
     @staticmethod
     def getModelPanels():
