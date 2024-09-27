@@ -94,6 +94,7 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.makeFlagMultiUse(kMirrorInfluencesFlag);
 
     syn.addFlag(kWeightOrderedIndicesFlag, kWeightOrderedIndicesFlagLong);
+    syn.addFlag(kPickedInfluenceFlag, kPickedInfluenceFlagLong);
 
     syn.addFlag(kAdjustValueFlag, kAdjustValueFlagLong);
 
@@ -499,6 +500,8 @@ MStatus SkinBrushContextCmd::doQueryFlags() {
     if (argData.isFlagSet(kMaxColorFlag)) setResult(smoothContext->getMaxColor());
 
     if (argData.isFlagSet(kWeightOrderedIndicesFlag)) MPxCommand::setResult(smoothContext->getWeightOrderedIndices());
+
+    if (argData.isFlagSet(kPickedInfluenceFlag)) setResult(smoothContext->getPickedInfluence());
 
     if (argData.isFlagSet(kAdjustValueFlag)) setResult(smoothContext->getAdjustValue());
 

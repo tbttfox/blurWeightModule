@@ -175,11 +175,13 @@ void SkinBrushContext::toolOffCleanup() {
     setInViewMessage(false);
     meshFn.updateSurface();  // try avoiding crashes
     if (exitToolCommandVal.length() > 5) MGlobal::executeCommand(exitToolCommandVal);
-    MGlobal::executePythonCommand("toolOffCleanup()");
+    //MGlobal::executePythonCommand("toolOffCleanup()");
+    MUserEventMessage::postUserEvent("brSkinBrush_toolOffCleanup");
     if (!this->firstPaintDone) {
         this->firstPaintDone = true;
         MUserEventMessage::postUserEvent("brSkinBrush_cleanCloseUndo");
     }
+
 }
 
 void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }

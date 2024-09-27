@@ -161,7 +161,8 @@
 #define kWeightOrderedIndicesFlag "-woi"
 #define kWeightOrderedIndicesFlagLong "-weightOrderedIndices"
 
+#define kPickedInfluenceFlag "-pii"
+#define kPickedInfluenceFlagLong "-pickedInfluence"
+
 #define kAdjustValueFlag "-dv"
 #define kAdjustValueFlagLong "-dragValue"
-
-

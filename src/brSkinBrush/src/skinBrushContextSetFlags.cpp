@@ -301,8 +301,8 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
         if (value < this->inflNames.length()) {
             this->influenceIndex = value;
 
-            MString influenceName = this->inflNames[value];
-            msg += MString(" name is ") + influenceName;
+            pickedInfluence = this->inflNames[value];
+            msg += MString(" name is ") + pickedInfluence;
 
             if (selectInUI) {
                 MUserEventMessage::postUserEvent("brSkinBrush_pickedInfluence");
@@ -412,3 +412,4 @@ MString SkinBrushContext::getMeshName() { return this->meshDag.fullPathName(); }
 bool SkinBrushContext::getPostSetting() { return postSetting; }
 MIntArray SkinBrushContext::getWeightOrderedIndices() { return orderedIndicesByWeightsVals; }
 double SkinBrushContext::getAdjustValue() { return adjustValue; }
+MString SkinBrushContext::getPickedInfluence() { return pickedInfluence; }

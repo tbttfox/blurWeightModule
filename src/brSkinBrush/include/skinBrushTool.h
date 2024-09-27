@@ -435,6 +435,7 @@ class SkinBrushContext : public MPxContext {
 
     MIntArray getWeightOrderedIndices();
     double getAdjustValue();
+    MString getPickedInfluence();
 
    private:
     bool verbose = false;
@@ -574,6 +575,7 @@ class SkinBrushContext : public MPxContext {
     std::vector<drawingDeformers> BBoxOfDeformers;
 
     MStringArray inflNames;
+    MString pickedInfluence;
     MIntArray inflNamePixelSize;
     bool maintainMaxInfluences;
     unsigned int maxInfluences;

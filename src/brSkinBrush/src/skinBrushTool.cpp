@@ -377,12 +377,10 @@ MStatus skinBrushTool::undoIt() {
 
 MStatus skinBrushTool::callBrushRefresh() {
     /*
-    ----------------
-    ---------------- VERY IMPORTANT
-    ---------------- refresh the tool points positions, normals, skin weight stored, and vertex
-    colors  ---------
-    ----------------
-    ----------------
+    -------
+    ------- VERY IMPORTANT
+    ------- refresh the tool points positions, normals, skin weight stored, and vertex colors
+    -------
     */
 
     ctxt->refreshTheseVertices(undoVertices);
@@ -398,10 +396,13 @@ MStatus skinBrushTool::finalize() {
     rapidjson::Writer<rapidjson::StringBuffer> writer(s);
     writer.StartObject();
 
-    writer.Key("image2");
+    writer.Key("-image1");
+    writer.String("brSkinBrush.svg");
+
+    writer.Key("-image2");
     writer.String("vacantCell.svg");
 
-    writer.Key("image3");
+    writer.Key("-image3");
     writer.String("vacantCell.svg");
 
     writer.Key(kColorRFlag);
@@ -582,14 +583,12 @@ void skinBrushTool::setDrawTriangles(bool value) { drawTriangles = value; }
 void skinBrushTool::setDrawEdges(bool value) { drawEdges = value; }
 
 void skinBrushTool::setDrawPoints(bool value) { drawPoints = value; }
+
 void skinBrushTool::setDrawTransparency(bool value) { drawTransparency = value; }
 
 void skinBrushTool::setSoloColorType(int value) { soloColorTypeVal = value; }
 
-void skinBrushTool::setSoloColor(int value) {
-    soloColorVal = value;
-    // MGlobal::displayInfo(MString("setSoloColor [") + soloColorVal + MString("]"));
-}
+void skinBrushTool::setSoloColor(int value) { soloColorVal = value; }
 
 void skinBrushTool::setCoverage(bool value) { coverageVal = value; }
 
@@ -626,7 +625,9 @@ void skinBrushTool::setNurbs(MDagPath &dagPath) { nurbsDag = dagPath; }
 void skinBrushTool::setNormalize(bool value) { normalize = value; }
 
 void skinBrushTool::setSkinCluster(MObject &skinCluster) { skinObj = skinCluster; }
+
 void skinBrushTool::setIsNurbs(bool value) { isNurbs = value; }
+
 void skinBrushTool::setnumCVInV(int value) { numCVsInV_ = value; }
 
 void skinBrushTool::setSkinClusterName(MString &skinClusterName) { skinName = skinClusterName; }
