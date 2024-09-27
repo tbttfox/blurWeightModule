@@ -628,13 +628,12 @@ class DataOfSkin(DataAbstract):
         sknFn,
     ):
         with GlobalContext(message="actuallySetValue", doPrint=self.verbose):
+            arrayForSetting = new2dArray
             if self.softOn:
-                arrayForSetting = np.copy(new2dArray[self.subOpposite_sortedIndices])
-            else:
-                arrayForSetting = np.copy(new2dArray)
-            with GlobalContext(message="OpenMaya setWeights", doPrint=self.verbose):
-                newArray = numpyToMaya(arrayForSetting, OpenMaya.MDoubleArray)
+                arrayForSetting = new2dArray[self.subOpposite_sortedIndices]
 
+            with GlobalContext(message="OpenMaya setWeights", doPrint=self.verbose):
+                newArray = numpyToMaya(arrayForSetting.flatten(), OpenMaya.MDoubleArray)
                 normalize = False
                 UndoValues = OpenMaya.MDoubleArray()
                 sknFn.setWeights(
@@ -1138,7 +1137,7 @@ class DataOfSkin(DataAbstract):
                 toSel = ["{0}.vtx[{1}]".format(self.deformedShape, vtx) for vtx in toSel]
             else:  # nurbsCurve
                 toSel = ["{0}.cv[{1}]".format(self.deformedShape, vtx) for vtx in toSel]
-        cmds.select(toSel, recursive=True)
+        cmds.select(toSel, replace=True)
 
     def selectDeformers(self, selectedIndices):
         toSel = [

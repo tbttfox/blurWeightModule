@@ -18,13 +18,12 @@
 	color: rgb(0, 0, 0);
 }
 
-
 QWidget[bgColor=&quot;green&quot;] {
 	background-color: rgb(190,242,150);
 }
 
 QWidget[bgColor=&quot;blue&quot;] {
-	background-color: rgb(168,210, 242);
+	background-color: rgb(168,210,242);
 }
 
 QWidget[bgColor=&quot;yellow&quot;] {
@@ -342,7 +341,7 @@ p, li { white-space: pre-wrap; }
                 <enum>Qt::RightToLeft</enum>
                </property>
                <property name="text">
-                <string>ignore dfm  Locks</string>
+                <string>Ignore dfm Locks</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -464,7 +463,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;Alt+A : same behavior as setting Min Color at 1.0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="text">
-                <string>solor opaque</string>
+                <string>Solo Opaque</string>
                </property>
               </widget>
              </item>
@@ -525,7 +524,7 @@ p, li { white-space: pre-wrap; }
               </rect>
              </property>
              <property name="text">
-              <string>profile :  </string>
+              <string>Profile :  </string>
              </property>
             </widget>
             <widget class="QPushButton" name="curveNone_btn">
@@ -671,7 +670,7 @@ p, li { white-space: pre-wrap; }
               <enum>Qt::RightToLeft</enum>
              </property>
              <property name="text">
-              <string>  postSet</string>
+              <string>PostSet</string>
              </property>
              <property name="checked">
               <bool>true</bool>
@@ -705,7 +704,7 @@ p, li { white-space: pre-wrap; }
               <item>
                <widget class="QRadioButton" name="multi_rb">
                 <property name="text">
-                 <string>multi color</string>
+                 <string>Multi Color</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
@@ -718,7 +717,7 @@ p, li { white-space: pre-wrap; }
               <item>
                <widget class="QRadioButton" name="solo_rb">
                 <property name="text">
-                 <string>solo</string>
+                 <string>Solo</string>
                 </property>
                 <property name="autoExclusive">
                  <bool>true</bool>
@@ -743,7 +742,7 @@ p, li { white-space: pre-wrap; }
               <enum>Qt::RightToLeft</enum>
              </property>
              <property name="text">
-              <string>mirror active</string>
+              <string>Mirror Active</string>
              </property>
              <property name="checked">
               <bool>false</bool>
@@ -819,7 +818,7 @@ Click to fix</string>
               </size>
              </property>
              <property name="text">
-              <string>paint</string>
+              <string>Paint</string>
              </property>
             </widget>
            </item>
@@ -832,10 +831,10 @@ Click to fix</string>
               </size>
              </property>
              <property name="toolTip">
-              <string>delete the blurSkinNode</string>
+              <string>Delete the blurSkinNode</string>
              </property>
              <property name="text">
-              <string>del</string>
+              <string>Del</string>
              </property>
             </widget>
            </item>
@@ -851,7 +850,7 @@ Click to fix</string>
               <string>Alt + D</string>
              </property>
              <property name="text">
-              <string>pick vert</string>
+              <string>Pick Vert</string>
              </property>
             </widget>
            </item>
@@ -867,7 +866,7 @@ Click to fix</string>
               <string>D</string>
              </property>
              <property name="text">
-              <string>pick jnt</string>
+              <string>Pick Jnt</string>
              </property>
             </widget>
            </item>
@@ -905,7 +904,7 @@ Click to fix</string>
               <string>D</string>
              </property>
              <property name="text">
-              <string>parallel off</string>
+              <string>Parallel Off</string>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -977,10 +976,10 @@ p, li { white-space: pre-wrap; }
              </size>
             </property>
             <property name="toolTip">
-             <string>show Locked</string>
+             <string>Show locked</string>
             </property>
             <property name="text">
-             <string>lck</string>
+             <string>Lck</string>
             </property>
             <property name="checkable">
              <bool>true</bool>
@@ -999,10 +998,10 @@ p, li { white-space: pre-wrap; }
              </size>
             </property>
             <property name="toolTip">
-             <string>pin selection</string>
+             <string>Pin Selection</string>
             </property>
             <property name="text">
-             <string>pin</string>
+             <string>Pin</string>
             </property>
             <property name="checkable">
              <bool>true</bool>
@@ -1080,7 +1079,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;randomize the colors&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>del</string>
+             <string>Del</string>
             </property>
            </widget>
           </item>
@@ -1100,7 +1099,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;get deformers from scene&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>del</string>
+             <string>Del</string>
             </property>
            </widget>
           </item>
@@ -1171,7 +1170,7 @@ p, li { white-space: pre-wrap; }
              </size>
             </property>
             <property name="text">
-             <string>▼ options ▼</string>
+             <string>▼ Options ▼</string>
             </property>
            </widget>
           </item>
@@ -1204,7 +1203,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;add selected influences (joints)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>del</string>
+             <string>Del</string>
             </property>
            </widget>
           </item>
@@ -1224,7 +1223,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;remove influences (joints) from list&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>del</string>
+             <string>Del</string>
             </property>
            </widget>
           </item>
@@ -1244,7 +1243,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:8pt;&quot;&gt;remove unused influences&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>del</string>
+             <string>Del</string>
             </property>
            </widget>
           </item>
@@ -1308,14 +1307,14 @@ p, li { white-space: pre-wrap; }
             <item>
              <widget class="QPushButton" name="deleteExisitingColorSets_btn">
               <property name="text">
-               <string>delete Existing colorSets</string>
+               <string>Delete Existing ColorSets</string>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QGroupBox" name="groupBox">
               <property name="title">
-               <string>Colors options</string>
+               <string>Colors Options</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_3">
                <property name="leftMargin">
@@ -1474,7 +1473,7 @@ p, li { white-space: pre-wrap; }
                </size>
               </property>
               <property name="title">
-               <string>Painting options</string>
+               <string>Painting Options</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_6">
                <property name="leftMargin">
@@ -1553,7 +1552,7 @@ p, li { white-space: pre-wrap; }
                <item row="0" column="0" colspan="2">
                 <widget class="QCheckBox" name="drawBrush_cb">
                  <property name="text">
-                  <string>Draw Brush in paint</string>
+                  <string>Draw Brush in Paint</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -1563,14 +1562,14 @@ p, li { white-space: pre-wrap; }
                <item row="2" column="0">
                 <widget class="QRadioButton" name="colorSets_rb">
                  <property name="text">
-                  <string>colorSets</string>
+                  <string>ColorSets</string>
                  </property>
                 </widget>
                </item>
                <item row="2" column="1">
                 <widget class="QRadioButton" name="drawManager_rb">
                  <property name="text">
-                  <string> drawManager</string>
+                  <string>DrawManager</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -1593,7 +1592,7 @@ p, li { white-space: pre-wrap; }
                <item row="1" column="0">
                 <widget class="QCheckBox" name="replaceShader_cb">
                  <property name="text">
-                  <string>replace shader on enter </string>
+                  <string>Replace Shader on Enter </string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -1615,7 +1614,7 @@ p, li { white-space: pre-wrap; }
                </size>
               </property>
               <property name="title">
-               <string>Smooth options</string>
+               <string>Smooth Options</string>
               </property>
               <layout class="QHBoxLayout" name="smoothOption_lay">
                <property name="spacing">
@@ -1684,7 +1683,7 @@ p, li { white-space: pre-wrap; }
                <bool>true</bool>
               </property>
               <property name="title">
-               <string>Mirror options</string>
+               <string>Mirror Options</string>
               </property>
               <layout class="QVBoxLayout" name="mirrorOptionsLAY">
                <property name="spacing">
@@ -1722,7 +1721,7 @@ p, li { white-space: pre-wrap; }
                   <bool>true</bool>
                  </property>
                  <property name="text">
-                  <string>search replace for influences :</string>
+                  <string>Search Replace for Influences :</string>
                  </property>
                 </widget>
                </item>
@@ -1816,7 +1815,7 @@ p, li { white-space: pre-wrap; }
             <item>
              <widget class="QGroupBox" name="groupBox_5">
               <property name="title">
-               <string>extra options</string>
+               <string>Extra Options</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_4">
                <property name="spacing">
@@ -1825,7 +1824,7 @@ p, li { white-space: pre-wrap; }
                <item row="0" column="0" colspan="2">
                 <widget class="QCheckBox" name="message_cb">
                  <property name="text">
-                  <string>in View Messages</string>
+                  <string>In View Messages</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -1835,14 +1834,14 @@ p, li { white-space: pre-wrap; }
                <item row="1" column="0">
                 <widget class="QCheckBox" name="verbose_cb">
                  <property name="text">
-                  <string>debug Verbose</string>
+                  <string>Debug Verbose</string>
                  </property>
                 </widget>
                </item>
                <item row="1" column="1">
                 <widget class="QCheckBox" name="wireframe_cb">
                  <property name="text">
-                  <string>wireframe</string>
+                  <string>Wireframe</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>

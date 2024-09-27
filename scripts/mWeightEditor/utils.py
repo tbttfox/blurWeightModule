@@ -1,15 +1,13 @@
 from __future__ import absolute_import
 import os
-from .Qt.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
+from Qt.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
 
 
 def getUiFile(fileVar, subFolder="ui", uiName=None):
     uiFolder, filename = os.path.split(fileVar)
     if uiName is None:
         uiName = os.path.splitext(filename)[0]
-    if subFolder:
-        uiFile = os.path.join(uiFolder, subFolder, uiName + ".ui")
-    return uiFile
+    return os.path.join(uiFolder, subFolder, uiName + ".ui")
 
 
 def rootWindow():

@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Weight Editor</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="mainLayout">
@@ -163,10 +163,10 @@
             </size>
            </property>
            <property name="toolTip">
-            <string>select long vertices on edge</string>
+            <string>Select long vertices on edge</string>
            </property>
            <property name="text">
-            <string>problem verts</string>
+            <string>Problem Verts</string>
            </property>
            <property name="checkable">
             <bool>false</bool>
@@ -318,7 +318,7 @@
               </size>
              </property>
              <property name="text">
-              <string>export ...</string>
+              <string>Export ...</string>
              </property>
             </widget>
            </item>
@@ -331,7 +331,7 @@
               </size>
              </property>
              <property name="text">
-              <string>import ...</string>
+              <string>Import ...</string>
              </property>
             </widget>
            </item>
@@ -491,14 +491,14 @@
          <item>
           <widget class="QLabel" name="label">
            <property name="text">
-            <string>search : </string>
+            <string>Search : </string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QLineEdit" name="searchInfluences_le">
            <property name="toolTip">
-            <string>use * ? (or .) and any regular expression from re</string>
+            <string>Use * ? (or .) and any regular expression from re</string>
            </property>
           </widget>
          </item>
@@ -511,7 +511,7 @@
             </size>
            </property>
            <property name="toolTip">
-            <string>clear wildcard filter</string>
+            <string>Clear Wildcard Filter</string>
            </property>
            <property name="text">
             <string>C</string>
@@ -527,7 +527,7 @@
             </size>
            </property>
            <property name="toolTip">
-            <string>hide zero columns</string>
+            <string>Hide Zero Columns</string>
            </property>
            <property name="text">
             <string>Z</string>
@@ -552,7 +552,7 @@
             </size>
            </property>
            <property name="toolTip">
-            <string>hide locked columns</string>
+            <string>Hide Locked Columns</string>
            </property>
            <property name="text">
             <string>L</string>
@@ -596,7 +596,7 @@
             </size>
            </property>
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;order columns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Order Columns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="frame">
             <bool>true</bool>
@@ -638,7 +638,7 @@
             </size>
            </property>
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;number of columns to show&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of columns to show&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="frame">
             <bool>true</bool>
@@ -850,7 +850,7 @@
             </column>
             <column>
              <property name="text">
-              <string>fileToLoad</string>
+              <string>FileToLoad</string>
              </property>
             </column>
            </widget>
