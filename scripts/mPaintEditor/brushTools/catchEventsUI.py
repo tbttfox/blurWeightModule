@@ -1,10 +1,9 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
-from Qt import QtGui, QtCore, QtWidgets, QtCompat
+from Qt import QtCore, QtWidgets, QtCompat
 
 from maya import OpenMayaUI, cmds, mel
-import time
 from .brushPythonFunctions import (
     callPaintEditorFunction,
     escapePressed,
@@ -37,7 +36,7 @@ def buttonClickBuilder(func, *args):
     return lambda: func(*args)
 
 
-def callMarkingMenu():
+def callMarkingMenu(catcher):
     if cmds.popupMenu(MM_NAME, exists=True):
         cmds.deleteUI(MM_NAME)
 
@@ -86,7 +85,11 @@ def callMarkingMenu():
         kwArgs["radialPosition"] = posi
         kwArgs["label"] = txt
         kwArgs["sourceType"] = "python"
-        kwArgs["command"] = buttonClickBuilder(markingMenuPaintEditorButtonClick, cmdInd, btn)
+        # kwArgs["command"] = buttonClickBuilder(markingMenuPaintEditorButtonClick, cmdInd, btn)
+
+        # TODO: THIS
+        # catcher.MarkingMenuButtonPressed.emit(cmdInd, btn)
+
         cmds.menuItem("menuEditorMenuItem{0}".format(ind + 1), **kwArgs)
     kwArgs.pop("radialPosition", None)
     kwArgs["label"] = "solo color"
@@ -97,7 +100,11 @@ def callMarkingMenu():
     for ind, colType in enumerate(["white", "lava", "influence"]):
         kwArgs["label"] = colType
         kwArgs["sourceType"] = "python"
-        kwArgs["command"] = buttonClickBuilder(markingMenuUpdateSoloColor, ind)
+        # kwArgs["command"] = buttonClickBuilder(markingMenuUpdateSoloColor, ind)
+
+        # TODO: THIS
+        # catcher.MarkingMenuSoloColorChanged.emit(ind)
+
         cmds.menuItem("menuEditorMenuItemCol{0}".format(ind + 1), **kwArgs)
 
     cmds.setParent("..", menu=True)
@@ -127,11 +134,22 @@ MARKING_MENU_KEY = QtCore.Qt.Key_U
 class HandleEventsQt:
     """Handle any events that will affect the QT ui"""
 
-    def __init__(self, widget):
+    def __init__(self, widget, catcher):
         self.widget = widget  # the Qt paint editor widget
         self.prevButton = "add"
         self.isSmoothKeyPressed = False
         self.isRemoveKeyPressed = False
+        self.catcher = catcher
+
+    def hookup(self):
+        self.catcher.RemoveKeyReleased.connect(self.removeKeyReleased)
+        self.catcher.SmoothKeyReleased.connect(self.smoothKeyReleased)
+        self.catcher.RemoveKeyPressed.connect(self.removeKeyPressed)
+        self.catcher.SmoothKeyPressed.connect(self.smoothKeyPressed)
+        self.catcher.ExitKeyPressed.connect(self.exitKeyPressed)
+        self.catcher.SoloModeKeyPressed.connect(self.soloModeKeyPressed)
+        self.catcher.SoloOpaqueKeyPressed.connect(self.soloOpaqueKeyPressed)
+        self.catcher.MirrorKeyPressed.connect(self.mirrorKeyPressed)
 
     def highlightBtns(self):
         btnToSelect = self.prevButton
@@ -193,12 +211,28 @@ class HandleEventsQt:
 
 
 class HandleEventsMaya:
-    """Handle any events that will affect Maya"""
+    """Handle any events that will affect Maya directly"""
 
-    def __init__(self):
+    def __init__(self, catcher):
         self.orbit = meshFnIntersection.Orbit()
         self.testWireFrame = True
         self.restorePanels = []
+        self.catcher = catcher
+        self.hookup()
+
+    def hookup(self):
+        self.catcher.SetPanelDisplayOn.connect(self.setPanelsDisplayOn)
+        self.catcher.SetPanelDisplayOff.connect(self.setPanelsDisplayOff)
+        self.catcher.ShowMarkingMenu.connect(self.showMarkingMenu)
+        self.catcher.HideMarkingMenu.connect(self.hideMarkingMenu)
+
+        self.catcher.ExitKeyPressed.connect(self.exitKeyPressed)
+        self.catcher.PickMaxInfluenceKeyPressed.connect(self.pickMaxInfluenceKeyPressed)
+        self.catcher.PickInfluenceKeyPressed.connect(self.pickInfluenceKeyPressed)
+        self.catcher.ToggleWireframeKeyPressed.connect(self.toggleWireframeKeyPressed)
+
+        self.catcher.SetOrbitPosKeyPressed.connect(self.setOrbitKeyPressed)
+        self.catcher.SetToggleXrayKeyPressed.connect(self.toggleXrayKeyPressed)
 
     @staticmethod
     def getModelPanels():
@@ -209,9 +243,7 @@ class HandleEventsMaya:
             vis = cmds.getAttr("SkinningWireframe.v")
             cmds.setAttr("SkinningWireframe.v", not vis)
         else:
-            listModelPanels = [
-                el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"
-            ]
+            listModelPanels = self.getModelPanels()
             val = not cmds.modelEditor(
                 listModelPanels[0],
                 query=True,
@@ -239,7 +271,8 @@ class HandleEventsMaya:
         mel.eval("setToolTo $gMove;")
 
     def showMarkingMenu(self):
-        callMarkingMenu()
+        if self.catcher is not None:
+            callMarkingMenu(self.catcher)
 
     def hideMarkingMenu(self):
         if cmds.popupMenu(MM_NAME, exists=True):
@@ -278,9 +311,31 @@ class HandleEventsMaya:
 
 
 class CatchEventsWidget(QtCore.QObject):
-    # Custom event filter to catch rightclicks
-    filterInstalled = False
-    eventFilterWidgetReceiver = None
+    """Custom QObject event filter so we can catch right-clicks
+
+    Maya made the decision to *NOT* allow their normal contexts
+    to interact with right clicks. To get around that, we have this
+    class
+    """
+
+    SetPanelDisplayOn = QtCore.Signal()
+    SetPanelDisplayOff = QtCore.Signal()
+    ShowMarkingMenu = QtCore.Signal()
+    HideMarkingMenu = QtCore.Signal()
+
+    RemoveKeyReleased = QtCore.Signal()
+    SmoothKeyReleased = QtCore.Signal()
+    RemoveKeyPressed = QtCore.Signal()
+    SmoothKeyPressed = QtCore.Signal()
+    ExitKeyPressed = QtCore.Signal()
+    PickMaxInfluenceKeyPressed = QtCore.Signal()
+    PickInfluenceKeyPressed = QtCore.Signal()
+    SetOrbitPosKeyPressed = QtCore.Signal()
+    SetToggleXrayKeyPressed = QtCore.Signal()
+    ToggleWireframeKeyPressed = QtCore.Signal()
+    SoloModeKeyPressed = QtCore.Signal()
+    SoloOpaqueKeyPressed = QtCore.Signal()
+    MirrorKeyPressed = QtCore.Signal()
 
     def __init__(self):
         super(CatchEventsWidget, self).__init__(ROOTWINDOW)
@@ -291,12 +346,16 @@ class CatchEventsWidget(QtCore.QObject):
         self.closingNextPressMarkingMenu = False
         self.isRemoveKeyPressed = False
         self.isSmoothKeyPressed = False
+        self.filterInstalled = False
+        self.eventFilterWidgetReceiver = None
+
+        self.mayaEventHandler = HandleEventsMaya(self)
 
     def open(self):
         with disableUndoContext():
             if not self.filterInstalled:
                 self.installFilters()
-            # EMIT SET PANEL DISPLAY ON
+            self.Opening.emit()
 
     def installFilters(self):
         self.eventFilterWidgetReceiver = [
@@ -330,11 +389,11 @@ class CatchEventsWidget(QtCore.QObject):
                         with disableUndoContext():
                             if self.markingMenuKeyPressed:
                                 if not self.markingMenuShown:
-                                    # EMIT SHOW MARKING MENU
+                                    self.ShowMarkingMenu.emit()
                                     self.markingMenuShown = True
                                     self.closingNextPressMarkingMenu = False
                             elif self.closingNextPressMarkingMenu:
-                                # EMIT HIDE MARKING MENU
+                                self.HideMarkingMenu.emit()
                                 self.markingMenuShown = False
                                 self.markingMenuKeyPressed = False
                                 self.closingNextPressMarkingMenu = False
@@ -349,11 +408,11 @@ class CatchEventsWidget(QtCore.QObject):
             if event.type() == QtCore.QEvent.KeyRelease:
                 if event.key() == REMOVE_KEY:
                     self.isRemoveKeyPressed = False
-                    # EMIT REMOVE KEY RELEASED
+                    self.RemoveKeyReleased.emit()
                     return False
                 elif event.key() == SMOOTH_KEY:
                     self.isSmoothKeyPressed = False
-                    # EMIT SMOOTH KEY RELEASED
+                    self.SmoothKeyReleased.emit()
                     return False
                 elif event.key() == MARKING_MENU_KEY:
                     if self.markingMenuKeyPressed:
@@ -367,7 +426,7 @@ class CatchEventsWidget(QtCore.QObject):
                         return False
                     if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
                         self.isRemoveKeyPressed = True
-                        # EMIT REMOVE KEY PRESSED
+                        self.RemoveKeyPressed.emit()
                         return False
 
                 elif event.key() == SMOOTH_KEY:
@@ -375,7 +434,7 @@ class CatchEventsWidget(QtCore.QObject):
                         return False
                     if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
                         self.isSmoothKeyPressed = True
-                        # EMIT SMOOTH KEY PRESSED
+                        self.SmoothKeyPressed.emit()
                         return False
 
                 elif event.key() == MARKING_MENU_KEY:
@@ -384,62 +443,53 @@ class CatchEventsWidget(QtCore.QObject):
 
                 elif event.key() == EXIT_KEY:
                     with disableUndoContext():
-                        pass
-                        # EMIT EXIT KEY PRESSED
+                        self.ExitKeyPressed.emit()
                     return True
 
                 elif event.key() == PICK_INFLUENCE_KEY:
                     with disableUndoContext():
                         if not event.isAutoRepeat():
                             if event.modifiers() == QtCore.Qt.AltModifier:
-                                pass
-                                # EMIT PICK MAX INFLUENCE KEY PRESSED
+                                self.PickMaxInfluenceKeyPressed.emit()
                             else:
-                                pass
-                                # EMIT PICK INFLUENCE KEY PRESSED
+                                self.PickInfluenceKeyPressed.emit()
                     return True
 
                 elif event.key() == SET_ORBIT_POS_KEY:
                     with disableUndoContext():
                         if not event.isAutoRepeat():
-                            pass
-                            # EMIT SET ORBIT KEY PRESSED
+                            self.SetOrbitPosKeyPressed.emit()
                     return True
 
                 elif event.modifiers() == QtCore.Qt.AltModifier:
                     if event.key() == TOGGLE_XRAY_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
-                                pass
-                                # EMIT TOGGLE XRAY KEY PRESSED
+                                self.SetToggleXrayKeyPressed.emit()
                         return True
 
                     if event.key() == TOGGLE_WIREFRAME_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
-                                pass
-                                # EMIT TOGGLE WIREFRAME KEY PRESSED
+                                self.ToggleWireframeKeyPressed.emit()
                         return True
 
                     if event.key() == SOLO_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
-                                pass
-                                # EMIT SOLO MODE KEY PRESSED
+                                self.SoloModeKeyPressed.emit()
                         return True
 
                     if event.key() == SOLO_OPAQUE_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
-                                pass
-                                # EMIT SOLO OPAQUE KEY PRESSED
+                                self.SoloOpaqueKeyPressed.emit()
                         return True
 
                     if event.key() == MIRROR_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
-                                pass
-                                # EMIT MIRROR KEY PRESSED
+                                self.MirrorKeyPressed.emit()
                         return True
         return False
 
@@ -450,7 +500,7 @@ class CatchEventsWidget(QtCore.QObject):
 
     def close(self):
         with disableUndoContext():
-            # EMIT PANEL DISPLAY OFF
+            self.SetPanelDisplayOff.emit()
 
             # remove the markingMenu
             self.markingMenuKeyPressed = False

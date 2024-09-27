@@ -551,7 +551,7 @@ def callEventCatcher():
 def closeEventCatcher():
     from . import catchEventsUI
 
-    if hasattr(catchEventsUI, "EVENTCATCHER"):
+    if catchEventsUI.EVENTCATCHER is not None:
         catchEventsUI.EVENTCATCHER.close()
 
 
