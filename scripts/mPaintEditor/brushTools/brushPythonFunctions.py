@@ -824,3 +824,17 @@ def updateDisplayStrengthOrSize(sizeAdjust, value):
             callPaintEditorFunction("updateSizeVal", value)
         else:
             callPaintEditorFunction("updateStrengthVal", value)
+
+
+def hideInViewMessage():
+    cmds.inViewMessage(clear="topCenter")
+
+
+def showInViewMessage():
+    msg = [
+        "<hl>LMB</hl> to add",
+        "<hl>MMB</hl> to adjust",
+        "<hl>Ctrl</hl> to remove",
+        "<hl>Shift</hl> to smooth ",
+    ]
+    cmds.inViewMessage(statusMessage="  |  ".join(msg), position="topCenter")

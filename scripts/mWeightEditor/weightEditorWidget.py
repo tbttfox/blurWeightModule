@@ -109,6 +109,8 @@ class SkinWeightWin(Window):
         self.applyDisplayColumnsFilters(None)
         self.refreshCurrentSelectionOrder()
 
+        self.renameCallBack = None
+
     #
     # window events
     #
@@ -493,7 +495,8 @@ class SkinWeightWin(Window):
         )
 
     def deleteCallBacks(self):
-        removeNameChangedCallback(self.renameCallBack)
+        if self.renameCallBack is not None:
+            removeNameChangedCallback(self.renameCallBack)
         self.dataOfDeformer.deleteDisplayLocator()
         cmds.scriptJob(kill=self.refreshSJ, force=True)
         for callBck in self.close_callback:

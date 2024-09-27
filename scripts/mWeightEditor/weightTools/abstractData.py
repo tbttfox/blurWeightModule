@@ -533,10 +533,14 @@ class DataAbstract(object):
         """A convenience function to be able to load the currently selected object"""
         sel = cmds.ls(sl=True)
         if not sel:
-            raise ValueError("No selection")
-        return self.getDataFromObject(sel[0], typeOfDeformer, force, theDeformer, deformedShape)
+            return None
+        return self.getDataFromObject(
+            sel[0], typeOfDeformer, force, theDeformer, deformedShape, inputVertices
+        )
 
-    def getDataFromObject(self, sel, typeOfDeformer, force, theDeformer, deformedShape):
+    def getDataFromObject(
+        self, sel, typeOfDeformer, force, theDeformer, deformedShape, inputVertices
+    ):
         """Load data from a given object
 
         This method sets these instance properties

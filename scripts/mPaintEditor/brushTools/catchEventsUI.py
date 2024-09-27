@@ -1,8 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
-from Qt import QtGui, QtCore, QtWidgets
-from Qt import QtCompat
+from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from Qt.QtWidgets import QApplication, QSplashScreen, QDialog, QMainWindow
 
 from maya import OpenMayaUI, cmds, mel
@@ -20,14 +19,16 @@ from past.builtins import long
 EVENTCATCHER = None
 ROOTWINDOW = None
 
+MM_NAME = "skinBrush_MM"
+
 
 def callMarkingMenu():
-    if cmds.popupMenu("tempMM", exists=True):
-        cmds.deleteUI("tempMM")
+    if cmds.popupMenu(MM_NAME, exists=True):
+        cmds.deleteUI(MM_NAME)
 
     res = mel.eval("findPanelPopupParent")
     cmds.popupMenu(
-        "tempMM",
+        MM_NAME,
         button=1,
         ctrlModifier=False,
         altModifier=False,
@@ -263,8 +264,8 @@ class CatchEventsWidget(QtWidgets.QWidget):
                                     self.closingNextPressMarkingMenu = False
                                     # print "-- callMarkingMenu --"
                             elif self.closingNextPressMarkingMenu:
-                                if cmds.popupMenu("tempMM", exists=True):
-                                    cmds.deleteUI("tempMM")
+                                if cmds.popupMenu(MM_NAME, exists=True):
+                                    cmds.deleteUI(MM_NAME)
                                 self.markingMenuShown = False
                                 self.UPressed = False
                                 self.closingNextPressMarkingMenu = False
@@ -441,13 +442,11 @@ class CatchEventsWidget(QtWidgets.QWidget):
         return False
 
     def closeEvent(self, e):
-        """
-        Make sure the eventFilter is removed
-        """
-        self.fermer()
+        """Make sure the eventFilter is removed"""
+        self.close()
         return super(CatchEventsWidget, self).closeEvent(e)
 
-    def fermer(self):
+    def close(self):
         with disableUndoContext():
             self.setPanelsDisplayOff()
             # remove the markingMenu
@@ -456,6 +455,6 @@ class CatchEventsWidget(QtWidgets.QWidget):
                 False,
                 False,
             )
-            if cmds.popupMenu("tempMM", exists=True):
-                cmds.deleteUI("tempMM")
+            if cmds.popupMenu(MM_NAME, exists=True):
+                cmds.deleteUI(MM_NAME)
             self.removeFilters()
