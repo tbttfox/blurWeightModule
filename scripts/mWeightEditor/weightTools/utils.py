@@ -19,7 +19,7 @@ from six.moves import zip
 
 @contextmanager
 def SettingWithRedraw(theWindow):
-    """ GUILLAUME
+    """GUILLAUME
 
     Arguments:
         theWindow (QMainWindow): GUILLAUME
@@ -35,7 +35,7 @@ def SettingWithRedraw(theWindow):
 
 @contextmanager
 def SettingVariable(variableHolder, variableName, valueOn=True, valueOut=False):
-    """ A context manager for temporarily setting a variable to a value on an object
+    """A context manager for temporarily setting a variable to a value on an object
 
     Arguments:
         variableHolder (object or dict): The object that will have its values set
@@ -60,7 +60,7 @@ def SettingVariable(variableHolder, variableName, valueOn=True, valueOut=False):
 
 @contextmanager
 def ToggleHeaderVisibility(HH):
-    """ Hide the header while in this context
+    """Hide the header while in this context
 
     Arguments:
         HH (QHeaderView): The header to hide/show
@@ -80,8 +80,8 @@ def GlobalContext(
     suspendRefresh=False,
     doPrint=True,
 ):
-    """ A context for undos, refreshes, and timing
-    
+    """A context for undos, refreshes, and timing
+
     Arguments:
         message (str): A message to print with the timing data, and
             the name of the chunk. Defaults to "processing"
@@ -127,16 +127,12 @@ def GlobalContext(
         timeRes = str(datetime.timedelta(seconds=int(completionTime))).split(":")
         if doPrint:
             result = "{0} hours {1} mins {2} secs".format(*timeRes)
-            print(
-                "{0} executed in {1}[{2:.2f} secs]".format(
-                    message, result, completionTime
-                )
-            )
+            print("{0} executed in {1}[{2:.2f} secs]".format(message, result, completionTime))
 
 
 @contextmanager
 def toggleBlockSignals(listOfWidgets):
-    """ Block signals for the given list of widgets
+    """Block signals for the given list of widgets
 
     Arguments:
         listOfWidgets (list): Block signals for these widgets
@@ -154,7 +150,7 @@ def toggleBlockSignals(listOfWidgets):
 # ------------------------ softSelections ---------------------------------------------------
 # -------------------------------------------------------------------------------------------
 def getSoftSelectionValues():
-    """ Get the per-vertex weight values of the current soft selection
+    """Get the per-vertex weight values of the current soft selection
 
     Returns:
         list: The list of indices
@@ -183,7 +179,7 @@ def getSoftSelectionValues():
 
 
 def getSoftSelectionValuesNEW(returnSimpleIndices=True, forceReturnWeight=False):
-    """ Get the per-vertex weight values of the current soft selection
+    """Get the per-vertex weight values of the current soft selection
 
     Arguments:
         returnSimpleIndices (bool): If True, return the index into the flattened array
@@ -244,10 +240,7 @@ def getSoftSelectionValuesNEW(returnSimpleIndices=True, forceReturnWeight=False)
                 ]:
                     singleFn = OpenMaya.MFnSingleIndexedComponent(component)
 
-                    if (
-                        componentFn.componentType()
-                        == OpenMaya.MFn.kMeshPolygonComponent
-                    ):
+                    if componentFn.componentType() == OpenMaya.MFn.kMeshPolygonComponent:
                         polyIter = OpenMaya.MItMeshPolygon(dagPath, component)
                         setOfVerts = set()
                         while not polyIter.isDone():
@@ -325,7 +318,7 @@ def getSoftSelectionValuesNEW(returnSimpleIndices=True, forceReturnWeight=False)
 
 
 def getThreeIndices(div_s, div_t, div_u, *args):
-    """ Convert to/from 3-component flattened indices
+    """Convert to/from 3-component flattened indices
 
     Arguments:
         div_s (int): The length of indices in S
@@ -348,7 +341,7 @@ def getThreeIndices(div_s, div_t, div_u, *args):
 
 
 def getComponentIndexList(componentList=None):
-    """ Return an list of integer component index values
+    """Return an list of integer component index values
 
     Arguments:
         componentList (list): A list of component names. if empty will default to selection.
@@ -403,9 +396,7 @@ def getComponentIndexList(componentList=None):
             # Curve
             elif selPath.apiType() == OpenMaya.MFn.kNurbsCurve:
                 curveFn = OpenMaya.MFnNurbsCurve(selPath.node())
-                componentSelList.add(
-                    objName + ".cv[0:" + str(curveFn.numCVs() - 1) + "]"
-                )
+                componentSelList.add(objName + ".cv[0:" + str(curveFn.numCVs() - 1) + "]")
             # Surface
             elif selPath.apiType() == OpenMaya.MFn.kNurbsSurface:
                 surfaceFn = OpenMaya.MFnNurbsSurface(selPath.node())
@@ -422,9 +413,7 @@ def getComponentIndexList(componentList=None):
                 tDiv = cmds.getAttr(objName + ".tDivisions")
                 uDiv = cmds.getAttr(objName + ".uDivisions")
 
-                toAdd = "{0}.pt[0:{1}][0:{2}][0:{3}]".format(
-                    objName, sDiv - 1, tDiv - 1, uDiv - 1
-                )
+                toAdd = "{0}.pt[0:{1}][0:{2}][0:{3}]".format(objName, sDiv - 1, tDiv - 1, uDiv - 1)
                 componentSelList.add(toAdd)
 
             # Get object component MObject
@@ -466,7 +455,7 @@ def getComponentIndexList(componentList=None):
 # -------------------------------------------------------------------------------------------
 # get UV Map
 def getMapForSelectedVerticesFromSelection(normalize=True, opp=False, axis="uv"):
-    """ GUILLAUME
+    """GUILLAUME
 
     Arguments:
         normalize (bool): If true, normalize the values
@@ -516,8 +505,7 @@ def getMapForSelectedVerticesFromSelection(normalize=True, opp=False, axis="uv")
         diffU = maxU - minU
 
         indicesValues = [
-            (vert, (u - minU) / diffU, (v - minU) / diffV)
-            for (vert, u, v) in indicesValues
+            (vert, (u - minU) / diffU, (v - minU) / diffV) for (vert, u, v) in indicesValues
         ]
     if opp:
         indicesValues = [(vert, -1.0 * u, -1.0 * v) for (vert, u, v) in indicesValues]
@@ -528,7 +516,7 @@ def getMapForSelectedVerticesFromSelection(normalize=True, opp=False, axis="uv")
 
 
 def getMapForSelectedVertices(vertIter, normalize=True, opp=False, axis="uv"):
-    """ GUILLAUME
+    """GUILLAUME
 
     Arguments:
         normalize (bool): If true, normalize the values
@@ -565,8 +553,7 @@ def getMapForSelectedVertices(vertIter, normalize=True, opp=False, axis="uv"):
         diffU = maxU - minU
 
         indicesValues = [
-            (vert, (u - minU) / diffU, (v - minU) / diffV)
-            for (vert, u, v) in indicesValues
+            (vert, (u - minU) / diffU, (v - minU) / diffV) for (vert, u, v) in indicesValues
         ]
     if opp:
         indicesValues = [(vert, 1.0 - u, 1.0 - v) for (vert, u, v) in indicesValues]
@@ -580,7 +567,7 @@ def getMapForSelectedVertices(vertIter, normalize=True, opp=False, axis="uv"):
 # ------------------------ callBacks --------------------------------------------------------
 # -------------------------------------------------------------------------------------------
 def deleteTheJobs(toSearch="BrushFunctions.callAfterPaint"):
-    """ Delete the given scriptJobs
+    """Delete the given scriptJobs
 
     Arguments:
         toSearch: The name of the scriptJob to delete
@@ -594,13 +581,14 @@ def deleteTheJobs(toSearch="BrushFunctions.callAfterPaint"):
 
 
 def addNameChangedCallback(callback):
-    """ Add a callback for when an object gets renamed
+    """Add a callback for when an object gets renamed
 
     Arguments:
         callback (function): A function that will get called when an object
             is renamed
 
     """
+
     def omcallback(mobject, oldname, _):
         newname = OpenMaya.MFnDependencyNode(mobject).name()
         callback(oldname, newname)  #
@@ -610,13 +598,14 @@ def addNameChangedCallback(callback):
 
 
 def addNameDeletedCallback(callback):
-    """ Add a callback for when an object gets deleted
+    """Add a callback for when an object gets deleted
 
     Arguments:
         callback (function): A function that will get called when an object
             is deleted
 
     """
+
     def omcallback(mobject, _):
         nodeName = OpenMaya.MFnDependencyNode(mobject).name()
         callback(nodeName)  #
@@ -626,7 +615,7 @@ def addNameDeletedCallback(callback):
 
 
 def removeNameChangedCallback(callbackId):
-    """ Remove a callback by ID
+    """Remove a callback by ID
 
     Arguments:
         callbackId (int): The ID of the callback to remove

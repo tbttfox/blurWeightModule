@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from ..Qt import QtGui, QtCore
-from maya import OpenMaya, OpenMayaUI, cmds
+from Qt import QtGui, QtCore, QtWidgets
+from maya import OpenMaya, OpenMayaUI, OpenMayaAnim, cmds, mel
 
 
 class Orbit(object):

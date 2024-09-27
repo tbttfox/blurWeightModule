@@ -4,6 +4,7 @@ import os
 PAINT_EDITOR = None
 PAINT_EDITOR_ROOT = None
 
+
 def runMPaintEditor():
     from .utils import rootWindow
     from .paintEditorWidget import SkinPaintWin

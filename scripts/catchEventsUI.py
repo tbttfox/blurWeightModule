@@ -57,9 +57,7 @@ def callMarkingMenu():
     for ind, (txt, posi, btn, cmdInd) in enumerate(lstCommands):
         kwArgs["radialPosition"] = posi
         kwArgs["label"] = txt
-        kwArgs[
-            "command"
-        ] = "brSkinBrushContext -edit -commandIndex {} `currentCtx`;".format(cmdInd)
+        kwArgs["command"] = "brSkinBrushContext -edit -commandIndex {} `currentCtx`;".format(cmdInd)
         cmds.menuItem("menuEditorMenuItem{0}".format(ind + 1), **kwArgs)
 
     kwArgs.pop("radialPosition", None)
@@ -70,9 +68,7 @@ def callMarkingMenu():
     kwArgs["subMenu"] = False
     for ind, colType in enumerate(["white", "lava", "influence"]):
         kwArgs["label"] = colType
-        kwArgs[
-            "command"
-        ] = "brSkinBrushContext -edit -soloColorType {} `currentCtx`;".format(ind)
+        kwArgs["command"] = "brSkinBrushContext -edit -soloColorType {} `currentCtx`;".format(ind)
         cmds.menuItem("menuEditorMenuItemCol{0}".format(ind + 1), **kwArgs)
 
     mel.eval("setParent -menu ..;")
@@ -165,9 +161,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                     dic = {"query": True, key: True}
                     valDic[key] = cmds.modelEditor(panel, **dic)
                 self.restorePanels.append((panel, valDic))
-                cmds.modelEditor(
-                    panel, edit=True, displayLights="flat", wireframeOnShaded=False
-                )
+                cmds.modelEditor(panel, edit=True, displayLights="flat", wireframeOnShaded=False)
                 # GAMMA ENABLED
                 cmds.modelEditor(panel, edit=True, cmEnabled=False)
 
@@ -236,8 +230,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
             return super(CatchEventsWidget, self).eventFilter(obj, event)
 
         if (
-            event.type()
-            in [QtCore.QEvent.MouseButtonPress, QtCore.QEvent.MouseButtonRelease]
+            event.type() in [QtCore.QEvent.MouseButtonPress, QtCore.QEvent.MouseButtonRelease]
             and event.modifiers() != QtCore.Qt.AltModifier
         ):
             if event.modifiers() == QtCore.Qt.NoModifier:  # regular click
@@ -267,9 +260,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                 res = QtCompat.wrapInstance(PTR_TYPE(sw), QtWidgets.QWidget)
 
                 listModelPanels = [
-                    el
-                    for el in cmds.getPanel(vis=True)
-                    if cmds.getPanel(to=el) == "modelPanel"
+                    el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"
                 ]
                 listModelPanelsCompats = [
                     QtCompat.wrapInstance(
@@ -277,9 +268,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                     )
                     for el in listModelPanels
                 ]
-                listModelPanelsCompatsPrts = [
-                    el.parent() for el in listModelPanelsCompats
-                ]
+                listModelPanelsCompatsPrts = [el.parent() for el in listModelPanelsCompats]
 
                 if res is obj:
                     print("ViewPort")
@@ -321,9 +310,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
 
             elif event.key() == QtCore.Qt.Key_D:
                 listModelPanels = [
-                    el
-                    for el in cmds.getPanel(vis=True)
-                    if cmds.getPanel(to=el) == "modelPanel"
+                    el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"
                 ]
                 listModelPanelsCompats = [
                     QtCompat.wrapInstance(
@@ -331,21 +318,15 @@ class CatchEventsWidget(QtWidgets.QWidget):
                     )
                     for el in listModelPanels
                 ]
-                listModelPanelsCompatsPrts = [
-                    el.parent() for el in listModelPanelsCompats
-                ]
+                listModelPanelsCompatsPrts = [el.parent() for el in listModelPanelsCompats]
                 if obj in listModelPanelsCompats or obj in listModelPanelsCompatsPrts:
                     print("it is a model_panel")
                     event.ignore()
 
                     if event.modifiers() == QtCore.Qt.AltModifier:
-                        mel.eval(
-                            "brSkinBrushContext -edit -pickMaxInfluence 1 `currentCtx`;"
-                        )
+                        mel.eval("brSkinBrushContext -edit -pickMaxInfluence 1 `currentCtx`;")
                     else:
-                        mel.eval(
-                            "brSkinBrushContext -edit -pickInfluence 1 `currentCtx`;"
-                        )
+                        mel.eval("brSkinBrushContext -edit -pickInfluence 1 `currentCtx`;")
                 elif obj is self.mainMaya:
                     event.ignore()
                     return True
@@ -365,9 +346,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                         self.CtrlOrShiftPressed = True
 
                         if cmds.radioButton("brSkinBrushSmoothRb", ex=True):
-                            cmds.radioButton(
-                                "brSkinBrushSmoothRb", edit=True, select=True
-                            )
+                            cmds.radioButton("brSkinBrushSmoothRb", edit=True, select=True)
                         self.prevStrengthValue = cmds.brSkinBrushContext(
                             "brSkinBrushContext1", query=True, strength=True
                         )
@@ -375,9 +354,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                             "brSkinBrushContext1", query=True, smoothStrength=True
                         )
                         try:
-                            cmds.floatSliderGrp(
-                                "brSkinBrushStrength", edit=True, value=smoothValue
-                            )
+                            cmds.floatSliderGrp("brSkinBrushStrength", edit=True, value=smoothValue)
                         except:
                             pass
                     return True
@@ -397,16 +374,12 @@ class CatchEventsWidget(QtWidgets.QWidget):
                         if (self.prevButton == "brSkinBrushAddRb") and cmds.radioButton(
                             "brSkinBrushRemoveRb", ex=True
                         ):
-                            cmds.radioButton(
-                                "brSkinBrushRemoveRb", edit=True, select=True
-                            )
+                            cmds.radioButton("brSkinBrushRemoveRb", edit=True, select=True)
 
-                        elif (
-                            self.prevButton == "brSkinBrushLockVerticesRb"
-                        ) and cmds.radioButton("brSkinBrushUnLockVerticesRb", ex=True):
-                            cmds.radioButton(
-                                "brSkinBrushUnLockVerticesRb", edit=True, select=True
-                            )
+                        elif (self.prevButton == "brSkinBrushLockVerticesRb") and cmds.radioButton(
+                            "brSkinBrushUnLockVerticesRb", ex=True
+                        ):
+                            cmds.radioButton("brSkinBrushUnLockVerticesRb", edit=True, select=True)
                     except:
                         pass
                     return True
@@ -414,20 +387,15 @@ class CatchEventsWidget(QtWidgets.QWidget):
             elif event.modifiers() == QtCore.Qt.AltModifier:
                 if event.key() == QtCore.Qt.Key_X:
                     listModelPanels = [
-                        el
-                        for el in cmds.getPanel(vis=True)
-                        if cmds.getPanel(to=el) == "modelPanel"
+                        el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"
                     ]
-                    val = not cmds.modelEditor(
-                        listModelPanels[0], query=True, jointXray=True
-                    )
+                    val = not cmds.modelEditor(listModelPanels[0], query=True, jointXray=True)
                     for pnel in listModelPanels:
                         cmds.modelEditor(pnel, edit=True, jointXray=val)
                     event.ignore()
                     return True
 
                 if event.key() == QtCore.Qt.Key_W:
-
                     if cmds.objExists("SkinningWireframe"):
                         vis = cmds.getAttr("SkinningWireframe.v")
                         cmds.setAttr("SkinningWireframe.v", not vis)

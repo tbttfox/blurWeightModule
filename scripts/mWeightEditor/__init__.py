@@ -4,6 +4,7 @@ import os
 WEIGHT_EDITOR = None
 WEIGHT_EDITOR_ROOT = None
 
+
 def runMWeightEditor():
     from .utils import rootWindow
     from .weightEditorWidget import SkinWeightWin

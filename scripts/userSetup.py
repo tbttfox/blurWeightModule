@@ -7,8 +7,10 @@
 # ----------------------------------------------------------------------
 from maya import cmds, mel, utils
 
+
 def addMenuItems():
     if not cmds.about(batch=True):
         mel.eval("source brSkinBrushCreateMenuItems; brSkinBrushAddMenuCommand;")
+
 
 utils.executeDeferred(addMenuItems)

@@ -7,9 +7,10 @@ import math
 
 
 class ButtonWithValue(QtWidgets.QPushButton):
-    """ A button that allows for a middle-click drag to change precision
+    """A button that allows for a middle-click drag to change precision
     and a scroll wheel to change values
     """
+
     _valueChanged = QtCore.Signal(int, name="valChanged")
 
     def __init__(
@@ -294,7 +295,7 @@ class ProgressItem(QtWidgets.QProgressBar):
                 "chunkColor": "rgb(200,200,200)",
                 "chunkColorDisabled": "rgb(170,170,170)",
             },
-            **kwargs
+            **kwargs,
         )
 
         self.setStyleSheet(self.theStyleSheet.format(**self.dicStyleSheet))
@@ -302,7 +303,8 @@ class ProgressItem(QtWidgets.QProgressBar):
 
     def changeColor(self, **kwargs):
         self.dicStyleSheet = dict(
-            {"szrad": 7, "bgColor": "rgb(200,200,230)", "chunkColor": "#FF0350"}, **kwargs
+            {"szrad": 7, "bgColor": "rgb(200,200,230)", "chunkColor": "#FF0350"},
+            **kwargs,
         )
         self.setStyleSheet(self.theStyleSheet.format(**self.dicStyleSheet))
 
@@ -312,7 +314,7 @@ class ProgressItem(QtWidgets.QProgressBar):
         if not val:
             tmpDic = dict(
                 self.dicStyleSheet,
-                **{"szrad": 7, "bgColor": "rgb(100,100,100)", "chunkColor": "#FF0350"}
+                **{"szrad": 7, "bgColor": "rgb(100,100,100)", "chunkColor": "#FF0350"},
             )
             self.setStyleSheet(self.theStyleSheet.format(**tmpDic))
         else:

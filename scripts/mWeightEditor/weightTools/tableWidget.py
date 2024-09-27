@@ -49,15 +49,10 @@ class TableModel(QtCore.QAbstractTableModel):
         return self.datatable.columnsNames
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.EditRole:
-            editData = self.realData(index) * 100
-            return editData
-        elif role == QtCore.Qt.DisplayRole:
-            ff = math.floor(self.realData(index) * 10000) / 100
-            ff = "{0:.2f}".format(ff)
-            if ff[-2:] == "00":
-                ff = ff[:-1]
-            return ff
+        if role == QtCore.Qt.DisplayRole:
+            return "{0:g}".format(round(self.realData(index) * 100, 1))
+        elif role == QtCore.Qt.EditRole:
+            return self.realData(index) * 100
         elif role == QtCore.Qt.TextAlignmentRole:
             return QtCore.Qt.AlignCenter
         return None
@@ -124,17 +119,13 @@ class TableModel(QtCore.QAbstractTableModel):
             if not index.isValid():
                 return QtCore.Qt.ItemIsEnabled
             column = index.column()
-            if (
-                self.datatable.isSkinData and column == self.datatable.nbDrivers
-            ):  # sum column
+            if self.datatable.isSkinData and column == self.datatable.nbDrivers:  # sum column
                 result = QtCore.Qt.ItemIsEnabled
             elif self.isLocked(index):
                 result = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
             else:
                 result = (
-                    QtCore.Qt.ItemIsEnabled
-                    | QtCore.Qt.ItemIsSelectable
-                    | QtCore.Qt.ItemIsEditable
+                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
                 )
             return QtCore.Qt.ItemFlags(result)
         except Exception:
@@ -251,12 +242,12 @@ class VertHeaderView(QtWidgets.QHeaderView):
         if not model.datatable.isRowLocked(index):
             theBGBrush = self.regularBG
             if model.isSoftOn():
-                col = multVal * 255 * 2
+                col = int(multVal * 255 * 2)
                 if col > 255:
                     RCol = 255
                     GCol = col - 255
                 else:
-                    GCol = 0.0
+                    GCol = 0
                     RCol = col
                 theBGBrush = QtGui.QColor(RCol, GCol, 0, 100)
 
@@ -346,7 +337,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             index = self.visualIndexAt(event.pos().x())
 
             pos = event.globalPos() - QtCore.QPoint(355, 100)
-            theColor = [el / 255.0 for el in self.color(index)]
+            theColor = [int(el / 255) for el in self.color(index)]
             cmds.colorEditor(mini=True, position=[pos.x(), pos.y()], rgbValue=theColor)
             if cmds.colorEditor(query=True, result=True, mini=True):
                 col = cmds.colorEditor(query=True, rgb=True)
@@ -384,9 +375,9 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             else:
                 attr = obj + ".wireColorRGB"
                 els = cmds.getAttr(attr)[0]
-            return [255.0 * el for el in els]
+            return [int(255 * el) for el in els]
         else:
-            return [255.0, 155.0, 55.0]
+            return [255, 155, 55]
 
     def setColor(self, pos, index):
         menu = ColorMenu(self)
@@ -404,9 +395,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
         for item in sel:
             chunks = np.union1d(chunks, list(range(item.left(), item.right() + 1)))
 
-        selectedIndices = [
-            indCol for indCol in chunks if not self.isSectionHidden(indCol)
-        ]
+        selectedIndices = [indCol for indCol in chunks if not self.isSectionHidden(indCol)]
         if self.model().datatable.isSkinData:
             lastCol = self.count() - 1
             if lastCol in selectedIndices:
@@ -464,7 +453,6 @@ class HorizHeaderView(QtWidgets.QHeaderView):
         selVertices.setEnabled(not selectionIsEmpty)
 
         if self.model().datatable.isSkinData:
-
             popMenu.addSeparator()
 
             lockAction = popMenu.addAction("lock selected")
@@ -496,9 +484,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
                 chbox = QtWidgets.QCheckBox(columnNames[ind], subMenuFollow)
 
                 chbox.setChecked(not self.isSectionHidden(ind))
-                chbox.toggled.connect(
-                    partial(self.toggledColumn, ind, columnNames[ind])
-                )
+                chbox.toggled.connect(partial(self.toggledColumn, ind, columnNames[ind]))
 
                 checkableAction = QtWidgets.QWidgetAction(subMenuFollow)
                 checkableAction.setDefaultWidget(chbox)
@@ -520,8 +506,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
         if not rect.isValid():
             return
         isLastColumn = (
-            self.model().datatable.isSkinData
-            and index >= self.model().datatable.nbDrivers
+            self.model().datatable.isSkinData and index >= self.model().datatable.nbDrivers
         )
         data = self._get_data(index)
         font = self.font()
@@ -560,9 +545,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             ][defaultBGInd]
 
             theBGBrush = (
-                self.lockedBG
-                if self.model().datatable.isColumnLocked(index)
-                else defaultBG
+                self.lockedBG if self.model().datatable.isColumnLocked(index) else defaultBG
             )
 
             # Draw the separator color
@@ -583,9 +566,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
 
             # Build a rotated rectangle to draw the text in
             painter.rotate(-90)
-            rotRect = QtCore.QRectF(
-                0, 0, rect.height() - self._colorDrawHeight, rect.width()
-            )
+            rotRect = QtCore.QRectF(0, 0, rect.height() - self._colorDrawHeight, rect.width())
             # Offset the rectangle a bit to visually center the text
             rotRect = rotRect.adjusted(self._margin, -descent, 0, 0)
 
@@ -594,9 +575,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             painter.drawText(rotRect, data, textOpt)
 
     def sizeHint(self):
-        return QtCore.QSize(
-            10, self._get_text_width() + 2 * self._margin + self._colorDrawHeight
-        )
+        return QtCore.QSize(10, self._get_text_width() + 2 * self._margin + self._colorDrawHeight)
 
     def _get_text_width(self):
         ff = self.font()
@@ -675,9 +654,7 @@ class FastTableView(QtWidgets.QTableView):
         opt.text = btn.text()
         s = QtCore.QSize(
             btn.style()
-            .sizeFromContents(
-                QtWidgets.QStyle.CT_HeaderSection, opt, QtCore.QSize(), btn
-            )
+            .sizeFromContents(QtWidgets.QStyle.CT_HeaderSection, opt, QtCore.QSize(), btn)
             .expandedTo(QtWidgets.QApplication.globalStrut())
         )
 

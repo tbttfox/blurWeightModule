@@ -14,7 +14,7 @@ from six.moves import range, map
 
 # GLOBAL FUNCTIONS
 class DataAbstract(object):
-    """ An abstract base class for holding data for the weight editor """
+    """An abstract base class for holding data for the weight editor"""
 
     verbose = False
 
@@ -71,23 +71,19 @@ class DataAbstract(object):
         ]
         for thePanel in listModelPanels:
             if cmds.isolateSelect(thePanel, query=True, state=True):
-                cmds.isolateSelect(
-                    thePanel, addDagObject=self.pointsDisplayTrans
-                )  # doesnt work
+                cmds.isolateSelect(thePanel, addDagObject=self.pointsDisplayTrans)  # doesnt work
 
         if forceSelection:
-            cmds.evalDeferred(
-                lambda: cmds.select(self.pointsDisplayTrans, deselect=True)
-            )
+            cmds.evalDeferred(lambda: cmds.select(self.pointsDisplayTrans, deselect=True))
             # that's added because the isolate doesnt work otherwise, it's dumb I know
 
     def removeDisplayLocator(self):
-        """ Delete the display locator, and remove the reference to it from the class """
+        """Delete the display locator, and remove the reference to it from the class"""
         self.deleteDisplayLocator()
         self.pointsDisplayTrans = None
 
     def deleteDisplayLocator(self):
-        """ Delete the display locator if it exists """
+        """Delete the display locator if it exists"""
         if not self.pointsDisplayTrans:
             return
         if cmds.objExists(self.pointsDisplayTrans):
@@ -119,9 +115,7 @@ class DataAbstract(object):
         (pointsDisplayNode,) = cmds.listRelatives(
             self.pointsDisplayTrans, path=True, type="pointsDisplay"
         )
-        pdt_geometry = cmds.listRelatives(
-            self.pointsDisplayTrans, path=True, type=geoType
-        )
+        pdt_geometry = cmds.listRelatives(self.pointsDisplayTrans, path=True, type=geoType)
         if pdt_geometry:
             pdt_geometry = pdt_geometry[0]
             inGeoConn = cmds.listConnections(
@@ -133,13 +127,9 @@ class DataAbstract(object):
                     pointsDisplayNode + ".inGeometry",
                     f=True,
                 )
-            inConn = cmds.listConnections(
-                pdt_geometry + inPlug, s=True, d=False, p=True, scn=True
-            )
+            inConn = cmds.listConnections(pdt_geometry + inPlug, s=True, d=False, p=True, scn=True)
             if not inConn or inConn[0] != self.deformedShape + outPlug:
-                cmds.connectAttr(
-                    self.deformedShape + outPlug, pdt_geometry + inPlug, f=True
-                )
+                cmds.connectAttr(self.deformedShape + outPlug, pdt_geometry + inPlug, f=True)
         else:  # for the lattice direct connections
             inConn = cmds.listConnections(
                 pointsDisplayNode + ".inGeometry", s=True, d=False, p=True, scn=True
@@ -169,9 +159,7 @@ class DataAbstract(object):
             pointsDisplayNode = pointsDisplayTransChildren[0]
             if rowsSel != []:
                 if self.isMesh:
-                    selVertices = self.orderMelList(
-                        [self.vertices[ind] for ind in rowsSel]
-                    )
+                    selVertices = self.orderMelList([self.vertices[ind] for ind in rowsSel])
                     inList = ["vtx[{0}]".format(el) for el in selVertices]
                 elif self.isNurbsSurface:
                     inList = []
@@ -190,9 +178,7 @@ class DataAbstract(object):
                         s, t, u = getThreeIndices(div_s, div_t, div_u, indVtx)
                         inList.append("pt[{0}][{1}][{2}]".format(s, t, u))
                 else:
-                    selVertices = self.orderMelList(
-                        [self.vertices[ind] for ind in rowsSel]
-                    )
+                    selVertices = self.orderMelList([self.vertices[ind] for ind in rowsSel])
                     inList = ["cv[{0}]".format(el) for el in selVertices]
             else:
                 inList = []
@@ -200,7 +186,7 @@ class DataAbstract(object):
                 cmds.setAttr(
                     pointsDisplayNode + ".inputComponents",
                     *([len(inList)] + inList),
-                    type="componentList"
+                    type="componentList",
                 )
 
     # functions utils
@@ -223,15 +209,11 @@ class DataAbstract(object):
 
             selShape = cmds.ls(sel, objectsOnly=True)[0]
             if cmds.ls(selShape, transforms=True):  # if it's a transform get the shape
-                selShape = cmds.listRelatives(
-                    selShape, shapes=True, path=True, noIntermediate=True
-                )
+                selShape = cmds.listRelatives(selShape, shapes=True, path=True, noIntermediate=True)
                 selShape = selShape[0] if selShape else ""
             if not cmds.ls(selShape, shapes=True):
                 return "", ""
-            hist = cmds.listHistory(
-                selShape, levels=0, pruneDagObjects=True, interestLevel=True
-            )
+            hist = cmds.listHistory(selShape, levels=0, pruneDagObjects=True, interestLevel=True)
             if typeOfDeformer is not None and hist:
                 deformers = cmds.ls(hist, type=typeOfDeformer)
                 if deformers:
@@ -353,7 +335,7 @@ class DataAbstract(object):
         return mshPath
 
     def getShapeInfo(self):
-        """ Store the info about the current shape node onto self """
+        """Store the info about the current shape node onto self"""
         self.isNurbsSurface = False
         self.isLattice = False
         self.isMesh = False
@@ -373,9 +355,9 @@ class DataAbstract(object):
             div_u = cmds.getAttr(self.deformedShape + ".uDivisions")
             self.nbVertices = div_s * div_t * div_u
         elif self.shapePath.apiType() == OpenMaya.MFn.kNurbsCurve:
-            self.nbVertices = cmds.getAttr(
-                self.deformedShape + ".degree"
-            ) + cmds.getAttr(self.deformedShape + ".spans")
+            self.nbVertices = cmds.getAttr(self.deformedShape + ".degree") + cmds.getAttr(
+                self.deformedShape + ".spans"
+            )
         elif self.shapePath.apiType() == OpenMaya.MFn.kMesh:
             self.isMesh = True
             self.nbVertices = cmds.polyEvaluate(self.deformedShape, vertex=True)
@@ -384,7 +366,7 @@ class DataAbstract(object):
 
     @staticmethod
     def _getLatticePoints(theMObject, cvPoints):
-        """ Fill an MPointArray for a lattice defined in theMObject """
+        """Fill an MPointArray for a lattice defined in theMObject"""
         s_util = OpenMaya.MScriptUtil()
         t_util = OpenMaya.MScriptUtil()
         u_util = OpenMaya.MScriptUtil()
@@ -413,7 +395,7 @@ class DataAbstract(object):
                     idx += 1
 
     def getVerticesShape(self, theMObject):
-        """ Get the vertices from the shape
+        """Get the vertices from the shape
 
         Arguments:
             theMObject (MObject): The shapenode MObject
@@ -510,7 +492,7 @@ class DataAbstract(object):
 
     # get the data
     def clearData(self):
-        """ Clear data stored on this class instance """
+        """Clear data stored on this class instance"""
         self.deformedShape = ""
         self.shapeShortName = ""
         self.deformedShape_longName = ""
@@ -556,13 +538,11 @@ class DataAbstract(object):
         theDeformer=None,
         deformedShape=None,
     ):
-        """ A convenience function to be able to load the currently selected object """
+        """A convenience function to be able to load the currently selected object"""
         sel = cmds.ls(sl=True)
         if not sel:
             raise ValueError("No selection")
-        return self.getDataFromObject(
-            sel[0], typeOfDeformer, force, theDeformer, deformedShape
-        )
+        return self.getDataFromObject(sel[0], typeOfDeformer, force, theDeformer, deformedShape)
 
     def getDataFromObject(self, sel, typeOfDeformer, force, theDeformer, deformedShape):
         """Load data from a given object
@@ -615,9 +595,7 @@ class DataAbstract(object):
                 return False
 
             self.shapeShortName = (
-                cmds.listRelatives(deformedShape, p=True)[0]
-                .split(":")[-1]
-                .split("|")[-1]
+                cmds.listRelatives(deformedShape, p=True)[0].split(":")[-1].split("|")[-1]
             )
             splt = self.shapeShortName.split("_")
             if len(splt) > 5:
@@ -737,15 +715,13 @@ class DataAbstract(object):
         nbRows = self.Mbottom - self.Mtop + 1
 
         # GET the sub ARRAY
-        self.sub2DArrayToSet = self.display2dArray[self.Mtop: self.Mbottom + 1]
+        self.sub2DArrayToSet = self.display2dArray[self.Mtop : self.Mbottom + 1]
         self.orig2dArray = np.copy(self.sub2DArrayToSet)
 
         # GET the mask ARRAY
         maskSelection = np.full(self.orig2dArray.shape, False, dtype=bool)
         for top, bottom, left, right in chunks:
-            maskSelection[
-                top - self.Mtop : bottom - self.Mtop + 1, left : right + 1
-            ] = True
+            maskSelection[top - self.Mtop : bottom - self.Mtop + 1, left : right + 1] = True
         maskOppSelection = ~maskSelection
         # remove from mask hiddenColumns indices
         hiddenColumns = np.setdiff1d(self.hideColumnIndices, actualyVisibleColumns)
@@ -758,9 +734,7 @@ class DataAbstract(object):
         # get the mask of the locks
         self.lockedMask = np.tile(self.lockedColumns, (nbRows, 1))
         lockedRows = [
-            ind
-            for ind in range(nbRows)
-            if self.vertices[ind + self.Mtop] in self.lockedVertices
+            ind for ind in range(nbRows) if self.vertices[ind + self.Mtop] in self.lockedVertices
         ]
         self.lockedMask[lockedRows] = True
 
@@ -774,10 +748,7 @@ class DataAbstract(object):
             [self.vertices[indRow] for indRow in range(self.Mtop, self.Mbottom + 1)]
         )
         self.indicesWeights = np.array(
-            [
-                self.verticesWeight[indRow]
-                for indRow in range(self.Mtop, self.Mbottom + 1)
-            ]
+            [self.verticesWeight[indRow] for indRow in range(self.Mtop, self.Mbottom + 1)]
         )
         self.subOpposite_sortedIndices = np.argsort(self.indicesVertices)
 
@@ -785,7 +756,7 @@ class DataAbstract(object):
             self.indicesVertices = self.indicesVertices[self.opposite_sortedIndices]
 
     def getValue(self, row, column):
-        """ Get a value from the display 2d array """
+        """Get a value from the display 2d array"""
         return self.display2dArray[row][column]
 
     def setValueInDeformer(self, arrayForSetting):
@@ -795,9 +766,7 @@ class DataAbstract(object):
         Arguments:
             arrayForSetting (np.array): The array that will be set to the deformer
         """
-        raise RuntimeError(
-            "This is an abstract method, and must be re-implemented in a sub-class"
-        )
+        raise RuntimeError("This is an abstract method, and must be re-implemented in a sub-class")
 
     def commandForDoIt(self, arrayForSetting):
         """This function will be called by the DoIt method to enable undos
@@ -807,13 +776,11 @@ class DataAbstract(object):
         """
         self.setValueInDeformer(arrayForSetting)
         if self.sub2DArrayToSet.any():
-            np.put(
-                self.sub2DArrayToSet, range(self.sub2DArrayToSet.size), arrayForSetting
-            )
+            np.put(self.sub2DArrayToSet, range(self.sub2DArrayToSet.size), arrayForSetting)
 
     # function to get display texts
     def createRowText(self):
-        """ Create the text for the row headers """
+        """Create the text for the row headers"""
         if self.isNurbsSurface:
             self.rowText = []
             for indVtx in self.vertices:
@@ -892,25 +859,19 @@ class DataAbstract(object):
         else:
             toSel = self.orderMelList(selectedVertices, onlyStr=True)
             if cmds.nodeType(self.deformedShape) == "mesh":
-                toSel = [
-                    "{0}.vtx[{1}]".format(self.deformedShape, vtx) for vtx in toSel
-                ]
+                toSel = ["{0}.vtx[{1}]".format(self.deformedShape, vtx) for vtx in toSel]
             else:  # nurbsCurve
                 toSel = ["{0}.cv[{1}]".format(self.deformedShape, vtx) for vtx in toSel]
         cmds.select(toSel, r=True)
 
     # locks
     def addLockVerticesAttribute(self):
-        """ Add an attribute to the shape node to keep track of which vertices are locked """
-        if not cmds.attributeQuery(
-            "lockedVertices", node=self.deformedShape, exists=True
-        ):
-            cmds.addAttr(
-                self.deformedShape, longName="lockedVertices", dataType="Int32Array"
-            )
+        """Add an attribute to the shape node to keep track of which vertices are locked"""
+        if not cmds.attributeQuery("lockedVertices", node=self.deformedShape, exists=True):
+            cmds.addAttr(self.deformedShape, longName="lockedVertices", dataType="Int32Array")
 
     def getLocksInfo(self):
-        """ Get info on the locks, and set up the defaults """
+        """Get info on the locks, and set up the defaults"""
         self.lockedColumns = []
         self.lockedVertices = []
         # now vertices
@@ -1002,7 +963,7 @@ class DataAbstract(object):
 
 # UNDO REDO FUNCTIONS
 class DataQuickSet(object):
-    """ A class for quickly setting data in Maya """
+    """A class for quickly setting data in Maya"""
 
     def __init__(
         self,
@@ -1033,37 +994,33 @@ class DataQuickSet(object):
         self.normalizeWeights = None
 
     def doIt(self):
-        """ The maya command doIt function """
+        """The maya command doIt function"""
         pass
 
     def redoIt(self):
-        """ The maya command redoIt function """
+        """The maya command redoIt function"""
         if not self.isSkin:
             self.setValues(*self.redoArgs)
         else:
             self.blurSkinNode = self.disconnectBlurskinDisplay(self.theSkinCluster)
-            self.normalizeWeights = cmds.getAttr(
-                self.theSkinCluster + ".normalizeWeights"
-            )
+            self.normalizeWeights = cmds.getAttr(self.theSkinCluster + ".normalizeWeights")
             self.setSkinValue(*self.redoArgs)
             self.postSkinSet(self.theSkinCluster, self.inListVertices)
         self.refreshWindow()
 
     def undoIt(self):
-        """ The maya command undoIt function """
+        """The maya command undoIt function"""
         if not self.isSkin:
             self.setValues(*self.undoArgs)
         else:
             self.blurSkinNode = self.disconnectBlurskinDisplay(self.theSkinCluster)
-            self.normalizeWeights = cmds.getAttr(
-                self.theSkinCluster + ".normalizeWeights"
-            )
+            self.normalizeWeights = cmds.getAttr(self.theSkinCluster + ".normalizeWeights")
             self.setSkinValue(*self.undoArgs)
             self.postSkinSet(self.theSkinCluster, self.inListVertices)
         self.refreshWindow()
 
     def refreshWindow(self):
-        """ Refresh the window """
+        """Refresh the window"""
         if self.mainWindow:
             try:
                 self.mainWindow.refreshBtn()
@@ -1076,7 +1033,7 @@ class DataQuickSet(object):
 
     @staticmethod
     def setValues(attsValues):
-        """ Set given values to given attributes
+        """Set given values to given attributes
 
         Arguments:
             attsValues (list): A list of tuples of (attribute, values)
@@ -1093,7 +1050,7 @@ class DataQuickSet(object):
                 plg2.elementByLogicalIndex(indVtx).setFloat(value)
 
     def disconnectBlurskinDisplay(self, theSkinCluster):
-        """ Disconnect the blurskin display node from the given skincluster
+        """Disconnect the blurskin display node from the given skincluster
 
         Arguments:
             theSkinCluster (str): The skincluster node name
@@ -1121,7 +1078,7 @@ class DataQuickSet(object):
         return ""
 
     def postSkinSet(self, theSkinCluster, inListVertices):
-        """ A function to clean up after setting skin data
+        """A function to clean up after setting skin data
 
         Arguments:
             theSkinCluster (str): The skinCluster node name
@@ -1132,11 +1089,11 @@ class DataQuickSet(object):
             cmds.setAttr(
                 self.blurSkinNode + ".inputComponents",
                 *([len(inListVertices)] + inListVertices),
-                type="componentList"
+                type="componentList",
             )
 
     def setSkinValue(self, newArray):
-        """ Set data to the skin array
+        """Set data to the skin array
 
         Arguments:
             newArray (om.MDoubleArray): The maya array to set to the skincluster
