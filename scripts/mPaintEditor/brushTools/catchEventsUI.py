@@ -6,7 +6,7 @@ from Qt import QtCore, QtWidgets, QtCompat
 from maya import OpenMayaUI, cmds, mel
 from .brushPythonFunctions import (
     callPaintEditorFunction,
-    escapePressed,
+    doRemoveColorSets,
     toggleSoloMode,
     disableUndoContext,
 )
@@ -203,7 +203,7 @@ class HandleEventsQt:
         self.highlightBtns()
 
     def exitKeyPressed(self):
-        escapePressed()
+        doRemoveColorSets()
 
     def soloOpaqueKeyPressed(self):
         self.paintEditor.soloOpaque_cb.toggle()
