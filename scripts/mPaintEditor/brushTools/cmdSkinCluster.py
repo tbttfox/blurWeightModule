@@ -2,8 +2,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from maya import cmds, OpenMaya as om, OpenMayaAnim as oma
 import six
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 
 
 def getThreeIndices(div_s, div_t, div_u, *args):
@@ -100,9 +99,7 @@ def getFastData(skinClusterName, indices=None, shapePathIndex=0):
 
 
 def skinClusterHasSparceArray(skinClusterName):
-    matIndices = (
-        cmds.getAttr("{}.matrix".format(skinClusterName), multiIndices=True) or []
-    )
+    matIndices = cmds.getAttr("{}.matrix".format(skinClusterName), multiIndices=True) or []
     return len(matIndices) != max(matIndices) + 1
 
 
@@ -131,12 +128,8 @@ def reloadSkin(skinClusterName, newGeometrie=None, resetBindAtt=True):
         else:
             listBindPreMat[influenceName] = cmds.getAttr(bindPreAtt)
 
-        influenceColorAtt = "{}.influenceColor[{}]".format(
-            skinClusterName, influencesIndex
-        )
-        influenceColorConn = cmds.listConnections(
-            influenceColorAtt, s=True, d=False, p=True
-        )
+        influenceColorAtt = "{}.influenceColor[{}]".format(skinClusterName, influencesIndex)
+        influenceColorConn = cmds.listConnections(influenceColorAtt, s=True, d=False, p=True)
         if influenceColorConn:
             listInfluenceColor[influenceName] = influenceColorConn[0]
         else:
@@ -177,9 +170,7 @@ def reloadSkin(skinClusterName, newGeometrie=None, resetBindAtt=True):
             )
             inConns = []
             for shp in origShapes:
-                inConns.extend(
-                    cmds.listConnections(shp, s=True, d=False, p=True, c=True)
-                )
+                inConns.extend(cmds.listConnections(shp, s=True, d=False, p=True, c=True))
             for mast, slave in zip(inConns[1::2], inConns[0::2]):
                 cmds.disconnectAttr(mast, slave)
             newSkinName = cmds.skinCluster(
@@ -213,9 +204,7 @@ def reloadSkin(skinClusterName, newGeometrie=None, resetBindAtt=True):
     tmpInflInd = om.MIntArray(len(lstInfluences))
     for i in range(len(lstInfluences)):
         tmpInflInd.set(i, i)
-    sknFnNew.setWeights(
-        shapePathNew, fullComponentNew, tmpInflInd, weights, False, undoValues
-    )
+    sknFnNew.setWeights(shapePathNew, fullComponentNew, tmpInflInd, weights, False, undoValues)
 
     # reconnect the Atts -----------------------
     for influenceName, influencesIndex in six.iteritems(influencesIndicesNew):

@@ -1,19 +1,11 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from .Qt import QtGui, QtCore, QtWidgets, QtCompat
-
-from functools import partial
-from maya import cmds, mel, OpenMaya
-import six
-
-try:
-    from blurdev.gui import Window
-except ImportError:
-    from .Qt.QtWidgets import QMainWindow as Window
 
 import os
 import re
+import six
 import numpy as np
+from functools import partial
 
 from mWeightEditor.weightTools.skinData import DataOfSkin
 from mWeightEditor.weightTools.spinnerSlider import ValueSetting
@@ -24,8 +16,13 @@ from mWeightEditor.weightTools.utils import (
     addNameChangedCallback,
     removeNameChangedCallback,
     SettingVariable,
+    orderMelList,
 )
 
+from maya import cmds, mel, OpenMaya
+from six.moves import range
+
+from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from .brushTools import cmdSkinCluster
 from .brushTools.brushPythonFunctions import (
     UndoContext,
@@ -35,8 +32,12 @@ from .brushTools.brushPythonFunctions import (
     deleteExistingColorSets,
     setSoloMode,
 )
-from six.moves import range
-import six
+
+
+try:
+    from blurdev.gui import Window
+except ImportError:
+    from Qt.QtWidgets import QMainWindow as Window
 
 
 class ValueSettingPE(ValueSetting):
@@ -112,8 +113,7 @@ def getUiFile(fileVar, subFolder="ui", uiName=None):
     uiFolder, filename = os.path.split(fileVar)
     if uiName is None:
         uiName = os.path.splitext(filename)[0]
-    if subFolder:
-        uiFile = os.path.join(uiFolder, subFolder, uiName + ".ui")
+    uiFile = os.path.join(uiFolder, subFolder, uiName + ".ui")
     return uiFile
 
 
@@ -162,8 +162,8 @@ INFLUENCE_COLORS = [
 ]
 
 lstShortCuts = [
-    ("Remove ", "Ctrl + LMB"),
-    ("Smooth", "Shift + LMB"),
+    ("Remove ", "Shift + LMB"),
+    ("Smooth", "Ctrl + LMB"),
     ("Sharpen", "Ctrl + Shift + LMB"),
     ("Size", "MMB left right"),
     ("Strength", "MMB up down"),
@@ -276,11 +276,10 @@ class SkinPaintWin(Window):
             cmds.brSkinBrushContext("brSkinBrushContext1", e=True, refreshDfmColor=ind)
 
     def refreshWeightEditor(self, getLocks=True):
-        if self.weightEditor is None:
-            return
-        if getLocks:
-            self.weightEditor.dataOfDeformer.getLocksInfo()
-        self.weightEditor._tv.repaint()
+        if self.weightEditor is not None:
+            if getLocks:
+                self.weightEditor.dataOfDeformer.getLocksInfo()
+            self.weightEditor._tv.repaint()
 
     def revertColor(self):
         self.colorDialog.setCurrentColor(self.colorDialog.cancelColor)
@@ -772,9 +771,9 @@ class SkinPaintWin(Window):
             toNotRmvStr = "\n - ".join([el for el, vtx in non_removable])
             message += "\n\n\ncannot remove Influences :\n - {0}".format(toNotRmvStr)
             for nm, vtx in non_removable:
-                selVertices = self.dataOfSkin.orderMelList(vtx)
+                selVertices = orderMelList(vtx)
                 inList = [
-                    "{1}.vtx[{0}]".format(el, self.dataOfSkin.deformedShape) for el in selVertices
+                    "{0}.vtx[{1}]".format(self.dataOfSkin.deformedShape, el) for el in selVertices
                 ]
                 print(nm, "\n", inList, "\n")
 
@@ -854,7 +853,7 @@ class SkinPaintWin(Window):
         self.uiInfluenceTREE.deleteLater()
 
         self.uiInfluenceTREE = InfluenceTree(self)
-        dialogLayout.insertWidget(ind, self.uiInfluenceTREE)
+        dialogLayout.insertWidget(dialogLayout.count() - 1, self.uiInfluenceTREE)
         # end changing the treeWidghet
 
         self.lock_btn.setIcon(_icons["unlock"])

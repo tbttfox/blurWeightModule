@@ -13,6 +13,28 @@
   <property name="windowTitle">
    <string>Display Rig</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">QPushButton{
+	color: rgb(0, 0, 0);
+}
+
+
+QWidget[bgColor=&quot;green&quot;] {
+	background-color: rgb(190,242,150);
+}
+
+QWidget[bgColor=&quot;blue&quot;] {
+	background-color: rgb(168,210, 242);
+}
+
+QWidget[bgColor=&quot;yellow&quot;] {
+	background-color: rgb(242,230,135);
+}
+
+QWidget[bgColor=&quot;orange&quot;] {
+	background-color: rgb(242,185,83);
+}</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
@@ -109,7 +131,16 @@
              </size>
             </property>
             <layout class="QGridLayout" name="gridLayout">
-             <property name="margin">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
               <number>0</number>
              </property>
              <property name="spacing">
@@ -290,7 +321,16 @@ p, li { white-space: pre-wrap; }
              <property name="spacing">
               <number>0</number>
              </property>
-             <property name="margin">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
               <number>0</number>
              </property>
              <item>
@@ -386,7 +426,16 @@ p, li { white-space: pre-wrap; }
              <property name="spacing">
               <number>0</number>
              </property>
-             <property name="margin">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
               <number>0</number>
              </property>
              <item>
@@ -641,7 +690,16 @@ p, li { white-space: pre-wrap; }
               <property name="spacing">
                <number>0</number>
               </property>
-              <property name="margin">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
                <number>0</number>
               </property>
               <item>
@@ -734,7 +792,16 @@ Click to fix</string>
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -959,7 +1026,7 @@ p, li { white-space: pre-wrap; }
            <bool>false</bool>
           </attribute>
           <attribute name="headerDefaultSectionSize">
-           <number>20</number>
+           <number>35</number>
           </attribute>
           <column>
            <property name="text">
@@ -1198,7 +1265,7 @@ p, li { white-space: pre-wrap; }
           <x>0</x>
           <y>0</y>
           <width>317</width>
-          <height>681</height>
+          <height>701</height>
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_7">
@@ -1226,7 +1293,16 @@ p, li { white-space: pre-wrap; }
             <property name="spacing">
              <number>3</number>
             </property>
-            <property name="margin">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
              <number>0</number>
             </property>
             <item>
@@ -1242,7 +1318,16 @@ p, li { white-space: pre-wrap; }
                <string>Colors options</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_3">
-               <property name="margin">
+               <property name="leftMargin">
+                <number>9</number>
+               </property>
+               <property name="topMargin">
+                <number>9</number>
+               </property>
+               <property name="rightMargin">
+                <number>9</number>
+               </property>
+               <property name="bottomMargin">
                 <number>9</number>
                </property>
                <property name="spacing">
@@ -1407,24 +1492,7 @@ p, li { white-space: pre-wrap; }
                <property name="spacing">
                 <number>3</number>
                </property>
-               <item row="1" column="0">
-                <widget class="QRadioButton" name="colorSets_rb">
-                 <property name="text">
-                  <string>colorSets</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QRadioButton" name="drawManager_rb">
-                 <property name="text">
-                  <string> drawManager</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0" colspan="2">
+               <item row="4" column="0" colspan="2">
                 <widget class="QGroupBox" name="drawManager_gb">
                  <property name="title">
                   <string>Draw</string>
@@ -1482,7 +1550,34 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </widget>
                </item>
-               <item row="1" column="2">
+               <item row="0" column="0" colspan="2">
+                <widget class="QCheckBox" name="drawBrush_cb">
+                 <property name="text">
+                  <string>Draw Brush in paint</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QRadioButton" name="colorSets_rb">
+                 <property name="text">
+                  <string>colorSets</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QRadioButton" name="drawManager_rb">
+                 <property name="text">
+                  <string> drawManager</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="2">
                 <spacer name="horizontalSpacer_13">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
@@ -1495,10 +1590,10 @@ p, li { white-space: pre-wrap; }
                  </property>
                 </spacer>
                </item>
-               <item row="0" column="0" colspan="2">
-                <widget class="QCheckBox" name="drawBrush_cb">
+               <item row="1" column="0">
+                <widget class="QCheckBox" name="replaceShader_cb">
                  <property name="text">
-                  <string>Draw Brush in paint</string>
+                  <string>replace shader on enter </string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -1526,7 +1621,16 @@ p, li { white-space: pre-wrap; }
                <property name="spacing">
                 <number>3</number>
                </property>
-               <property name="margin">
+               <property name="leftMargin">
+                <number>9</number>
+               </property>
+               <property name="topMargin">
+                <number>9</number>
+               </property>
+               <property name="rightMargin">
+                <number>9</number>
+               </property>
+               <property name="bottomMargin">
                 <number>9</number>
                </property>
                <item>

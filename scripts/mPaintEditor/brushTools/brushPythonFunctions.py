@@ -1,52 +1,37 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from maya import cmds, mel
-import re
-import time
+
+import json
 import random
-from collections import OrderedDict
-
-from ..Qt import QtGui
-from mWeightEditor.weightTools.utils import GlobalContext
-from ..utils import rootWindow
-
+import re
 import six
-from six.moves import range
-from six.moves import map
-from six.moves import zip
+import time
+
+from Qt import QtGui
+from collections import OrderedDict
+from contextlib import contextmanager
+
+from maya import cmds, mel
+from six.moves import map, range, zip
+
+from ..utils import rootWindow, GlobalContext
 
 
-class disableUndoContext(object):
-    """
-    **CONTEXT** class(*use* ``with`` *statement*)
-    """
-
-    def __init__(self, raise_error=True, disableUndo=True):
-        self.raise_error = raise_error
-        self.disableUndo = disableUndo
-
-    def __enter__(self):
-        if self.disableUndo:
-            cmds.undoInfo(stateWithoutFlush=False)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Turn refresh on again and raise errors if asked"""
-        if self.disableUndo:
-            cmds.undoInfo(stateWithoutFlush=True)
+@contextmanager
+def disableUndoContext():
+    cmds.undoInfo(stateWithoutFlush=False)
+    try:
+        yield
+    finally:
+        cmds.undoInfo(stateWithoutFlush=True)
 
 
-class UndoContext(object):
-    """
-    **CONTEXT** class(*use* ``with`` *statement*)
-    """
-
-    def __init__(self, chunkName="myProcessTrue"):
-        self.chunkName = chunkName
-
-    def __enter__(self):
-        cmds.undoInfo(openChunk=True, chunkName=self.chunkName)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
+@contextmanager
+def UndoContext(chunkName="myProcessTrue"):
+    cmds.undoInfo(openChunk=True, chunkName=chunkName)
+    try:
+        yield
+    finally:
         cmds.undoInfo(closeChunk=True)
 
 
@@ -490,6 +475,7 @@ def addNurbsTessellate(selectedNurbs):
         cmds.connectAttr(nrbs + ".nurbsTessellate", msh + ".nurbsTessellate", f=True)
 
         origShape = getOrigShape(nrbs)
+        assert origShape is not None
         att = origShape + ".local"
         origMsh = createMeshFromNurbs(att, prt)
         cmds.setAttr(origMsh + ".v", 0)
@@ -578,7 +564,7 @@ def toolOnSetupEndDeferred():
         mshShape = cmds.brSkinBrushContext(currentContext, query=True, meshName=True)
         mel.eval('global string $gSkinBrushMesh; $gSkinBrushMesh="' + mshShape + '";')
         cmds.evalDeferred(doUpdateWireFrameColorSoloMode)
-        # ------ compute time ----------------------------------
+        # compute time
         startTime = cmds.optionVar(q="startTime")
         completionTime = time.time() - startTime
 
@@ -611,7 +597,8 @@ def toolOffCleanupDeferred():
                 )
                 if wireDisplay:
                     cmds.showHidden(wireDisplay)
-            except RuntimeError:  # RuntimeError: Unknown object type: wireframeDisplay
+            except RuntimeError:
+                # RuntimeError: Unknown object type: wireframeDisplay
                 pass
         showBackNurbs(theMesh)
         restoreShading()
@@ -674,7 +661,8 @@ def fixOptionVarContext(**inputKargsToChange):
         kwargs = OrderedDict()
         if cmds.optionVar(exists="brSkinBrushContext1"):
             cmd = cmds.optionVar(q="brSkinBrushContext1")
-            # remove command name and command object at the end : brSkinBrushContext anmd brSkinBrushContext1;
+            # remove command name and command object at the
+            # end : brSkinBrushContext and brSkinBrushContext1;
             splitofspaces = cmd.split(" ")
             cmd2 = " ".join(splitofspaces[1:-1])
             spl = cmd2.split("-")
@@ -724,7 +712,7 @@ def fixOptionVarContext(**inputKargsToChange):
                         kwargs[dicOfName[lineSplit[0]]] = True
                 newSpl.append(lne)
 
-            # now rebuild command ---------------------------------
+            # now rebuild command
             kwargs.update(inputKargsToChange)
             cmdNew = "brSkinBrushContext "
             for key, value in six.iteritems(kwargs):
@@ -761,7 +749,7 @@ def deleteExistingColorSets():
                     cmds.polyColorSet(obj, delete=True, colorSet=colSet)
 
 
-# --------------CALL FROM BRUSH-------------------------
+# CALL FROM BRUSH
 def cleanOpenUndo():
     print("CALL cleanOpenUndo - pass")
 
@@ -771,13 +759,12 @@ def cleanCloseUndo():
 
 
 def getPaintEditor():
-    with UndoContext("getPaintEditor"):
-        import mPaintEditor
+    import mPaintEditor
 
-        editor = mPaintEditor.PAINT_EDITOR
-        if editor is not None and editor.isVisible():
-            return editor
-        return None
+    editor = mPaintEditor.PAINT_EDITOR
+    if editor is not None and editor.isVisible():
+        return editor
+    return None
 
 
 def afterPaint():
