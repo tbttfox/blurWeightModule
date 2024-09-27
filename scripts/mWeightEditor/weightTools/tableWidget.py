@@ -1,11 +1,30 @@
 from __future__ import absolute_import
 
+import string
 from Qt import QtGui, QtCore, QtWidgets
 from functools import partial
 from maya import cmds, mel
-from six.moves import range
 import numpy as np
+
 from .skinData import DataOfSkin
+from six.moves import range
+
+
+TOL = 1e-5
+
+
+def _autoProp(name, default=None, typ=QtGui.QColor):
+    """A convenience function that gets/sets properties in a dictionary on a class
+    This lets me set up a bunch of QtCore.Property objects without having
+    to define getter/setter methods for each property
+    """
+    if default is None:
+        default = typ()
+    return QtCore.Property(
+        typ,
+        lambda obj: obj._multiStore.get(name, default),
+        lambda obj, val: obj._multiStore.update({name: val}),
+    )
 
 
 class TableModel(QtCore.QAbstractTableModel):
@@ -21,7 +40,6 @@ class TableModel(QtCore.QAbstractTableModel):
         self.whiteBrush = QtGui.QBrush(QtGui.QColor(200, 200, 200))
 
     def update(self, dataIn):
-        # dataIn (DataAbstract)
         self.datatable = dataIn
 
     def rowCount(self, parent=None):
@@ -247,8 +265,8 @@ class VertHeaderView(QtWidgets.QHeaderView):
         text = model.getRowText(index)
         multVal = model.datatable.verticesWeight[index]
         painter.save()
-        theBGBrush = self.greyBG
 
+        theBGBrush = self.greyBG
         if not model.datatable.isRowLocked(index):
             if model.isSoftOn():
                 col = int(multVal * 255 * 2)
@@ -414,8 +432,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             objColor = cmds.getAttr(colName + ".objectColor")
             wireColor = cmds.displayRGBColor("userDefined{0}".format(objColor + 1), query=True)
 
-        ret = [int(255 * el) for el in wireColor]
-        return ret
+        return [int(255 * el) for el in wireColor]
 
     def setColor(self, pos, index):
         menu = ColorMenu(self)
@@ -505,8 +522,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
         selectedColumns = self.getSelectedColumns()
         colIndex = selectedColumns.pop()
         theAtt = model.datatable.attributesToPaint[model.datatable.shortColumnsNames[colIndex]]
-        mel.eval('artSetToolAndSelectAttr( "artAttrCtx", "{}" );'.format(theAtt))
-        # print theIndex
+        mel.eval('artSetToolAndSelectAttr("artAttrCtx", "{}");'.format(theAtt))
 
     def showMenu(self, pos):
         popMenu = QtWidgets.QMenu(self)
@@ -688,12 +704,12 @@ class FastTableView(QtWidgets.QTableView):
         self._colorDrawHeight = 20
         self.regularBG = QtGui.QBrush(QtGui.QColor(130, 130, 130))
 
-        self.__nw_heading = "Vtx"
+        self._nw_heading = "Vtx"
         self.addRedrawButton()
 
     def keyPressEvent(self, event):
         txt = event.text()
-        isIn = txt and txt in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        isIn = txt and txt in string.ascii_letters
         if isIn:
             return
 
@@ -706,7 +722,7 @@ class FastTableView(QtWidgets.QTableView):
 
     def addRedrawButton(self):
         btn = self.findChild(QtWidgets.QAbstractButton)
-        btn.setText(self.__nw_heading)
+        btn.setText(self._nw_heading)
         btn.setToolTip("Toggle selecting all table cells")
         btn.installEventFilter(self)
         opt = QtWidgets.QStyleOptionHeader()
