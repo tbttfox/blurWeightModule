@@ -3,6 +3,7 @@ import os
 
 PAINT_EDITOR = None
 PAINT_EDITOR_ROOT = None
+PAINT_EDITOR_CONTEXT = "brSkinBrushContext1"
 
 
 def runMPaintEditor():
