@@ -18,7 +18,10 @@ MM_NAME = "skinBrush_MM"
 
 
 def signalBuilder(signal, arg):
-    return lambda: signal.emit(arg)
+    def emitter(*args, **kwargs):
+        signal.emit(arg)
+
+    return emitter
 
 
 MM_SOLO_COLORS = (
