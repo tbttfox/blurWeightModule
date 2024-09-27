@@ -5,7 +5,6 @@ from functools import partial
 from maya import cmds, mel
 import numpy as np
 import string
-import math
 from .skinData import DataOfSkin
 from six.moves import range
 
@@ -37,22 +36,26 @@ class TableModel(QtCore.QAbstractTableModel):
         self.datatable = dataIn
 
     def rowCount(self, parent=QtCore.QModelIndex()):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return 0
         return self.datatable.rowCount
 
     def columnCount(self, parent=QtCore.QModelIndex()):
-        assert self.datatable is not None
-        if isinstance(self.datatable, DataOfSkin):
+        if self.datatable is None:
+            return 0
+        elif isinstance(self.datatable, DataOfSkin):
             return self.datatable.columnCount + 1
         else:
             return self.datatable.columnCount
 
     def columnNames(self):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return []
         return self.datatable.shortColumnsNames
 
     def fullColumnNames(self):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return []
         return self.datatable.columnsNames
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
@@ -74,26 +77,30 @@ class TableModel(QtCore.QAbstractTableModel):
         return False
 
     def isLocked(self, index):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return False
         row = index.row()
         column = index.column()
         return self.datatable.isLocked(row, column)
 
     def realData(self, index):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return 0.0
         row = index.row()
         column = index.column()
         return self.datatable.getValue(row, column)
 
     def isSumColumn(self, index):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return False
         column = index.column()
         return isinstance(self.datatable, DataOfSkin) and column >= self.datatable.nbDrivers
 
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DisplayRole:
-            assert self.datatable is not None
-            if orientation == QtCore.Qt.Horizontal:
+            if self.datatable is None:
+                return ""
+            elif orientation == QtCore.Qt.Horizontal:
                 return self.datatable.columnsNames[section]
             else:
                 return self.datatable.rowText[section]
@@ -103,51 +110,50 @@ class TableModel(QtCore.QAbstractTableModel):
             return None
 
     def getColumnText(self, col):
-        assert self.datatable is not None
-        try:
-            return self.datatable.shortColumnsNames[col]
-        except Exception:
+        if self.datatable is None:
+            return ""
+        if col == len(self.datatable.shortColumnsNames):
             return "total"
+        return self.datatable.shortColumnsNames[col]
 
     def getRowText(self, row):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return ""
         return self.datatable.rowText[row]
 
     def getColumnSide(self, col):
-        assert self.datatable is not None
-        try:
-            driverName = self.datatable.columnsNames[col]
-            for letter in "LRM":
-                for sub in ["", "Bk", "Fr", "T", "B"]:
-                    if "_{}{}_".format(letter, sub) in driverName:
-                        return letter
-            return "X"
-        except Exception:
+        if self.datatable is None:
             return "X"
 
+        if col == len(self.datatable.shortColumnsNames):
+            return "X"
+
+        driverName = self.datatable.columnsNames[col]
+        for letter in "LRM":
+            for sub in ["", "Bk", "Fr", "T", "B"]:
+                if "_{}{}_".format(letter, sub) in driverName:
+                    return letter
+        return "X"
+
     def isSoftOn(self):
-        assert self.datatable is not None
+        if self.datatable is None:
+            return False
         return self.datatable.softOn
 
     def flags(self, index):
-        assert self.datatable is not None
-        try:
-            if not index.isValid():
-                return QtCore.Qt.ItemIsEnabled
-            column = index.column()
-            if isinstance(self.datatable, DataOfSkin) and column == self.datatable.nbDrivers:
-                result = QtCore.Qt.ItemIsEnabled
-            elif self.isLocked(index):
-                result = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-            else:
-                result = (
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
-                )
-            return QtCore.Qt.ItemFlags(result)
-        except Exception:
-            if self.weightEditorWidget is not None:
-                self.weightEditorWidget.deselectAll()
+        if self.datatable is None:
             return QtCore.Qt.ItemIsEnabled
+
+        if not index.isValid():
+            return QtCore.Qt.ItemIsEnabled
+        column = index.column()
+        if isinstance(self.datatable, DataOfSkin) and column == self.datatable.nbDrivers:
+            result = QtCore.Qt.ItemIsEnabled
+        elif self.isLocked(index):
+            result = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+        else:
+            result = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+        return QtCore.Qt.ItemFlags(result)
 
 
 class HighlightDelegate(QtWidgets.QStyledItemDelegate):
@@ -286,54 +292,43 @@ class VertHeaderView(QtWidgets.QHeaderView):
 
         return chunks
 
+    def _getDatatable(self):
+        model = self.model()
+        assert isinstance(model, TableModel)
+        assert model.datatable is not None
+        return model.datatable
+
     def selectVerts(self):
         selectedIndices = self.getSelectedRows()
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        model.datatable.selectVerts(selectedIndices)
+        self._getDatatable().selectVerts(selectedIndices)
 
     def highliteLockRows(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        modData = model.datatable
+        datatable = self._getDatatable()
         newSel = self.selectionModel().selection()
         newSel.clear()
-        nbColumns = modData.columnCount
+        nbColumns = datatable.columnCount
+        model = self.model()
         for row in range(self.count()):
-            if modData.vertices[row] in modData.lockedVertices:
+            if datatable.vertices[row] in datatable.lockedVertices:
                 newSel.select(model.index(row, 0), model.index(row, nbColumns - 1))
 
         self.selectionModel().select(newSel, QtCore.QItemSelectionModel.ClearAndSelect)
 
     def lockSelectedRows(self):
         selectedIndices = self.getSelectedRows()
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        model.datatable.lockRows(selectedIndices)
+        self._getDatatable().lockRows(selectedIndices)
 
     def lockAllButSelectedRows(self):
         selectedIndices = set(range(self.count()))
         selectedIndices.difference_update(self.getSelectedRows())
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        model.datatable.lockRows(selectedIndices)
+        self._getDatatable().lockRows(selectedIndices)
 
     def unlockSelectedRows(self):
         selectedIndices = self.getSelectedRows()
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        model.datatable.unLockRows(selectedIndices)
+        self._getDatatable().unLockRows(selectedIndices)
 
     def clearLocks(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        model.datatable.unLockRows(list(range(self.count())))
+        self._getDatatable().unLockRows(list(range(self.count())))
 
 
 class HorizHeaderView(QtWidgets.QHeaderView):
@@ -437,6 +432,12 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             assert isinstance(model, TableModel)
             cmds.setAttr(model.fullColumnNames()[index] + ".objectColor", color)
 
+    def _getDatatable(self):
+        model = self.model()
+        assert isinstance(model, TableModel)
+        assert model.datatable is not None
+        return model.datatable
+
     def getSelectedColumns(self):
         sel = self.selectionModel().selection()
         chunks = np.array([], dtype=int)
@@ -445,84 +446,61 @@ class HorizHeaderView(QtWidgets.QHeaderView):
 
         selectedIndices = [indCol for indCol in chunks if not self.isSectionHidden(indCol)]
 
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-
-        if isinstance(model.datatable, DataOfSkin):
+        if isinstance(self._getDatatable(), DataOfSkin):
             lastCol = self.count() - 1
             if lastCol in selectedIndices:
                 selectedIndices.remove(lastCol)
         return selectedIndices
 
     def lockSelectedColumns(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
         selectedIndices = self.getSelectedColumns()
-        model.datatable.lockColumns(selectedIndices)
+        self._getDataTable().lockColumns(selectedIndices)
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
     def lockAllButSelectedColumns(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
+        datatable = self._getDatatable()
+
         selectedIndices = set(range(self.count() - 1))
-        model.datatable.unLockColumns(selectedIndices)
+        datatable.unLockColumns(selectedIndices)
+
         selectedIndices.difference_update(self.getSelectedColumns())
-        model.datatable.lockColumns(selectedIndices)
+        datatable.lockColumns(selectedIndices)
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
     def unlockSelectedColumns(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
         selectedIndices = self.getSelectedColumns()
-        model.datatable.unLockColumns(selectedIndices)
+        self._getDataTable().unLockColumns(selectedIndices)
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
     def selectDeformers(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
         selectedIndices = self.getSelectedColumns()
-        model.datatable.selectDeformers(selectedIndices)
+        self._getDataTable().selectDeformers(selectedIndices)
 
     def displayVertices(self, doSelect=True):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
         selectedColumns = self.getSelectedColumns()
-        model.datatable.selectVertsOfColumns(selectedColumns, doSelect=doSelect)
+        self._getDataTable().selectVertsOfColumns(selectedColumns, doSelect=doSelect)
 
     def clearLocks(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        model.datatable.unLockColumns(list(range(self.count() - 1)))
+        self._getDataTable().unLockColumns(list(range(self.count() - 1)))
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
     def enterPaintAttribute(self):
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
+        datatable = self._getDatatable()
         selectedColumns = self.getSelectedColumns()
         colIndex = selectedColumns.pop()
-        theAtt = model.datatable.attributesToPaint[model.datatable.shortColumnsNames[colIndex]]
+        theAtt = datatable.attributesToPaint[datatable.shortColumnsNames[colIndex]]
         mel.eval('artSetToolAndSelectAttr("artAttrCtx", "{}");'.format(theAtt))
 
     def showMenu(self, pos):
         popMenu = QtWidgets.QMenu(self)
         selectionIsEmpty = self.selectionModel().selection().isEmpty()
 
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-        if isinstance(model.datatable, DataOfSkin):
+        datatable = self._getDatatable()
+        if isinstance(datatable, DataOfSkin):
             selAction = popMenu.addAction("select deformers")
             selAction.triggered.connect(self.selectDeformers)
             selAction.setEnabled(not selectionIsEmpty)
@@ -531,7 +509,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
         selVertices.triggered.connect(partial(self.displayVertices, True))
         selVertices.setEnabled(not selectionIsEmpty)
 
-        if isinstance(model.datatable, DataOfSkin):
+        if isinstance(datatable, DataOfSkin):
             popMenu.addSeparator()
 
             lockAction = popMenu.addAction("lock selected")
@@ -549,8 +527,8 @@ class HorizHeaderView(QtWidgets.QHeaderView):
             clearLocksAction = popMenu.addAction("clear all Locks")
             clearLocksAction.triggered.connect(self.clearLocks)
 
-            hideColumnIndices = model.datatable.hideColumnIndices
-            columnNames = model.columnNames()
+            hideColumnIndices = datatable.hideColumnIndices
+            columnNames = self.model().columnNames()
             popMenu.addSeparator()
             hideZeroColumnsAction = popMenu.addAction("hide zero columns")
             hideZeroColumnsAction.setCheckable(True)
@@ -590,13 +568,8 @@ class HorizHeaderView(QtWidgets.QHeaderView):
         if not rect.isValid():
             return
 
-        model = self.model()
-        assert isinstance(model, TableModel)
-        assert model.datatable is not None
-
-        isLastColumn = (
-            isinstance(model.datatable, DataOfSkin) and index >= model.datatable.nbDrivers
-        )
+        datatable = self._getDatatable()
+        isLastColumn = isinstance(datatable, DataOfSkin) and index >= datatable.nbDrivers
         data = self._get_data(index)
         font = self.font()
         descent = self.fontMetrics().descent()
