@@ -1482,6 +1482,19 @@ class SkinPaintWin(Window):
                     dicValues[att] = checkBox.isChecked()
             cmds.brSkinBrushContext("brSkinBrushContext1", **dicValues)
 
+    def buttonByCommandIndex(self, cmdIdx):
+        ret = {
+            0: self.add_btn,
+            1: self.rmv_btn,
+            2: self.addPerc_btn,
+            5: self.sharpen_btn,
+            3: self.abs_btn,
+            4: self.smooth_btn,
+            6: self.locks_btn,
+            7: self.unLocks_btn,
+        }
+        return ret[cmdIdx]
+
 
 # -------------------------------------------------------------------------------
 # INFLUENCE ITEM

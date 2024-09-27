@@ -19,21 +19,64 @@ ROOTWINDOW = None
 MM_NAME = "skinBrush_MM"
 
 
-def markingMenuPaintEditorButtonClick(cmdInd, buttonName):
-    cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, commandIndex=cmdInd)
-    btn = callPaintEditorFunction(buttonName + "_btn")
-    if btn:
-        btn.click()
+def signalBuilder(signal, arg):
+    return lambda: signal.emit(arg)
 
 
-def markingMenuUpdateSoloColor(colorIdx):
-    cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, soloColorType=colorIdx)
-    callPaintEditorFunction("updateSoloColor", colorIdx)
+MM_SOLO_COLORS = (
+    ("White", 0),
+    ("Lava", 1),
+    ("Influence", 2),
+)
+
+MM_LAYOUT = (
+    ("Add", "N", 0),
+    ("Remove", "S", 1),
+    ("Add Percent", "NW", 2),
+    ("Absolute", "NE", 3),
+    ("Smooth", "W", 4),
+    ("Sharpen", "SW", 5),
+    ("Locks Verts", "E", 6),
+    ("unlocks Verts", "SE", 7),
+)
 
 
-def buttonClickBuilder(func, *args):
-    """Build a button-click function for the marking menu"""
-    return lambda: func(*args)
+SMOOTH_KEY = QtCore.Qt.Key_Control
+REMOVE_KEY = QtCore.Qt.Key_Shift
+
+EXIT_KEY = QtCore.Qt.Key_Escape
+SOLO_KEY = QtCore.Qt.Key_S
+MIRROR_KEY = QtCore.Qt.Key_M
+SET_ORBIT_POS_KEY = QtCore.Qt.Key_F
+SOLO_OPAQUE_KEY = QtCore.Qt.Key_A
+
+# +Alt = pick MAX influence
+PICK_INFLUENCE_KEY = QtCore.Qt.Key_D
+
+# ALT KEYS
+TOGGLE_WIREFRAME_KEY = QtCore.Qt.Key_W
+TOGGLE_XRAY_KEY = QtCore.Qt.Key_X
+
+# Handled specially
+MARKING_MENU_KEY = QtCore.Qt.Key_U
+
+
+MM_SOLO_COLORS = (
+    ("White", 0),
+    ("Lava", 1),
+    ("Influence", 2),
+)
+
+MM_LAYOUT = (
+    ("Add", "N", 0),
+    ("Remove", "S", 1),
+    ("Add Percent", "NW", 2),
+    ("Absolute", "NE", 3),
+    ("Smooth", "W", 4),
+    ("Sharpen", "SW", 5),
+    ("Locks Verts", "E", 6),
+    ("unlocks Verts", "SE", 7),
+)
 
 
 def callMarkingMenu(catcher):
@@ -68,42 +111,24 @@ def callMarkingMenu(catcher):
         "sourceType": "mel",
         "longDivider": True,
     }
-    # 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7 UnLockVertices
 
-    lstCommands = [
-        ("add", "N", "add", 0),
-        ("remove", "S", "rmv", 1),
-        ("addPercent", "NW", "addPerc", 2),
-        ("sharpen", "SW", "sharpen", 5),
-        ("absolute", "NE", "abs", 3),
-        ("smooth", "W", "smooth", 4),
-        ("locks Verts", "E", "locks", 6),
-        ("Unlocks Verts", "SE", "unLocks", 7),
-    ]
-
-    for ind, (txt, posi, btn, cmdInd) in enumerate(lstCommands):
+    for ind, (txt, posi, cmdInd) in enumerate(MM_LAYOUT):
         kwArgs["radialPosition"] = posi
         kwArgs["label"] = txt
         kwArgs["sourceType"] = "python"
-        # kwArgs["command"] = buttonClickBuilder(markingMenuPaintEditorButtonClick, cmdInd, btn)
-
-        # TODO: THIS
-        # catcher.MarkingMenuButtonPressed.emit(cmdInd, btn)
+        kwArgs["command"] = signalBuilder(catcher.MarkingMenuButtonPressed, cmdInd)
 
         cmds.menuItem("menuEditorMenuItem{0}".format(ind + 1), **kwArgs)
     kwArgs.pop("radialPosition", None)
     kwArgs["label"] = "solo color"
     kwArgs["subMenu"] = True
 
-    cmds.menuItem("menuEditorMenuItem{0}".format(len(lstCommands) + 1), **kwArgs)
+    cmds.menuItem("menuEditorMenuItem{0}".format(len(MM_LAYOUT) + 1), **kwArgs)
     kwArgs["subMenu"] = False
-    for ind, colType in enumerate(["white", "lava", "influence"]):
+    for ind, (colType, colorInd) in enumerate(MM_SOLO_COLORS):
         kwArgs["label"] = colType
         kwArgs["sourceType"] = "python"
-        # kwArgs["command"] = buttonClickBuilder(markingMenuUpdateSoloColor, ind)
-
-        # TODO: THIS
-        # catcher.MarkingMenuSoloColorChanged.emit(ind)
+        kwArgs["command"] = signalBuilder(catcher.MarkingMenuSoloChanged, colorInd)
 
         cmds.menuItem("menuEditorMenuItemCol{0}".format(ind + 1), **kwArgs)
 
@@ -111,31 +136,11 @@ def callMarkingMenu(catcher):
     cmds.setParent("..", menu=True)
 
 
-SMOOTH_KEY = QtCore.Qt.Key_Control
-REMOVE_KEY = QtCore.Qt.Key_Shift
-
-EXIT_KEY = QtCore.Qt.Key_Escape
-SOLO_KEY = QtCore.Qt.Key_S
-MIRROR_KEY = QtCore.Qt.Key_M
-SET_ORBIT_POS_KEY = QtCore.Qt.Key_F
-SOLO_OPAQUE_KEY = QtCore.Qt.Key_A
-
-# +Alt = pick MAX influence
-PICK_INFLUENCE_KEY = QtCore.Qt.Key_D
-
-# ALT KEYS
-TOGGLE_WIREFRAME_KEY = QtCore.Qt.Key_W
-TOGGLE_XRAY_KEY = QtCore.Qt.Key_X
-
-# Handled specially
-MARKING_MENU_KEY = QtCore.Qt.Key_U
-
-
 class HandleEventsQt:
     """Handle any events that will affect the QT ui"""
 
-    def __init__(self, widget, catcher):
-        self.widget = widget  # the Qt paint editor widget
+    def __init__(self, paintEditor, catcher):
+        self.paintEditor = paintEditor
         self.prevButton = "add"
         self.isSmoothKeyPressed = False
         self.isRemoveKeyPressed = False
@@ -150,6 +155,9 @@ class HandleEventsQt:
         self.catcher.SoloModeKeyPressed.connect(self.soloModeKeyPressed)
         self.catcher.SoloOpaqueKeyPressed.connect(self.soloOpaqueKeyPressed)
         self.catcher.MirrorKeyPressed.connect(self.mirrorKeyPressed)
+
+        self.catcher.MarkingMenuButtonPressed.connect(self.markingMenuPaintEditorButtonClick)
+        self.catcher.MarkingMenuSoloChanged.connect(self.markingMenuUpdateSoloColor)
 
     def highlightBtns(self):
         btnToSelect = self.prevButton
@@ -171,14 +179,15 @@ class HandleEventsQt:
         else:
             value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, strength=True)
 
-        callPaintEditorFunction("highlightBtn", btnToSelect)
-        callPaintEditorFunction("updateStrengthVal", value)
+        self.paintEditor.highlightBtn(btnToSelect)
+        self.paintEditor.updateStrengthVal(value)
 
     def removeKeyPressed(self):
         self.isRemoveKeyPressed = True
         with disableUndoContext():
             if not self.isSmoothKeyPressed:
-                self.prevQtButton = callPaintEditorFunction("getEnabledButton")
+                self.prevQtButton = self.paintEditor.getEnabledButton()
+
             self.highlightBtns()
 
     def smoothKeyPressed(self):
@@ -197,17 +206,19 @@ class HandleEventsQt:
         escapePressed()
 
     def soloOpaqueKeyPressed(self):
-        soloOpaque = callPaintEditorFunction("soloOpaque_cb")
-        if soloOpaque:
-            soloOpaque.toggle()
+        self.paintEditor.soloOpaque_cb.toggle()
 
     def mirrorKeyPressed(self):
-        mirror = callPaintEditorFunction("mirrorActive_cb")
-        if mirror:
-            mirror.toggle()
+        self.paintEditor.mirrorActive_cb.toggle()
 
     def soloModeKeyPressed(self):
         toggleSoloMode()
+
+    def markingMenuPaintEditorButtonClick(self, cmdInd):
+        self.paintEditor.buttonByCommandIndex(cmdInd).click()
+
+    def markingMenuUpdateSoloColor(self, colorIdx):
+        self.paintEditor.updateSoloColor(colorIdx)
 
 
 class HandleEventsMaya:
@@ -215,7 +226,6 @@ class HandleEventsMaya:
 
     def __init__(self, catcher):
         self.orbit = meshFnIntersection.Orbit()
-        self.testWireFrame = True
         self.restorePanels = []
         self.catcher = catcher
         self.hookup()
@@ -233,6 +243,9 @@ class HandleEventsMaya:
 
         self.catcher.SetOrbitPosKeyPressed.connect(self.setOrbitKeyPressed)
         self.catcher.SetToggleXrayKeyPressed.connect(self.toggleXrayKeyPressed)
+
+        self.catcher.MarkingMenuButtonPressed.connect(self.markingMenuPaintEditorButtonClick)
+        self.catcher.MarkingMenuSoloChanged.connect(self.markingMenuUpdateSoloColor)
 
     @staticmethod
     def getModelPanels():
@@ -281,7 +294,6 @@ class HandleEventsMaya:
     def setPanelsDisplayOn(self):
         self.restorePanels = []
         dicPanel = {"edit": True, "displayLights": "flat", "useDefaultMaterial": False}
-        wireframeCB = callPaintEditorFunction("wireframe_cb")
         listModelEditorKeys = [
             "displayLights",
             "cmEnabled",
@@ -289,11 +301,11 @@ class HandleEventsMaya:
             "wireframeOnShaded",
             "useDefaultMaterial",
         ]
-        if not self.testWireFrame:
-            if wireframeCB and wireframeCB.isChecked():
-                dicPanel["wireframeOnShaded"] = False
-        else:
-            listModelEditorKeys.remove("wireframeOnShaded")
+
+        # TODO: This option should be put into the context
+        wireframeCB = callPaintEditorFunction("wireframe_cb")
+        if wireframeCB and wireframeCB.isChecked():
+            dicPanel["wireframeOnShaded"] = False
 
         for panel in self.getModelPanels():
             valDic = {}
@@ -308,6 +320,12 @@ class HandleEventsMaya:
     def setPanelsDisplayOff(self):
         for panel, valDic in self.restorePanels:
             cmds.modelEditor(panel, edit=True, **valDic)
+
+    def markingMenuPaintEditorButtonClick(self, cmdInd):
+        cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, commandIndex=cmdInd)
+
+    def markingMenuUpdateSoloColor(self, colorIdx):
+        cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, soloColorType=colorIdx)
 
 
 class CatchEventsWidget(QtCore.QObject):
@@ -336,6 +354,9 @@ class CatchEventsWidget(QtCore.QObject):
     SoloModeKeyPressed = QtCore.Signal()
     SoloOpaqueKeyPressed = QtCore.Signal()
     MirrorKeyPressed = QtCore.Signal()
+
+    MarkingMenuButtonPressed = QtCore.Signal(int)
+    MarkingMenuSoloChanged = QtCore.Signal(int)
 
     def __init__(self):
         super(CatchEventsWidget, self).__init__(ROOTWINDOW)
