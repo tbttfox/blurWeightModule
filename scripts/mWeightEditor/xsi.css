@@ -1,19 +1,19 @@
 QWidget {
     background: #aba8a6;
-    color:black;
+    color: black;
     selection-background-color: #a0a0ff;
     font-family: "Myriad Pro";
     font-size: 11px;
 }
 QCheckBox:hover {
-    background:rgb(120, 120, 120);
+    background: rgb(120, 120, 120);
 }
 QMenu::item:disabled {
     font-style: italic;
-    color:grey;
+    color: grey;
 }
 QMenu::item:selected {
-    background-color:rgb(120, 120, 120);
+    background-color: rgb(120, 120, 120);
 }
 QPushButton {
     color: black;
@@ -24,7 +24,7 @@ QComboBox {
 }
 QPushButton:checked {
     background-color: rgb(100, 100, 100);
-    color:white;
+    color: white;
     border: none;
 }
 QPushButton:hover {
@@ -33,20 +33,20 @@ QPushButton:hover {
 }
 QPushButton:pressed {
     background-color: rgb(130, 130, 130);
-    color:white;
+    color: white;
     border-style: inset;
 }
 QPushButton:disabled {
-    font-style:italic;
-    color:grey;
+    font-style: italic;
+    color: grey;
 }
 QRadioButton:disabled {
-    font-style:italic;
-    color:grey;
+    font-style: italic;
+    color: grey;
 }
 QCheckBox:disabled {
-    font-style:italic;
-    color:grey;
+    font-style: italic;
+    color: grey;
 }
 FastTableView {
     selection-background-color: #a0a0ff;
@@ -74,7 +74,7 @@ FastTableView QTableCornerButton::section {
 }
 FastTableView QDoubleSpinBox {
     background-color: yellow;
-    color : black;
+    color: black;
 }
 FastTableView::section {
     background-color: #878787;
