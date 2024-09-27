@@ -14,114 +14,100 @@ from six.moves import range, zip
 #
 # global functions
 #
-class SettingWithRedraw(object):
-    def __init__(self, theWindow, raise_error=True):
-        self.theWindow = theWindow
 
-    def __enter__(self):
-        self.theWindow.storeSelection()
-        self.theWindow._tm.beginResetModel()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.theWindow._tm.endResetModel()
-        self.theWindow.retrieveSelection()
+@contextmanager
+def SettingWithRedraw(theWindow, raise_error=True):
+    theWindow.storeSelection()
+    theWindow._tm.beginResetModel()
+    try:
+        yield
+    finally:
+        theWindow._tm.endResetModel()
+        theWindow.retrieveSelection()
         # add a refresh of the locator ?
 
 
-class ResettingModel(object):
-    def __init__(self, tm, raise_error=True):
-        self._tm = tm
-
-    def __enter__(self):
-        self._tm.beginResetModel()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._tm.endResetModel()
+@contextmanager
+def ResettingModel(tm, raise_error=True):
+    tm.beginResetModel()
+    try:
+        yield
+    finally:
+        tm.endResetModel()
 
 
 @contextmanager
 def SettingVariable(variableHolder, variableName, valueOn=True, valueOut=False):
-    if isinstance(variableHolder, dict):
-        dico = variableHolder
-    else:
-        dico = variableHolder.__dict__
+    if not isinstance(variableHolder, dict):
+        variableHolder = variableHolder.__dict__
 
-    dico[variableName] = valueOn
+    variableHolder[variableName] = valueOn
     try:
         yield
     finally:
-        dico[variableName] = valueOut
+        variableHolder[variableName] = valueOut
 
 
-class ToggleHeaderVisibility(object):
-    def __init__(self, HH, raise_error=True):
-        self.HH = HH
-
-    def __enter__(self):
-        self.HH.hide()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.HH.show()
+@contextmanager
+def ToggleHeaderVisibility(HH, raise_error=True):
+    HH.hide()
+    try:
+        yield
+    finally:
+        HH.show()
 
 
-class GlobalContext(object):
-    def __init__(
-        self,
-        message="processing",
-        raise_error=True,
-        openUndo=True,
-        suspendRefresh=False,
-        doPrint=True,
-    ):
-        self.raise_error = raise_error
-        self.openUndo = openUndo
-        self.suspendRefresh = suspendRefresh
-        self.message = message
-        self.doPrint = doPrint
+@contextmanager
+def GlobalContext(
+    message="processing",
+    raise_error=True,
+    openUndo=True,
+    suspendRefresh=False,
+    doPrint=True,
+):
+    startTime = time.time()
+    cmds.waitCursor(state=True)
+    if openUndo:
+        cmds.undoInfo(openChunk=True, chunkName=message)
+    if suspendRefresh:
+        cmds.refresh(suspend=True)
 
-    def __enter__(self):
-        self.startTime = time.time()
-        cmds.waitCursor(state=True)
-        if self.openUndo:
-            cmds.undoInfo(openChunk=True, chunkName=self.message)
-        if self.suspendRefresh:
-            cmds.refresh(suspend=True)
+    try:
+        yield
+    except Exception as e:
+        import traceback
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+        if raise_error:
+            traceback.print_exc()
+            raise e
+        else:
+            traceback.print_exc(file=sys.stderr)
+
+    finally:
         if cmds.waitCursor(q=True, state=True):
             cmds.waitCursor(state=False)
-        if self.openUndo:
+        if openUndo:
             cmds.undoInfo(closeChunk=True)
-        if self.suspendRefresh:
+        if suspendRefresh:
             cmds.refresh(suspend=False)
             cmds.refresh()
 
-        completionTime = time.time() - self.startTime
+        completionTime = time.time() - startTime
         timeRes = str(datetime.timedelta(seconds=int(completionTime))).split(":")
-        if self.doPrint:
+        if doPrint:
             result = "{0} hours {1} mins {2} secs".format(*timeRes)
-            print("{0} executed in {1}[{2:.2f} secs]".format(self.message, result, completionTime))
-
-        if exc_type is not None:
-            if self.raise_error:
-                import traceback
-
-                traceback.print_tb(exc_tb)
-                raise exc_type(exc_val)
-            else:
-                sys.stderr.write("%s" % exc_val)
+            print("{0} executed in {1}[{2:.2f} secs]".format(message, result, completionTime))
 
 
-class toggleBlockSignals(object):
-    def __init__(self, listWidgets, raise_error=True):
-        self.listWidgets = listWidgets
-
-    def __enter__(self):
-        for widg in self.listWidgets:
-            widg.blockSignals(True)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        for widg in self.listWidgets:
+@contextmanager
+def toggleBlockSignals(listWidgets, raise_error=True):
+    for widg in listWidgets:
+        widg.blockSignals(True)
+    try:
+        yield
+    finally:
+        for widg in listWidgets:
             widg.blockSignals(False)
 
 
@@ -174,7 +160,8 @@ def orderMelList(listInd, onlyStr=True):
 
     # Index: 0 1 2   3  4  5
     # Value: 5 6 7  10 11 12
-    # Diff : 5 5 5   7  7  7  <-- Note: each "group" has the same difference
+    # Diff : 5 5 5   7  7  7  <-- (Value - Index)
+    # Note: each "group" has the same diff
     def tup(a, b):
         return (a,) if a == b else (a, b)
 
@@ -213,7 +200,8 @@ def orderMelListWithWeights(listInd):
 
     # Index: 0 1 2   3  4  5
     # Value: 5 6 7  10 11 12
-    # Diff : 5 5 5   7  7  7  <-- Note: each "group" has the same difference
+    # Diff : 5 5 5   7  7  7  <-- (Value - Index)
+    # Note: each "group" has the same diff
     def tup(a, b, w):
         return [(a,), w] if a == b else [(a, b), w]
 
@@ -499,7 +487,7 @@ def _fillComponentObject(componentObj, selPath):
     componentSelList.getDagPath(0, selPath, componentObj)
 
 
-def getComponentIndexList(componentList=[]):
+def getComponentIndexList(componentList=None):
     # https://github.com/bungnoid/glTools/blob/master/utils/component.py
     """
     Return an list of integer component index values
@@ -510,6 +498,8 @@ def getComponentIndexList(componentList=[]):
     componentIndexList = {}
 
     # Check string input
+    if componentList is None:
+        componentList = []
 
     if isinstance(componentList, six.string_types):
         componentList = [componentList]
@@ -674,13 +664,9 @@ def removeNameChangedCallback(callbackId):
 
 
 def addUserEventCallback(eventName, callback):
-    """
-    brSkinBrush_influencesReordered
-    brSkinBrush_updateDisplayStrength
-    brSkinBrush_updateDisplaySize
-    """
-
     # Go through this closure to strip out the client data
+    # That we can't read because maya only passes void pointers
+    # from user even callbacks
     def omcallback(clientData=None):
         callback()
 

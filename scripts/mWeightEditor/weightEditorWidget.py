@@ -486,21 +486,28 @@ class SkinWeightWin(Window):
         self.refreshSJ = cmds.scriptJob(event=["SelectionChanged", self.selectionCallBackRefresh])
         self.renameCallBack = addNameChangedCallback(self.renameCB)
 
-        sceneUpdateCallback = OpenMaya.MSceneMessage.addCallback(
-            OpenMaya.MSceneMessage.kBeforeNew, self.deselectAll
+        self.close_callback = []
+        self.close_callback.append(
+            OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeNew, self.deselectAll)
         )
-        self.close_callback = [sceneUpdateCallback]
         self.close_callback.append(
             OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeOpen, self.deselectAll)
         )
 
     def deleteCallBacks(self):
+        self.dataOfDeformer.deleteDisplayLocator()
+
         if self.renameCallBack is not None:
             removeNameChangedCallback(self.renameCallBack)
-        self.dataOfDeformer.deleteDisplayLocator()
-        cmds.scriptJob(kill=self.refreshSJ, force=True)
+        self.renameCallBack = None
+
+        if self.refreshSJ is not None:
+            cmds.scriptJob(kill=self.refreshSJ, force=True)
+        self.refreshSJ = None
+
         for callBck in self.close_callback:
             OpenMaya.MSceneMessage.removeCallback(callBck)
+        self.close_callback = []
 
     def deselectAll(self, *args):
         with ResettingModel(self._tm):

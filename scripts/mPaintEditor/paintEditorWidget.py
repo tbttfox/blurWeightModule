@@ -12,7 +12,7 @@ import numpy as np
 from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from functools import partial
 
-from . import getOrCreatePaintEditorContext, PAINT_EDITOR_CONTEXT
+from . import GET_CONTEXT
 
 from .brushTools import cmdSkinCluster
 from .brushTools.brushPythonFunctions import (
@@ -453,47 +453,31 @@ class SkinPaintWin(Window):
         self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeOpen, self.exitPaint))
         self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeSave, self.exitPaint))
         self.close_callback.append(addNameChangedCallback(self.renameCB))
-
         self.close_callback.append(addUserEventCallback("brSkinBrush_influencesReordered", self.influencesReorderedCB))
         self.close_callback.append(addUserEventCallback("brSkinBrush_updateDisplayStrength", self.strengthChangedCB))
         self.close_callback.append(addUserEventCallback("brSkinBrush_updateDisplaySize", self.sizeChangedCB))
         self.close_callback.append(addUserEventCallback("brSkinBrush_pickedInfluence", self.updateCurrentInfluenceCB))
 
-        # TODO:
+        self.close_callback.append(addUserEventCallback("brSkinBrush_toolOnSetupStart", self.toolOnSetupStart))
+        self.close_callback.append(addUserEventCallback("brSkinBrush_toolOnSetupEnd", self.toolOnSetupEnd))
+
         self.close_callback.append(addUserEventCallback("brSkinBrush_afterPaint", afterPaint))
         self.close_callback.append(addUserEventCallback("brSkinBrush_toolOffCleanup", self.toolOffCleanup))
-        self.close_callback.append(addUserEventCallback("brSkinBrush_toolOnSetup", self.toolOnSetup))
-
-        # unused
-        #self.close_callback.append(addUserEventCallback("brSkinBrush_cleanCloseUndo", self.cleanCloseUndo))
-        #self.close_callback.append(addUserEventCallback("brSkinBrush_cleanOpenUndo", self.cleanOpenUndo))
         # fmt: on
+
+    def toolOnSetupStart(self):
+        pass
 
     def toolOnSetupEnd(self):
         with UndoContext("toolOnSetupEnd"):
-            self.toolOnSetupEndDeferred()
-
-    def toolOnSetupEndDeferred(self):
-        with GlobalContext(message="toolOnSetupEndDeferred", doPrint=False):
-            disconnectNurbs()
-            cmds.select(clear=True)
-            mshShape = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, meshName=True)
-            cmds.evalDeferred(doUpdateWireFrameColorSoloMode)
-            # compute time
-            startTime = cmds.optionVar(query="startTime")
-            completionTime = time.time() - startTime
-
-            self.paintStart()
-            print(
-                "----- load BRUSH for {} in  [{:.2f} secs] ------".format(mshShape, completionTime)
-            )
+            with GlobalContext(message="toolOnSetupEndDeferred", doPrint=False):
+                disconnectNurbs()
+                cmds.select(clear=True)
+                cmds.evalDeferred(doUpdateWireFrameColorSoloMode)
+                self.paintStart()
 
     def toolOffCleanup(self):
-        with UndoContext("toolOffCleanup"):
-            self.toolOffCleanupDeferred()
-
-    def toolOffCleanupDeferred(self):
-        with GlobalContext(message="toolOffCleanupDeferred", doPrint=False):
+        with GlobalContext(message="toolOffCleanup", doPrint=False):
             if cmds.objExists("SkinningWireframe"):
                 cmds.delete("SkinningWireframe")
             closeEventCatcher()
@@ -501,7 +485,7 @@ class SkinPaintWin(Window):
 
             # This is the cleanup step before the context finishes switching
             # so the current context must be a skin brush context
-            mshShape = cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT, query=True, meshName=True)
+            mshShape = cmds.brSkinBrushContext(GET_CONTEXT.getLatest(), query=True, meshName=True)
             if mshShape and cmds.objExists(mshShape):
                 (theMesh,) = cmds.listRelatives(mshShape, parent=True, path=True)
                 try:
@@ -536,7 +520,9 @@ class SkinPaintWin(Window):
     def deleteCallBacks(self):
         deleteTheJobs("SkinPaintWin.refreshCallBack")
 
-        cmds.scriptJob(kill=self.refreshSJ, force=True)
+        if self.refreshSJ is not None:
+            cmds.scriptJob(kill=self.refreshSJ, force=True)
+        self.refreshSJ = None
 
         for sj in self.kill_scriptJob:
             cmds.scriptJob(kill=sj, force=True)
@@ -579,20 +565,22 @@ class SkinPaintWin(Window):
             self.valueSetter.setEnabled(True)
             self.widgetAbs.setEnabled(True)
 
-            contextExists = cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT, query=True, exists=True)
+            contextExists = cmds.brSkinBrushContext(
+                GET_CONTEXT.getLatest(), query=True, exists=True
+            )
             if commandText == "smooth":
                 self.valueSetter.commandArg = "smoothStrength"
                 theValue = self.smoothStrengthVarStored
                 if contextExists:
                     theValue = cmds.brSkinBrushContext(
-                        PAINT_EDITOR_CONTEXT, query=True, smoothStrength=True
+                        GET_CONTEXT.getLatest(), query=True, smoothStrength=True
                     )
             else:
                 self.valueSetter.commandArg = "strength"
                 theValue = self.strengthVarStored
                 if contextExists:
                     theValue = cmds.brSkinBrushContext(
-                        PAINT_EDITOR_CONTEXT, query=True, strength=True
+                        GET_CONTEXT.getLatest(), query=True, strength=True
                     )
 
             try:
@@ -677,7 +665,7 @@ class SkinPaintWin(Window):
 
     def isInPaint(self):
         currentContext = cmds.currentCtx()
-        if cmds.contextInfo(currentContext, c=True) == "brSkinBrushContext":
+        if cmds.contextInfo(currentContext, c=True) == "brSkinBrush":
             return currentContext
         return False
 
@@ -697,29 +685,26 @@ class SkinPaintWin(Window):
         self.enterPaint_btn.setEnabled(False)
 
         with UndoContext("enterPaint"):
-            if self.dataOfSkin.theSkinCluster:
-                setColorsOnJoints()
-                dic = {
-                    "soloColor": int(self.solo_rb.isChecked()),
-                    "soloColorType": self.soloColor_cb.currentIndex(),
-                    "size": self.sizeBrushSetter.theSpinner.value(),
-                    "strength": self.valueSetter.theSpinner.value() * 0.01,
-                    "commandIndex": self.getCommandIndex(),
-                    "mirrorPaint": self.uiSymmetryCB.currentIndex(),
-                }
-                selectedInfluences = self.selectedInfluences()
-                if selectedInfluences:
-                    dic["influenceName"] = selectedInfluences[0]
+            setColorsOnJoints()
+            dic = {
+                "soloColor": int(self.solo_rb.isChecked()),
+                "soloColorType": self.soloColor_cb.currentIndex(),
+                "size": self.sizeBrushSetter.theSpinner.value(),
+                "strength": self.valueSetter.theSpinner.value() * 0.01,
+                "commandIndex": self.getCommandIndex(),
+                "mirrorPaint": self.uiSymmetryCB.currentIndex(),
+            }
+            selectedInfluences = self.selectedInfluences()
+            if selectedInfluences:
+                dic["influenceName"] = selectedInfluences[0]
 
-                getOrCreatePaintEditorContext()
+            GET_CONTEXT.updateIndex()
 
-                # getMirrorInfluenceArray
-                # let's select the shape first
-                cmds.select(self.dataOfSkin.deformedShape, replace=True)
-                cmds.setToolTo(PAINT_EDITOR_CONTEXT)
-                self.getMirrorInfluenceArray()
-            else:
-                self.enterPaint_btn.setEnabled(True)
+            # getMirrorInfluenceArray
+            # let's select the shape first
+            cmds.select(self.dataOfSkin.deformedShape, replace=True)
+            cmds.setToolTo(GET_CONTEXT.getLatest())
+            self.getMirrorInfluenceArray()
 
     def setFocusToPanel(self):
         QtCore.QTimer.singleShot(10, self.parent().setFocus)
@@ -765,7 +750,9 @@ class SkinPaintWin(Window):
         # column 4 is the sorted by weight picked indices
 
     def updateCurrentInfluenceCB(self):
-        jointName = self.brSkinBrushContext(PAINT_EDITOR_CONTEXT, query=True, pickedInfluence=True)
+        jointName = self.brSkinBrushContext(
+            GET_CONTEXT.getLatest(), query=True, pickedInfluence=True
+        )
         self.updateCurrentInfluence(jointName)
 
     def updateCurrentInfluence(self, jointName):
@@ -1545,15 +1532,11 @@ class SkinPaintWin(Window):
                 thebtn.setEnabled(False)
         self.uiInfluenceTREE.paintEnd()
         self.previousInfluenceName = cmds.brSkinBrushContext(
-            PAINT_EDITOR_CONTEXT, query=True, influenceName=True
+            GET_CONTEXT.getLatest(), query=True, influenceName=True
         )
         self.enterPaint_btn.setEnabled(True)
 
-    def paintStart(self):  # called by the brush
-        print("PAINT START")
-        import traceback
-
-        traceback.print_stack()
+    def paintStart(self):
         with UndoContext("paintstart"):
             for btnName in self.uiToActivateWithPaint:
                 thebtn = self.findChild(QtWidgets.QPushButton, btnName)
@@ -1589,9 +1572,8 @@ class SkinPaintWin(Window):
                 checkBox = self.findChild(QtWidgets.QCheckBox, att + "_cb")
                 if checkBox:
                     dicValues[att] = checkBox.isChecked()
-            print("STARTING PEC", PAINT_EDITOR_CONTEXT)
-            print("ARGS", dicValues)
-            cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT, **dicValues)
+
+            cmds.brSkinBrushContext(GET_CONTEXT.getLatest(), **dicValues)
 
     def buttonByCommandIndex(self, cmdIdx):
         ret = {
