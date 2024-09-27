@@ -20,6 +20,23 @@ ROOTWINDOW = None
 MM_NAME = "skinBrush_MM"
 
 
+def markingMenuPaintEditorButtonClick(cmdInd, buttonName):
+    cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, commandIndex=cmdInd)
+    btn = callPaintEditorFunction(buttonName + "_btn")
+    if btn:
+        btn.click()
+
+
+def markingMenuUpdateSoloColor(colorIdx):
+    cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, soloColorType=colorIdx)
+    callPaintEditorFunction("updateSoloColor", colorIdx)
+
+
+def buttonClickBuilder(func, *args):
+    """Build a button-click function for the marking menu"""
+    return lambda: func(*args)
+
+
 def callMarkingMenu():
     if cmds.popupMenu(MM_NAME, exists=True):
         cmds.deleteUI(MM_NAME)
@@ -68,10 +85,8 @@ def callMarkingMenu():
     for ind, (txt, posi, btn, cmdInd) in enumerate(lstCommands):
         kwArgs["radialPosition"] = posi
         kwArgs["label"] = txt
-        kwArgs["command"] = """\
-            brSkinBrushContext -edit -commandIndex {0} `currentCtx`;
-            python("import mPaintEditor;mPaintEditor.PAINT_EDITOR.{1}_btn.click()");
-            """.format(cmdInd, btn)
+        kwArgs["sourceType"] = "python"
+        kwArgs["command"] = buttonClickBuilder(markingMenuPaintEditorButtonClick, cmdInd, btn)
         cmds.menuItem("menuEditorMenuItem{0}".format(ind + 1), **kwArgs)
     kwArgs.pop("radialPosition", None)
     kwArgs["label"] = "solo color"
@@ -81,15 +96,12 @@ def callMarkingMenu():
     kwArgs["subMenu"] = False
     for ind, colType in enumerate(["white", "lava", "influence"]):
         kwArgs["label"] = colType
-        kwArgs["command"] = """\
-            python("import mPaintEditor;mPaintEditor.PAINT_EDITOR.updateSoloColor({0})");
-            brSkinBrushContext -edit -soloColorType {0} `currentCtx`;
-            """.format(ind)
-
+        kwArgs["sourceType"] = "python"
+        kwArgs["command"] = buttonClickBuilder(markingMenuUpdateSoloColor, ind)
         cmds.menuItem("menuEditorMenuItemCol{0}".format(ind + 1), **kwArgs)
 
-    mel.eval("setParent -menu ..;")
-    mel.eval("setParent -menu ..;")
+    cmds.setParent("..", menu=True)
+    cmds.setParent("..", menu=True)
 
 
 SMOOTH_KEY = QtCore.Qt.Key_Control
@@ -112,12 +124,9 @@ TOGGLE_XRAY_KEY = QtCore.Qt.Key_X
 MARKING_MENU_KEY = QtCore.Qt.Key_U
 
 
-class CatchEventsWidget(QtCore.QObject):
-    # Custom event filter to catch rightclicks
-    verbose = False
-    filterInstalled = False
-    displayLabel = None
-    eventFilterWidgetReceiver = None
+class HandleEventsMEL:
+    """Handle any events that will affect the MEL ui"""
+
     lstButtons = [
         "brSkinBrushAddRb",
         "brSkinBrushRemoveRb",
@@ -129,30 +138,193 @@ class CatchEventsWidget(QtCore.QObject):
         "brSkinBrushUnLockVerticesRb",
     ]
 
+    def __init__(self, widget):
+        self.widget = widget  # the MEL paint editor widget name
+        self.prevButton = "brSkinBrushAddRb"
+        self.isSmoothKeyPressed = False
+        self.isRemoveKeyPressed = False
+
+    def highlightBtns(self):
+        btnToSelect = ""
+        if self.isSmoothKeyPressed and self.isRemoveKeyPressed:
+            btnToSelect = "brSkinBrushSharpenRb"
+        elif self.isSmoothKeyPressed:
+            if self.prevButton == "brSkinBrushAddRb":
+                btnToSelect = "brSkinBrushSmoothRb"
+            elif self.prevButton == "brSkinBrushLockVerticesRb":
+                btnToSelect = "brSkinBrushUnLockVerticesRb"
+            else:
+                btnToSelect = self.prevButton
+        elif self.isRemoveKeyPressed:
+            btnToSelect = "brSkinBrushRemoveRb"
+        else:
+            btnToSelect = self.prevButton
+
+        if self.isRemoveKeyPressed:
+            value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, smoothStrength=True)
+        else:
+            value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, strength=True)
+
+        if cmds.radioButton(btnToSelect, ex=True):
+            cmds.radioButton(btnToSelect, edit=True, select=True)
+        cmds.floatSliderGrp("brSkinBrushStrength", edit=True, value=value)
+
+    def removeKeyPressed(self):
+        self.isRemoveKeyPressed = True
+        with disableUndoContext():
+            if not self.isSmoothKeyPressed:
+                self.prevButton = self.lstButtons[
+                    cmds.brSkinBrushContext(cmds.currentCtx(), query=True, commandIndex=True)
+                ]
+            self.highlightBtns()
+
+    def smoothKeyPressed(self):
+        self.isSmoothKeyPressed = True
+        self.highlightBtns()
+
+    def removeKeyReleased(self):
+        self.isRemoveKeyPressed = False
+        self.highlightBtns()
+
+    def smoothKeyReleased(self):
+        self.isSmoothKeyPressed = False
+        self.highlightBtns()
+
+    def exitKeyPressed(self):
+        pass
+
+    def soloOpaqueKeyPressed(self):
+        minColor = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, minColor=True)
+        newMinColor = 0.0 if minColor == 1.0 else 1.0
+        cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, minColor=newMinColor)
+
+    def mirrorKeyPressed(self):
+        pass
+
+    def soloModeKeyPressed(self):
+        pass
+
+
+class HandleEventsQt:
+    """Handle any events that will affect the QT ui"""
+
+    def __init__(self, widget):
+        self.widget = widget  # the Qt paint editor widget
+        self.prevButton = "add"
+        self.isSmoothKeyPressed = False
+        self.isRemoveKeyPressed = False
+
+    def highlightBtns(self):
+        btnToSelect = self.prevButton
+        if self.isSmoothKeyPressed and self.isRemoveKeyPressed:
+            btnToSelect = "sharpen"
+        elif self.isSmoothKeyPressed:
+            if self.prevButton:
+                if self.prevButton == "add":
+                    btnToSelect = "smooth"
+                elif self.prevButton == "locks":
+                    btnToSelect = "unLocks"
+                else:
+                    btnToSelect = self.prevButton
+        elif self.isRemoveKeyPressed:
+            btnToSelect = "rmv"
+
+        if self.isRemoveKeyPressed:
+            value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, smoothStrength=True)
+        else:
+            value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, strength=True)
+
+        callPaintEditorFunction("highlightBtn", btnToSelect)
+        callPaintEditorFunction("updateStrengthVal", value)
+
+    def removeKeyPressed(self):
+        self.isRemoveKeyPressed = True
+        with disableUndoContext():
+            if not self.isSmoothKeyPressed:
+                self.prevQtButton = callPaintEditorFunction("getEnabledButton")
+            self.highlightBtns()
+
+    def smoothKeyPressed(self):
+        self.isSmoothKeyPressed = True
+        self.highlightBtns()
+
+    def removeKeyReleased(self):
+        self.isRemoveKeyPressed = False
+        self.highlightBtns()
+
+    def smoothKeyReleased(self):
+        self.isSmoothKeyPressed = False
+        self.highlightBtns()
+
+    def exitKeyPressed(self):
+        escapePressed()
+
+    def soloOpaqueKeyPressed(self):
+        soloOpaque = callPaintEditorFunction("soloOpaque_cb")
+        if soloOpaque:
+            soloOpaque.toggle()
+
+    def mirrorKeyPressed(self):
+        mirror = callPaintEditorFunction("mirrorActive_cb")
+        if mirror:
+            mirror.toggle()
+
+    def soloModeKeyPressed(self):
+        toggleSoloMode()
+
+
+class HandleEventsMaya:
+    """Handle any events that will affect Maya"""
+
     def __init__(self):
-        super(CatchEventsWidget, self).__init__(ROOTWINDOW)
-        self.QApplicationInstance = QtWidgets.QApplication.instance()
-
-        self.setMask(QtGui.QRegion(0, 0, 1, 1))
-
-        self.markingMenuKeyPressed = False
-        self.markingMenuShown = False
-        self.closingNextPressMarkingMenu = False
-        self.removeKeyPressed = False
-        self.smoothKeyPressed = False
-        self.testWireFrame = True
-
-        self.rootWin = ROOTWINDOW
-
-        self.prevQtButton = "add"
-
         self.orbit = meshFnIntersection.Orbit()
-        self.timeStampRunning = time.time()
+        self.testWireFrame = True
+        self.restorePanels = []
 
-        self.searchInfluencesPaintEditor = callPaintEditorFunction("searchInfluences_le")
+    @staticmethod
+    def getModelPanels():
+        return [el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"]
 
-    # ---------- GAMMA --------------------------------------
-    restorePanels = []
+    def toggleWireframeKeyPressed(self):
+        if cmds.objExists("SkinningWireframe"):
+            vis = cmds.getAttr("SkinningWireframe.v")
+            cmds.setAttr("SkinningWireframe.v", not vis)
+        else:
+            listModelPanels = [
+                el for el in cmds.getPanel(vis=True) if cmds.getPanel(to=el) == "modelPanel"
+            ]
+            val = not cmds.modelEditor(
+                listModelPanels[0],
+                query=True,
+                wireframeOnShaded=True,
+            )
+            for pnel in listModelPanels:
+                cmds.modelEditor(pnel, edit=True, wireframeOnShaded=val)
+
+    def toggleXrayKeyPressed(self):
+        listModelPanels = self.getModelPanels()
+        val = not cmds.modelEditor(listModelPanels[0], query=True, jointXray=True)
+        for pnel in listModelPanels:
+            cmds.modelEditor(pnel, edit=True, jointXray=val)
+
+    def setOrbitKeyPressed(self):
+        self.orbit.setOrbitPosi()
+
+    def pickInfluenceKeyPressed(self):
+        cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, pickInfluence=1)
+
+    def pickMaxInfluenceKeyPressed(self):
+        cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, pickMaxInfluence=1)
+
+    def exitKeyPressed(self):
+        mel.eval("setToolTo $gMove;")
+
+    def showMarkingMenu(self):
+        callMarkingMenu()
+
+    def hideMarkingMenu(self):
+        if cmds.popupMenu(MM_NAME, exists=True):
+            cmds.deleteUI(MM_NAME)
 
     def setPanelsDisplayOn(self):
         self.restorePanels = []
@@ -171,28 +343,41 @@ class CatchEventsWidget(QtCore.QObject):
         else:
             listModelEditorKeys.remove("wireframeOnShaded")
 
-        for panel in cmds.getPanel(vis=True):
-            if cmds.getPanel(to=panel) == "modelPanel":
-                valDic = {}
-                for key in listModelEditorKeys:
-                    dic = {"query": True, key: True}
-                    valDic[key] = cmds.modelEditor(panel, **dic)
-                self.restorePanels.append((panel, valDic))
-                cmds.modelEditor(panel, **dicPanel)
-                # GAMMA ENABLED
-                cmds.modelEditor(panel, edit=True, cmEnabled=False)
+        for panel in self.getModelPanels():
+            valDic = {}
+            for key in listModelEditorKeys:
+                dic = {"query": True, key: True}
+                valDic[key] = cmds.modelEditor(panel, **dic)
+            self.restorePanels.append((panel, valDic))
+            cmds.modelEditor(panel, **dicPanel)
+            # GAMMA ENABLED
+            cmds.modelEditor(panel, edit=True, cmEnabled=False)
 
     def setPanelsDisplayOff(self):
         for panel, valDic in self.restorePanels:
             cmds.modelEditor(panel, edit=True, **valDic)
 
-    # ---------- end GAMMA --------------------------------------
+
+class CatchEventsWidget(QtCore.QObject):
+    # Custom event filter to catch rightclicks
+    filterInstalled = False
+    eventFilterWidgetReceiver = None
+
+    def __init__(self):
+        super(CatchEventsWidget, self).__init__(ROOTWINDOW)
+        self.QApplicationInstance = QtWidgets.QApplication.instance()
+
+        self.markingMenuKeyPressed = False
+        self.markingMenuShown = False
+        self.closingNextPressMarkingMenu = False
+        self.isRemoveKeyPressed = False
+        self.isSmoothKeyPressed = False
 
     def open(self):
         with disableUndoContext():
             if not self.filterInstalled:
                 self.installFilters()
-            self.setPanelsDisplayOn()
+            # EMIT SET PANEL DISPLAY ON
 
     def installFilters(self):
         self.eventFilterWidgetReceiver = [
@@ -211,54 +396,6 @@ class CatchEventsWidget(QtCore.QObject):
         self.filterInstalled = False
         self.QApplicationInstance.removeEventFilter(self)
 
-    def highlightBtns(self):
-        btnQtToSelect = ""
-        btnMayaToSelect = ""
-        if self.smoothKeyPressed and self.removeKeyPressed:
-            btnQtToSelect = "sharpen"
-            btnMayaToSelect = "brSkinBrushSharpenRb"
-        elif self.smoothKeyPressed:
-            if self.prevButton == "brSkinBrushAddRb":
-                btnMayaToSelect = "brSkinBrushSmoothRb"
-            elif self.prevButton == "brSkinBrushLockVerticesRb":
-                btnMayaToSelect = "brSkinBrushUnLockVerticesRb"
-            else:
-                btnMayaToSelect = self.prevButton
-            if self.prevQtButton:
-                if self.prevQtButton == "add":
-                    btnQtToSelect = "smooth"
-                elif self.prevQtButton == "locks":
-                    btnQtToSelect = "unLocks"
-                else:
-                    btnQtToSelect = self.prevQtButton
-        elif self.removeKeyPressed:
-            btnQtToSelect = "rmv"
-            btnMayaToSelect = "brSkinBrushRemoveRb"
-        else:
-            btnQtToSelect = self.prevQtButton
-            btnMayaToSelect = self.prevButton
-        callPaintEditorFunction("highlightBtn", btnQtToSelect)
-        if cmds.radioButton(btnMayaToSelect, ex=True):
-            cmds.radioButton(btnMayaToSelect, edit=True, select=True)
-
-        if self.removeKeyPressed:
-            value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, smoothStrength=True)
-        else:
-            value = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, strength=True)
-
-        callPaintEditorFunction("updateStrengthVal", value)
-        try:
-            cmds.floatSliderGrp("brSkinBrushStrength", edit=True, value=value)
-        except Exception:
-            pass
-
-    def testRunOnce(self):
-        currentStampTime = time.time()
-        correctTime = (currentStampTime - self.timeStampRunning) > 0.5
-        if correctTime:
-            self.timeStampRunning = currentStampTime
-        return correctTime
-
     def eventFilter(self, obj, event):
         """process is stopped when returning True
         keeps when returning False
@@ -274,13 +411,11 @@ class CatchEventsWidget(QtCore.QObject):
                         with disableUndoContext():
                             if self.markingMenuKeyPressed:
                                 if not self.markingMenuShown:
-                                    callMarkingMenu()
+                                    # EMIT SHOW MARKING MENU
                                     self.markingMenuShown = True
                                     self.closingNextPressMarkingMenu = False
-                                    # print "-- callMarkingMenu --"
                             elif self.closingNextPressMarkingMenu:
-                                if cmds.popupMenu(MM_NAME, exists=True):
-                                    cmds.deleteUI(MM_NAME)
+                                # EMIT HIDE MARKING MENU
                                 self.markingMenuShown = False
                                 self.markingMenuKeyPressed = False
                                 self.closingNextPressMarkingMenu = False
@@ -294,14 +429,12 @@ class CatchEventsWidget(QtCore.QObject):
             # action on Release
             if event.type() == QtCore.QEvent.KeyRelease:
                 if event.key() == REMOVE_KEY:
-                    self.removeKeyPressed = False
-                    with disableUndoContext():
-                        self.highlightBtns()
+                    self.isRemoveKeyPressed = False
+                    # EMIT REMOVE KEY RELEASED
                     return False
                 elif event.key() == SMOOTH_KEY:
-                    self.smoothKeyPressed = False
-                    with disableUndoContext():
-                        self.highlightBtns()
+                    self.isSmoothKeyPressed = False
+                    # EMIT SMOOTH KEY RELEASED
                     return False
                 elif event.key() == MARKING_MENU_KEY:
                     if self.markingMenuKeyPressed:
@@ -309,144 +442,85 @@ class CatchEventsWidget(QtCore.QObject):
                     return True
 
             # action on Press
-            if event.type() == QtCore.QEvent.KeyPress:
+            elif event.type() == QtCore.QEvent.KeyPress:
                 if event.key() == REMOVE_KEY:
-                    if self.removeKeyPressed:  # already pressed
+                    if self.isRemoveKeyPressed:  # already pressed
                         return False
                     if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
-                        self.removeKeyPressed = True
-                        with disableUndoContext():
-                            if not self.smoothKeyPressed:
-                                self.prevButton = self.lstButtons[
-                                    cmds.brSkinBrushContext(
-                                        "brSkinBrushContext1",
-                                        query=True,
-                                        commandIndex=True,
-                                    )
-                                ]
-                                self.prevQtButton = callPaintEditorFunction("getEnabledButton")
-                            self.highlightBtns()
+                        self.isRemoveKeyPressed = True
+                        # EMIT REMOVE KEY PRESSED
                         return False
 
                 elif event.key() == SMOOTH_KEY:
-                    if self.smoothKeyPressed:  # already pressed
+                    if self.isSmoothKeyPressed:  # already pressed
                         return False
                     if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
-                        self.smoothKeyPressed = True
-                        # print "custom SHIFT pressed"
-                        with disableUndoContext():
-                            if not self.removeKeyPressed:
-                                self.prevButton = self.lstButtons[
-                                    cmds.brSkinBrushContext(
-                                        cmds.currentCtx(),
-                                        query=True,
-                                        commandIndex=True,
-                                    )
-                                ]
-                                self.prevQtButton = callPaintEditorFunction("getEnabledButton")
-                            self.highlightBtns()
+                        self.isSmoothKeyPressed = True
+                        # EMIT SMOOTH KEY PRESSED
                         return False
 
                 elif event.key() == MARKING_MENU_KEY:
                     self.markingMenuKeyPressed = True
                     return True
 
-                elif event.key() == QtCore.Qt.Key_Escape:
+                elif event.key() == EXIT_KEY:
                     with disableUndoContext():
-                        escapePressed()
-                        mel.eval("setToolTo $gMove;")
+                        pass
+                        # EMIT EXIT KEY PRESSED
                     return True
 
                 elif event.key() == PICK_INFLUENCE_KEY:
                     with disableUndoContext():
-                        if self.testRunOnce():
+                        if not event.isAutoRepeat():
                             if event.modifiers() == QtCore.Qt.AltModifier:
-                                cmds.brSkinBrushContext(
-                                    cmds.currentCtx(), edit=True, pickMaxInfluence=1
-                                )
+                                pass
+                                # EMIT PICK MAX INFLUENCE KEY PRESSED
                             else:
-                                cmds.brSkinBrushContext(
-                                    cmds.currentCtx(), edit=True, pickInfluence=1
-                                )
+                                pass
+                                # EMIT PICK INFLUENCE KEY PRESSED
                     return True
 
                 elif event.key() == SET_ORBIT_POS_KEY:
                     with disableUndoContext():
-                        if self.testRunOnce():
-                            self.orbit.setOrbitPosi()
+                        if not event.isAutoRepeat():
+                            pass
+                            # EMIT SET ORBIT KEY PRESSED
                     return True
 
                 elif event.modifiers() == QtCore.Qt.AltModifier:
                     if event.key() == TOGGLE_XRAY_KEY:
                         with disableUndoContext():
-                            listModelPanels = [
-                                el
-                                for el in cmds.getPanel(vis=True)
-                                if cmds.getPanel(to=el) == "modelPanel"
-                            ]
-                            val = not cmds.modelEditor(
-                                listModelPanels[0], query=True, jointXray=True
-                            )
-                            for pnel in listModelPanels:
-                                cmds.modelEditor(pnel, edit=True, jointXray=val)
+                            if not event.isAutoRepeat():
+                                pass
+                                # EMIT TOGGLE XRAY KEY PRESSED
                         return True
 
                     if event.key() == TOGGLE_WIREFRAME_KEY:
                         with disableUndoContext():
-                            if self.testRunOnce():
-                                if cmds.objExists("SkinningWireframe"):
-                                    vis = cmds.getAttr("SkinningWireframe.v")
-                                    cmds.setAttr("SkinningWireframe.v", not vis)
-                                else:
-                                    listModelPanels = [
-                                        el
-                                        for el in cmds.getPanel(vis=True)
-                                        if cmds.getPanel(to=el) == "modelPanel"
-                                    ]
-                                    val = not cmds.modelEditor(
-                                        listModelPanels[0],
-                                        query=True,
-                                        wireframeOnShaded=True,
-                                    )
-                                    for pnel in listModelPanels:
-                                        cmds.modelEditor(pnel, edit=True, wireframeOnShaded=val)
+                            if not event.isAutoRepeat():
+                                pass
+                                # EMIT TOGGLE WIREFRAME KEY PRESSED
                         return True
 
                     if event.key() == SOLO_KEY:
                         with disableUndoContext():
-                            if self.testRunOnce():
-                                toggleSoloMode()
+                            if not event.isAutoRepeat():
+                                pass
+                                # EMIT SOLO MODE KEY PRESSED
                         return True
 
                     if event.key() == SOLO_OPAQUE_KEY:
                         with disableUndoContext():
-                            if self.testRunOnce():
-                                soloOpaque = callPaintEditorFunction("soloOpaque_cb")
-                                if soloOpaque:
-                                    soloOpaque.toggle()
-                                else:
-                                    minColor = cmds.brSkinBrushContext(
-                                        "brSkinBrushContext1", query=True, minColor=True
-                                    )
-                                    if minColor == 1.0:
-                                        cmds.brSkinBrushContext(
-                                            "brSkinBrushContext1",
-                                            edit=True,
-                                            minColor=0.0,
-                                        )
-                                    else:
-                                        cmds.brSkinBrushContext(
-                                            "brSkinBrushContext1",
-                                            edit=True,
-                                            minColor=1.0,
-                                        )
+                            if not event.isAutoRepeat():
+                                pass
+                                # EMIT SOLO OPAQUE KEY PRESSED
                         return True
 
                     if event.key() == MIRROR_KEY:
                         with disableUndoContext():
-                            if self.testRunOnce():
-                                print("mirror active")
-                                callPaintEditorFunction("mirrorActive_cb").toggle()
+                            if not event.isAutoRepeat():
+                                pass
+                                # EMIT MIRROR KEY PRESSED
                         return True
         return False
 
@@ -457,7 +531,7 @@ class CatchEventsWidget(QtCore.QObject):
 
     def close(self):
         with disableUndoContext():
-            self.setPanelsDisplayOff()
+            # EMIT PANEL DISPLAY OFF
 
             # remove the markingMenu
             self.markingMenuKeyPressed = False
