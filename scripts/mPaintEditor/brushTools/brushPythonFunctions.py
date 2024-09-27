@@ -3,18 +3,16 @@ from __future__ import absolute_import
 
 import json
 import random
-import six
 import time
 
 from Qt import QtGui
-from collections import OrderedDict
 from contextlib import contextmanager
 
 from maya import cmds
 from six.moves import range, zip
 
-from ..utils import rootWindow, GlobalContext
-from .. import PAINT_EDITOR_CONTEXT
+from ..utils import rootWindow
+from .. import PAINT_EDITOR_CONTEXT_OPTIONS
 
 
 @contextmanager
@@ -147,7 +145,7 @@ def retrieveParallelMode():
             cmds.evaluationManager(mode=mode)
 
 
-def toolOnSetupStart():
+def toolOnSetupStart():  # Called directly from cpp
     with UndoContext("toolOnSetupStart"):
         cmds.optionVar(intValue=["startTime", time.time()])
 
@@ -360,69 +358,6 @@ def closeEventCatcher():
         catchEventsUI.EVENTCATCHER.close()
 
 
-def toolOnSetupEnd():
-    with UndoContext("toolOnSetupEnd"):
-        toolOnSetupEndDeferred()
-
-
-def toolOnSetupEndDeferred():
-    with GlobalContext(message="toolOnSetupEndDeferred", doPrint=False):
-        disconnectNurbs()
-        cmds.select(clear=True)
-        mshShape = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, meshName=True)
-        cmds.evalDeferred(doUpdateWireFrameColorSoloMode)
-        # compute time
-        startTime = cmds.optionVar(query="startTime")
-        completionTime = time.time() - startTime
-
-        callPaintEditorFunction("paintStart")
-        print("----- load BRUSH for {} in  [{:.2f} secs] ------".format(mshShape, completionTime))
-
-
-def toolOffCleanup():
-    with UndoContext("toolOffCleanup"):
-        toolOffCleanupDeferred()
-
-
-def toolOffCleanupDeferred():
-    with GlobalContext(message="toolOffCleanupDeferred", doPrint=False):
-        if cmds.objExists("SkinningWireframe"):
-            cmds.delete("SkinningWireframe")
-        closeEventCatcher()
-        # unhide previous wireFrames
-
-        # This is the cleanup step before the context finishes switching
-        # so the current context must be a skin brush context
-        mshShape = cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT, query=True, meshName=True)
-        if mshShape and cmds.objExists(mshShape):
-            (theMesh,) = cmds.listRelatives(mshShape, parent=True, path=True)
-            try:
-                wireDisplay = cmds.listRelatives(
-                    theMesh, shapes=True, path=True, type="wireframeDisplay"
-                )
-            except RuntimeError:
-                # RuntimeError: Unknown object type: wireframeDisplay
-                pass
-            else:
-                if wireDisplay:
-                    cmds.showHidden(wireDisplay)
-            showBackNurbs(theMesh)
-
-        restoreShading()
-
-        # delete colors on Q pressed
-        doRemoveColorSets()
-        retrieveParallelMode()
-
-        # retrieve autoSave
-        if cmds.optionVar(exists="autoSaveEnable") and cmds.optionVar(query="autoSaveEnable") == 1:
-            cmds.autoSave(enable=True)
-
-        callPaintEditorFunction("paintEnd")
-        if cmds.optionVar(exists="brushPreviousSelection"):
-            cmds.select(cmds.optionVar(query="brushPreviousSelection"))
-
-
 def updateWireFrameColorSoloMode(soloColor):
     with disableUndoContext():
         if cmds.objExists("SkinningWireframeShape"):
@@ -443,77 +378,12 @@ def setSoloMode(soloColor):
         updateWireFrameColorSoloMode(soloColor)
 
 
-def fixOptionVarContext(**inputKargsToChange):
-    with UndoContext("fixOptionVarContext"):
-        kwargs = OrderedDict()
-        if not cmds.optionVar(exists="brSkinBrushContextOptions"):
-            return kwargs
+def fixOptionVarContext():
+    if not cmds.optionVar(exists=PAINT_EDITOR_CONTEXT_OPTIONS):
+        return {}
 
-        cmd = cmds.optionVar(query="brSkinBrushContextOptions")
-        spl = cmd.split("-")
-
-        # TODO: Why are we even parsing the help file?
-        # This should be explicitly maintained
-        hlp = cmds.help("brSkinBrushContext")
-        dicOfName = {}
-        dicExpectedArgs = {}
-        lsMulti = set()
-        for ln in hlp.split("\n"):
-            for expectedStuff in [
-                "(Query Arg Mandatory)",
-                "(Query Arg Optional)",
-                "[...]",
-                "(Query Arg Optional)",
-            ]:
-                ln = ln.replace(expectedStuff, "")
-            ln = ln.strip()
-            res = ln.split()
-            if len(res) >= 2 and res[0].startswith("-") and res[1].startswith("-"):
-                nmFlag = res[1][1:]
-                dicOfName[res[0][1:]] = nmFlag
-                dicOfName[res[1][1:]] = nmFlag
-                if "(multi-use)" in res:
-                    lsMulti.add(nmFlag)
-                    res.remove("(multi-use)")
-                dicExpectedArgs[nmFlag] = res[2:]
-
-        newSpl = []
-        for lne in spl:
-            lineSplit = lne.strip().split(" ")
-
-            if len(lineSplit) > 1:
-                kArg = "-" + lineSplit[0]
-                if kArg not in hlp:
-                    continue
-                else:
-                    value = " ".join(lineSplit[1:])
-                    value = value.strip()
-                    if value.startswith('"') and value.endswith('"'):
-                        value = value[1:-1]
-                    if lineSplit[0] in dicOfName:
-                        keyToCheck = dicOfName[lineSplit[0]]
-                        if keyToCheck in kwargs:
-                            kwargs[keyToCheck] = value
-            else:
-                if lineSplit[0] in dicOfName:
-                    kwargs[dicOfName[lineSplit[0]]] = True
-            newSpl.append(lne)
-
-        # now rebuild command
-        kwargs.update(inputKargsToChange)
-        cmdNew = "brSkinBrushContext "
-        for key, value in six.iteritems(kwargs):
-            if isinstance(value, bool):
-                cmdNew += "-{} ".format(key)
-            else:
-                try:
-                    float(value)
-                    cmdNew += "-{} {} ".format(key, value)
-                except ValueError:
-                    cmdNew += '-{} "{}" '.format(key, value)
-        cmdNew += splitofspaces[-1]
-        cmds.optionVar(stringValue=["brSkinBrushContextOptions", cmdNew])
-        return kwargs
+    cmd = cmds.optionVar(query=PAINT_EDITOR_CONTEXT_OPTIONS)
+    return {k.strip("-"): v for k, v in json.loads(cmd).items()}
 
 
 def deleteExistingColorSets():
@@ -536,15 +406,6 @@ def deleteExistingColorSets():
                     cmds.polyColorSet(obj, delete=True, colorSet=colSet)
 
 
-def getPaintEditor():
-    import mPaintEditor
-
-    editor = mPaintEditor.PAINT_EDITOR
-    if editor is not None and editor.isVisible():
-        return editor
-    return None
-
-
 def afterPaint():
     with UndoContext("afterPaint"):
         import mWeightEditor
@@ -553,15 +414,3 @@ def afterPaint():
         editor = mWeightEditor.WEIGHT_EDITOR
         if editor is not None and editor in QApplication.instance().topLevelWidgets():
             editor.refreshSkinDisplay()
-
-
-def callPaintEditorFunction(function, *args, **kwargs):
-    with UndoContext("callPaintEditorFunction"):
-        paintEditor = getPaintEditor()
-        if paintEditor and hasattr(paintEditor, function):
-            fn = getattr(paintEditor, function)
-            if callable(fn):
-                return fn(*args, **kwargs)
-            else:
-                return fn
-        return None

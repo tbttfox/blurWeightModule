@@ -5,7 +5,6 @@ from Qt import QtCore, QtWidgets, QtCompat
 
 from maya import OpenMayaUI, cmds, mel
 from .brushPythonFunctions import (
-    callPaintEditorFunction,
     doRemoveColorSets,
     disableUndoContext,
 )
@@ -339,9 +338,7 @@ class HandleEventsMaya:
             "useDefaultMaterial",
         ]
 
-        # TODO: This option should be put into the context
-        wireframeCB = callPaintEditorFunction("wireframe_cb")
-        if wireframeCB and wireframeCB.isChecked():
+        if cmds.objExists("SkinningWireframe"):
             dicPanel["wireframeOnShaded"] = False
 
         for panel in self.getModelPanels():
@@ -413,7 +410,7 @@ class CatchEventsWidget(QtCore.QObject):
         with disableUndoContext():
             if not self.filterInstalled:
                 self.installFilters()
-            self.Opening.emit()
+            self.SetPanelDisplayOn.emit()
 
     def installFilters(self):
         self.eventFilterWidgetReceiver = [

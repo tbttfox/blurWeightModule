@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import os
 import re
 import six
+import time
 
 from maya import cmds, mel, OpenMaya
 from six.moves import range
@@ -11,8 +12,8 @@ import numpy as np
 from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from functools import partial
 
+from . import getOrCreatePaintEditorContext, PAINT_EDITOR_CONTEXT
 
-from . import PAINT_EDITOR_CONTEXT
 from .brushTools import cmdSkinCluster
 from .brushTools.brushPythonFunctions import (
     UndoContext,
@@ -21,6 +22,14 @@ from .brushTools.brushPythonFunctions import (
     generate_new_color,
     deleteExistingColorSets,
     setSoloMode,
+    afterPaint,
+    closeEventCatcher,
+    showBackNurbs,
+    restoreShading,
+    doRemoveColorSets,
+    retrieveParallelMode,
+    disconnectNurbs,
+    doUpdateWireFrameColorSoloMode,
 )
 from mWeightEditor.weightTools.skinData import DataOfSkin
 from mWeightEditor.weightTools.spinnerSlider import ValueSetting
@@ -29,9 +38,7 @@ from mWeightEditor.weightTools.utils import (
     toggleBlockSignals,
     deleteTheJobs,
     addNameChangedCallback,
-    removeNameChangedCallback,
     addUserEventCallback,
-    removeUserEventCallback,
     SettingVariable,
     orderMelList,
 )
@@ -242,7 +249,9 @@ class SkinPaintWin(Window):
         self.setStyleSheet(styleSheet)
 
         self.refreshSJ = None
-        self.connectToEventHandlerSJ = None
+        self.kill_scriptJob = []
+        self.close_callback = []
+
         self._eventHandler = None
 
     def addShortCutsHelp(self):
@@ -433,54 +442,113 @@ class SkinPaintWin(Window):
         self.updateSizeVal(newSize)
 
     def addCallBacks(self):
-        self.renameCallBack = addNameChangedCallback(self.renameCB)
-
-        self.reorderCallBack = addUserEventCallback(
-            "brSkinBrush_influencesReordered", self.influencesReorderedCB
-        )
-        self.strengthCallBack = addUserEventCallback(
-            "brSkinBrush_updateDisplayStrength", self.strengthChangedCB
-        )
-        self.sizeCallBack = addUserEventCallback(
-            "brSkinBrush_updateDisplaySize", self.sizeChangedCB
-        )
-
+        # fmt: off
         self.refreshSJ = cmds.scriptJob(event=["SelectionChanged", self.refreshCallBack])
-        self.connectToEventHandlerSJ = cmds.scriptJob(
-            event=["PostToolChanged", self.eventHandlerConnectCallBack]
-        )
 
-        sceneUpdateCallback = OpenMaya.MSceneMessage.addCallback(
-            OpenMaya.MSceneMessage.kBeforeNew, self.exitPaint
-        )
-        self.close_callback = [sceneUpdateCallback]
-        self.close_callback.append(
-            OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeOpen, self.exitPaint)
-        )
-        self.close_callback.append(
-            OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeSave, self.exitPaint)
-        )
+        self.kill_scriptJob = []
+        self.kill_scriptJob.append(cmds.scriptJob(event=["PostToolChanged", self.eventHandlerConnectCallBack]))
+
+        self.close_callback = []
+        self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeNew, self.exitPaint))
+        self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeOpen, self.exitPaint))
+        self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeSave, self.exitPaint))
+        self.close_callback.append(addNameChangedCallback(self.renameCB))
+
+        self.close_callback.append(addUserEventCallback("brSkinBrush_influencesReordered", self.influencesReorderedCB))
+        self.close_callback.append(addUserEventCallback("brSkinBrush_updateDisplayStrength", self.strengthChangedCB))
+        self.close_callback.append(addUserEventCallback("brSkinBrush_updateDisplaySize", self.sizeChangedCB))
+        self.close_callback.append(addUserEventCallback("brSkinBrush_pickedInfluence", self.updateCurrentInfluenceCB))
+
+        # TODO:
+        self.close_callback.append(addUserEventCallback("brSkinBrush_afterPaint", afterPaint))
+        self.close_callback.append(addUserEventCallback("brSkinBrush_toolOffCleanup", self.toolOffCleanup))
+        self.close_callback.append(addUserEventCallback("brSkinBrush_toolOnSetup", self.toolOnSetup))
+
+        # unused
+        #self.close_callback.append(addUserEventCallback("brSkinBrush_cleanCloseUndo", self.cleanCloseUndo))
+        #self.close_callback.append(addUserEventCallback("brSkinBrush_cleanOpenUndo", self.cleanOpenUndo))
+        # fmt: on
+
+    def toolOnSetupEnd(self):
+        with UndoContext("toolOnSetupEnd"):
+            self.toolOnSetupEndDeferred()
+
+    def toolOnSetupEndDeferred(self):
+        with GlobalContext(message="toolOnSetupEndDeferred", doPrint=False):
+            disconnectNurbs()
+            cmds.select(clear=True)
+            mshShape = cmds.brSkinBrushContext(cmds.currentCtx(), query=True, meshName=True)
+            cmds.evalDeferred(doUpdateWireFrameColorSoloMode)
+            # compute time
+            startTime = cmds.optionVar(query="startTime")
+            completionTime = time.time() - startTime
+
+            self.paintStart()
+            print(
+                "----- load BRUSH for {} in  [{:.2f} secs] ------".format(mshShape, completionTime)
+            )
+
+    def toolOffCleanup(self):
+        with UndoContext("toolOffCleanup"):
+            self.toolOffCleanupDeferred()
+
+    def toolOffCleanupDeferred(self):
+        with GlobalContext(message="toolOffCleanupDeferred", doPrint=False):
+            if cmds.objExists("SkinningWireframe"):
+                cmds.delete("SkinningWireframe")
+            closeEventCatcher()
+            # unhide previous wireFrames
+
+            # This is the cleanup step before the context finishes switching
+            # so the current context must be a skin brush context
+            mshShape = cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT, query=True, meshName=True)
+            if mshShape and cmds.objExists(mshShape):
+                (theMesh,) = cmds.listRelatives(mshShape, parent=True, path=True)
+                try:
+                    wireDisplay = cmds.listRelatives(
+                        theMesh, shapes=True, path=True, type="wireframeDisplay"
+                    )
+                except RuntimeError:
+                    # RuntimeError: Unknown object type: wireframeDisplay
+                    pass
+                else:
+                    if wireDisplay:
+                        cmds.showHidden(wireDisplay)
+                showBackNurbs(theMesh)
+
+            restoreShading()
+
+            # delete colors on Q pressed
+            doRemoveColorSets()
+            retrieveParallelMode()
+
+            # retrieve autoSave
+            if (
+                cmds.optionVar(exists="autoSaveEnable")
+                and cmds.optionVar(query="autoSaveEnable") == 1
+            ):
+                cmds.autoSave(enable=True)
+
+            self.paintEnd()
+            if cmds.optionVar(exists="brushPreviousSelection"):
+                cmds.select(cmds.optionVar(query="brushPreviousSelection"))
 
     def deleteCallBacks(self):
-        try:
-            removeNameChangedCallback(self.renameCallBack)
-        except RuntimeError:
-            print("Can't remove the rename callback")
-
-        removeUserEventCallback(self.reorderCallBack)
-        removeUserEventCallback(self.strengthCallBack)
-        removeUserEventCallback(self.sizeCallBack)
-
         deleteTheJobs("SkinPaintWin.refreshCallBack")
-        if self.refreshSJ is not None:
-            cmds.scriptJob(kill=self.refreshSJ, force=True)
-        self.refreshSJ = None
-        if self.connectToEventHandlerSJ is not None:
-            cmds.scriptJob(kill=self.connectToEventHandlerSJ, force=True)
-        self.connectToEventHandlerSJ = None
+
+        cmds.scriptJob(kill=self.refreshSJ, force=True)
+
+        for sj in self.kill_scriptJob:
+            cmds.scriptJob(kill=sj, force=True)
+        self.kill_scriptJob = []
 
         for callBck in self.close_callback:
-            OpenMaya.MSceneMessage.removeCallback(callBck)
+            try:
+                OpenMaya.MMessage.removeCallback(callBck)
+            except RuntimeError:
+                print("Unable to remove a callback")
+        self.close_callback = []
+
         print("callBack deleted")
 
     def highlightBtn(self, btnName):
@@ -643,19 +711,7 @@ class SkinPaintWin(Window):
                 if selectedInfluences:
                     dic["influenceName"] = selectedInfluences[0]
 
-                # Maya doesn't let you delete a context, but we *can* overwrite it
-                # so on plugin unload, we overwrite the default "brSkinBrushContext1"
-                # with an arbitrary context (manipMoveContext was chosen for no reason)
-                buildNewContext = False
-                if cmds.contextInfo(PAINT_EDITOR_CONTEXT, exists=True):
-                    # can't use name "class" in python, so "c="
-                    if cmds.contextInfo(PAINT_EDITOR_CONTEXT, c=True) != "brSkinBrushContext":
-                        buildNewContext = True
-                else:
-                    buildNewContext = True
-
-                if buildNewContext:
-                    cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT)
+                getOrCreatePaintEditorContext()
 
                 # getMirrorInfluenceArray
                 # let's select the shape first
@@ -707,6 +763,10 @@ class SkinPaintWin(Window):
         # column 2 is side alpha name
         # column 3 is the default indices
         # column 4 is the sorted by weight picked indices
+
+    def updateCurrentInfluenceCB(self):
+        jointName = self.brSkinBrushContext(PAINT_EDITOR_CONTEXT, query=True, pickedInfluence=True)
+        self.updateCurrentInfluence(jointName)
 
     def updateCurrentInfluence(self, jointName):
         items = {}
@@ -1166,27 +1226,20 @@ class SkinPaintWin(Window):
             self.dgParallel_btn.setChecked(cmds.optionVar(query="evaluationMode") == 3)
 
             KArgs = fixOptionVarContext()
+
             if "soloColor" in KArgs:
-                val = int(KArgs["soloColor"])
-                if val:
-                    self.solo_rb.setChecked(True)
-                else:
-                    self.multi_rb.setChecked(True)
+                self.solo_rb.setChecked(bool(KArgs["soloColor"]))
+
             if "soloColorType" in KArgs:
                 self.soloColor_cb.setCurrentIndex(int(KArgs["soloColorType"]))
-            sizeVal = 4.0
-            if "size" in KArgs:
-                sizeVal = float(KArgs["size"])
-            self.updateSizeVal(sizeVal)
 
-            if "strength" in KArgs:
-                self.strengthVarStored = float(KArgs["strength"])
-            else:
-                self.strengthVarStored = 1.0
+            self.updateSizeVal(KArgs.get("size", 4.0))
+
+            self.strengthVarStored = KArgs.get("strength", 1.0)
             self.updateStrengthVal(self.strengthVarStored)
 
             if "commandIndex" in KArgs:
-                commandIndex = int(KArgs["commandIndex"])
+                commandIndex = KArgs["commandIndex"]
                 commandText = self.commandArray[commandIndex]
                 thebtn = self.findChild(QtWidgets.QPushButton, commandText + "_btn")
                 if thebtn:
@@ -1196,21 +1249,19 @@ class SkinPaintWin(Window):
                     self.widgetAbs.setEnabled(False)
 
             if "mirrorPaint" in KArgs:
-                mirrorPaintIndex = int(KArgs["mirrorPaint"])
+                mirrorPaintIndex = KArgs["mirrorPaint"]
                 with toggleBlockSignals([self.uiSymmetryCB, self.mirrorActive_cb]):
                     self.uiSymmetryCB.setCurrentIndex(mirrorPaintIndex)
                     self.mirrorActive_cb.setChecked(mirrorPaintIndex != 0)
 
             if "curve" in KArgs:
-                curveIndex = int(KArgs["curve"])
+                curveIndex = KArgs["curve"]
                 nm = ["curveNone", "curveLinear", "curveSmooth", "curveNarrow"][curveIndex]
                 thebtn = self.findChild(QtWidgets.QPushButton, nm + "_btn")
                 if thebtn:
                     thebtn.setChecked(True)
-            if "smoothStrength" in KArgs:
-                self.smoothStrengthVarStored = float(KArgs["smoothStrength"])
-            else:
-                self.smoothStrengthVarStored = 1.0
+
+            self.smoothStrengthVarStored = KArgs.get("smoothStrength", 1.0)
             if self.smooth_btn.isChecked():
                 self.updateStrengthVal(self.smoothStrengthVarStored)
 
@@ -1220,31 +1271,23 @@ class SkinPaintWin(Window):
                 self.updateCurrentInfluence(jointName)
 
             if "useColorSetsWhilePainting" in KArgs:
-                val = bool(int(KArgs["useColorSetsWhilePainting"]))
-                if val:
-                    self.colorSets_rb.setChecked(True)
-                else:
-                    self.drawManager_rb.setChecked(True)
+                self.colorSets_rb.setChecked(bool(KArgs["useColorSetsWhilePainting"]))
 
             if "smoothRepeat" in KArgs:
-                val = int(KArgs["smoothRepeat"])
-                self.smoothRepeat_spn.setValue(val)
+                self.smoothRepeat_spn.setValue(KArgs["smoothRepeat"])
 
             if "minColor" in KArgs:
-                val = float(KArgs["minColor"])
-                self.minColor_sb.setValue(val)
+                self.minColor_sb.setValue(KArgs["minColor"])
 
             if "maxColor" in KArgs:
-                val = float(KArgs["maxColor"])
-                self.maxColor_sb.setValue(val)
+                self.maxColor_sb.setValue(KArgs["maxColor"])
 
             if "toleranceMirror" in KArgs:
-                val = float(KArgs["maxColor"])
-                self.uiTolerance_SB.setValue(val)
+                self.uiTolerance_SB.setValue(KArgs["maxColor"])
 
             for att in self.listCheckBoxesDirectAction:
                 if att in KArgs:
-                    val = bool(int(KArgs[att]))
+                    val = bool(KArgs[att])
                     checkBox = self.findChild(QtWidgets.QPushButton, att + "_cb")
                     if checkBox:
                         checkBox.setChecked(val)
@@ -1507,6 +1550,10 @@ class SkinPaintWin(Window):
         self.enterPaint_btn.setEnabled(True)
 
     def paintStart(self):  # called by the brush
+        print("PAINT START")
+        import traceback
+
+        traceback.print_stack()
         with UndoContext("paintstart"):
             for btnName in self.uiToActivateWithPaint:
                 thebtn = self.findChild(QtWidgets.QPushButton, btnName)
@@ -1542,6 +1589,8 @@ class SkinPaintWin(Window):
                 checkBox = self.findChild(QtWidgets.QCheckBox, att + "_cb")
                 if checkBox:
                     dicValues[att] = checkBox.isChecked()
+            print("STARTING PEC", PAINT_EDITOR_CONTEXT)
+            print("ARGS", dicValues)
             cmds.brSkinBrushContext(PAINT_EDITOR_CONTEXT, **dicValues)
 
     def buttonByCommandIndex(self, cmdIdx):
