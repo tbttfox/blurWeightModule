@@ -1,5 +1,5 @@
 QWidget:disabled {
-    font:italic;
+    font: italic;
 }
 QSplitter::handle {
     border-radius: 5px;
@@ -9,13 +9,13 @@ QSplitter::handle::hover {
     border-radius: 5px;
     border: 1px solid lightGray;
 }
-QLineEdit{
-    color:black;
+QLineEdit {
+    color: black;
 }
 QMenu::item:disabled {
     font: italic;
 }
-QPushButton:checked{
+QPushButton:checked {
     border: none;
 }
 QPushButton:hover{
@@ -36,10 +36,9 @@ QGroupBox::indicator {
     width: 0px;
     height: 0px;
 }
-QCheckBox:hover
-{
-    background:rgb(120, 120, 120);
+QCheckBox:hover {
+    background: rgb(120, 120, 120);
 }
-QComboBox{
-    border : 1px solid rgb(120, 120, 120);
+QComboBox {
+    border: 1px solid rgb(120, 120, 120);
 }

@@ -1,52 +1,52 @@
 QWidget {
-    background:  #aba8a6;
-    color:black;
+    background: #aba8a6;
+    color: black;
     selection-background-color: #a0a0ff;
 }
 QWidget:disabled {
-    font:italic;
-    color:grey;
+    font: italic;
+    color: grey;
 }
 QSplitter::handle {
     border-radius: 5px;
     border: 1px solid gray;
-    background-color:  #bfbcba;
+    background-color: #bfbcba;
 }
 QSplitter::handle::hover {
     border-radius: 5px;
     border: 1px solid lightGray;
-    background-color:  gray;
+    background-color: gray;
 }
-QLineEdit{
-    background-color:  #bfbcba;
-    color:black;
+QLineEdit {
+    background-color: #bfbcba;
+    color: black;
 }
 QMenu::item:disabled {
-    color:grey;
+    color: grey;
     font: italic;
 }
 QMenu::item:selected  {
-    background-color:rgb(120, 120, 120);
+    background-color: rgb(120, 120, 120);
 }
 QPushButton {
-    color:  black;
+    color: black;
 }
-QPushButton:checked{
+QPushButton:checked {
     background-color: rgb(100, 100, 100);
-    color:white;
+    color: white;
     border: none;
 }
-QPushButton:hover{
+QPushButton:hover {
     background-color: grey;
     border-style: outset;
 }
 QPushButton:pressed {
     background-color: rgb(130, 130, 130);
-    color:white;
+    color: white;
     border-style: inset;
 }
 QGroupBox {
-    background-color:  #aba8a6;
+    background-color: #aba8a6;
     border: 1px solid grey;
     margin-top: 1ex; /* leave space at the top for the title */
 }
@@ -58,10 +58,9 @@ QGroupBox::indicator {
     width: 0px;
     height: 0px;
 }
-QCheckBox:hover
-{
-    background:rgb(120, 120, 120);
+QCheckBox:hover {
+    background: rgb(120, 120, 120);
 }
-QComboBox{
-    border : 1px solid rgb(120, 120, 120);
+QComboBox {
+    border: 1px solid rgb(120, 120, 120);
 }
