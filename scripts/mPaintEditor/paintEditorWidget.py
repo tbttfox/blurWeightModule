@@ -4,9 +4,22 @@ from __future__ import absolute_import
 import os
 import re
 import six
+
+from maya import cmds, mel, OpenMaya
+from six.moves import range
 import numpy as np
+from Qt import QtGui, QtCore, QtWidgets, QtCompat
 from functools import partial
 
+from .brushTools import cmdSkinCluster
+from .brushTools.brushPythonFunctions import (
+    UndoContext,
+    setColorsOnJoints,
+    fixOptionVarContext,
+    generate_new_color,
+    deleteExistingColorSets,
+    setSoloMode,
+)
 from mWeightEditor.weightTools.skinData import DataOfSkin
 from mWeightEditor.weightTools.spinnerSlider import ValueSetting
 from mWeightEditor.weightTools.utils import (
@@ -18,21 +31,6 @@ from mWeightEditor.weightTools.utils import (
     SettingVariable,
     orderMelList,
 )
-
-from maya import cmds, mel, OpenMaya
-from six.moves import range
-
-from Qt import QtGui, QtCore, QtWidgets, QtCompat
-from .brushTools import cmdSkinCluster
-from .brushTools.brushPythonFunctions import (
-    UndoContext,
-    setColorsOnJoints,
-    fixOptionVarContext,
-    generate_new_color,
-    deleteExistingColorSets,
-    setSoloMode,
-)
-
 
 try:
     from blurdev.gui import Window

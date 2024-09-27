@@ -21,6 +21,8 @@ from six.moves import range, map, zip
 
 # GLOBAL FUNCTIONS
 class DataAbstract(object):
+    """An abstract base class for holding data for the weight editor"""
+
     verbose = False
 
     def __init__(self, createDisplayLocator=True, mainWindow=None):
@@ -128,30 +130,35 @@ class DataAbstract(object):
 
     # locator Functions
     def createDisplayLocator(self, forceSelection=False):
+        """Create the pointsDisplay node that we can connect to
+        to draw vertex selection, and paint color highlighting
+        """
         self.pointsDisplayTrans = None
         if not cmds.pluginInfo("blurSkin", query=True, loaded=True):
             cmds.loadPlugin("blurSkin")
+
         if cmds.ls("MSkinWeightEditorDisplay*"):
             cmds.delete(cmds.ls("MSkinWeightEditorDisplay*"))
         self.pointsDisplayTrans = cmds.createNode(
-            "transform", n="MSkinWeightEditorDisplay", skipSelect=True
+            "transform", name="MSkinWeightEditorDisplay", skipSelect=True
         )
 
         pointsDisplayNode = cmds.createNode(
-            "pointsDisplay", p=self.pointsDisplayTrans, skipSelect=True
+            "pointsDisplay", parent=self.pointsDisplayTrans, skipSelect=True
         )
         # add to the Isolate of all
+        # If any panels are in object isloation mode, make sure that this locator
+        # is part of the isolated group so we can ... ya know ... see it
         if forceSelection:
             cmds.select(self.pointsDisplayTrans, add=True)
             # that's added because the isolate doesnt work otherwise, it's dumb I know
-
         listModelPanels = [
             el
             for el in cmds.getPanel(visiblePanels=True)
             if cmds.getPanel(typeOf=el) == "modelPanel"
         ]
         for thePanel in listModelPanels:
-            if cmds.isolateSelect(thePanel, q=True, state=True):
+            if cmds.isolateSelect(thePanel, query=True, state=True):
                 cmds.isolateSelect(thePanel, addDagObject=self.pointsDisplayTrans)
 
         cmds.setAttr(pointsDisplayNode + ".pointWidth", 5)
@@ -162,10 +169,12 @@ class DataAbstract(object):
             # that's added because the isolate doesnt work otherwise, it's dumb I know
 
     def removeDisplayLocator(self):
+        """Delete the display locator, and remove the reference to it from the class"""
         self.deleteDisplayLocator()
         self.pointsDisplayTrans = None
 
     def deleteDisplayLocator(self):
+        """Delete the display locator if it exists"""
         if not self.pointsDisplayTrans:
             return
         if cmds.objExists(self.pointsDisplayTrans):
@@ -276,6 +285,18 @@ class DataAbstract(object):
 
     # functions utils
     def getDeformerFromSel(self, sel, typeOfDeformer="skinCluster"):
+        """Get the deformers that are deforming the passed in object
+        It is technically possible for the deformed shape not to be a child of
+        `sel`, but it's extremely unlikely
+
+        Arguments:
+            sel (str): The object to get the deformer of
+            typeOfDeformer (str): The deformer type to look for
+
+        Returns:
+            str: The name of the deformer node. Empty string if no deformer found
+            str: The name of the deformed shape. Empty string if no shape found
+        """
         with GlobalContext(message="getDeformerFromSel", doPrint=self.verbose):
             selShape, listDeformers = getListDeformersFromSel(sel)
             if selShape:
@@ -293,6 +314,10 @@ class DataAbstract(object):
             return "", ""
 
     def getSoftSelectionVertices(self, inputVertices=None):
+        """Get the current soft selection weights, or the weights of a passed
+        set of vertices on the current deformed shape, and store that data
+        on the class
+        """
         dicOfSel = getSoftSelectionValues()
         res = dicOfSel.get(self.deformedShape_longName, [])
 
@@ -313,7 +338,17 @@ class DataAbstract(object):
             self.opposite_sortedIndices = list(range(len(self.vertices)))
 
     # functions for MObjects
-    def getMObject(self, nodeName, returnDagPath=True):
+    @staticmethod
+    def getMObject(nodeName, returnDagPath=True):
+        """Get the MObject or MDagPath from a full path of a mesh shape node
+
+        Arguments:
+            nodeName (str): The full path to a mesh shape
+            returnDagPath (bool): Whether to return the dag path or MObject
+
+        Returns:
+            (MDagPath or MObject): The requested maya api object
+        """
         # We expect here the fullPath of a shape mesh
         selList = OpenMaya.MSelectionList()
         OpenMaya.MGlobal.getSelectionListByName(nodeName, selList)
@@ -322,12 +357,12 @@ class DataAbstract(object):
 
         if not returnDagPath:
             return depNode
-
         mshPath = OpenMaya.MDagPath()
         selList.getDagPath(0, mshPath, depNode)
         return mshPath
 
     def getShapeInfo(self):
+        """Store the info about the current shape node onto self"""
         self.isNurbsSurface = False
         self.isLattice = False
         self.isMesh = False
@@ -460,7 +495,15 @@ class DataAbstract(object):
             print("end - getConnectVertices")
 
     # functions for numpy
-    def printArrayData(self, theArr):
+    @staticmethod
+    def printArrayData(theArr):
+        """A convenience function to print the data in an array
+        in a nicer, more grid-like fasion. Also takes masked arrays
+        into account
+
+        Arguments:
+            theArr (np.array): The array to print
+        """
         rows = theArr.shape[0]
         cols = theArr.shape[1]
         print("\n")
@@ -487,6 +530,36 @@ class DataAbstract(object):
         theDeformer=None,
         deformedShape=None,
     ):
+        """A convenience function to be able to load the currently selected object"""
+        sel = cmds.ls(sl=True)
+        if not sel:
+            raise ValueError("No selection")
+        return self.getDataFromObject(sel[0], typeOfDeformer, force, theDeformer, deformedShape)
+
+    def getDataFromObject(self, sel, typeOfDeformer, force, theDeformer, deformedShape):
+        """Load data from a given object
+
+        This method sets these instance properties
+            self.deformedShape
+            self.deformedShape_longName
+            self.preSel
+            self.prevSoftSel
+            self.raw2dArray
+            self.shapeShortName
+            self.softIsReallyOn
+            self.softOn
+            self.theDeformer
+
+        Arguments:
+            sel (str): The Name of the object to get its data from
+            typeOfDeformer (str): The NodeType of the deformer to look for
+            force (bool): Whether to force getting the data if its already loaded
+            theDeformer (str or None): The deformer to get the data from
+            deformedShape (str or None): The ShapeNode to get the data from
+
+        Returns:
+            bool: Whether the data was loaded
+        """
         with GlobalContext(message="getDataFromSelection", doPrint=self.verbose):
             if inputVertices is not None:
                 inputVertices = list(map(int, inputVertices))
@@ -513,7 +586,7 @@ class DataAbstract(object):
             self.prevSoftSel = prevSoftSel
             self.softOn = softOn
             self.softIsReallyOn = softOn
-            if not force and isPreloaded:
+            if isPreloaded and not force:
                 return False
 
             self.shapeShortName = (
@@ -552,10 +625,22 @@ class DataAbstract(object):
     # values setting
     @staticmethod
     def pruneOnArray(theArray, theMask, pruneValue):
+        """Zero out values less than Prune value in unmasked entries in theArray in-place
+
+        Arguments:
+            theArray (np.array): The array to prune
+            theMask (np.array): A boolean array to use as a mask
+            pruneValue (float): Any values less than this will be set to 0
+        """
         unLock = np.ma.array(theArray.copy(), mask=theMask, fill_value=0)
         np.copyto(theArray, np.full(unLock.shape, 0), where=unLock < pruneValue)
 
     def pruneWeights(self, pruneValue):
+        """Prune the currently loaded weights, and do it in a way that is undoable
+
+        Arguments:
+            pruneValue (float): Any values less than this will be set to 0
+        """
         with GlobalContext(message="pruneWeights", doPrint=self.verbose):
             new2dArray = np.copy(self.orig2dArray)
 
@@ -566,20 +651,32 @@ class DataAbstract(object):
             self.commandForDoIt(new2dArray)
 
     def absoluteVal(self, val):
+        """Override the current value in the weight array with the given value
+
+        Arguments:
+            val (float): The value to set that overrides the current ones
+        """
         with GlobalContext(message="absoluteVal", doPrint=self.verbose):
             new2dArray = np.copy(self.orig2dArray)
             absValues = np.full(self.orig2dArray.shape, val)
 
             np.copyto(new2dArray, absValues, where=self.sumMasks)
             if self.softOn:
-                new2dArray = (
-                    new2dArray * self.indicesWeights[:, np.newaxis]
-                    + self.orig2dArray * (1.0 - self.indicesWeights)[:, np.newaxis]
-                )
-
+                iw = self.indicesWeights[:, np.newaxis]
+                new2dArray = new2dArray * iw + self.orig2dArray * (1.0 - iw)
             self.commandForDoIt(new2dArray)
 
-    def doAdd(self, val, percent=False, autoPrune=False, average=False, autoPruneValue=0.0001):
+    def doAdd(self, val, percent=False, autoPrune=False, autoPruneValue=0.0001):
+        """
+        Add some value to the current array over the current mask
+
+        Arguments:
+            val (float): The value to add to the array
+            percent (float): The percentage of the value to add to the array
+            autoPrune (bool): Whether to automatically prune values
+            autoPruneValue (float): If autoPrune is True, any values less than this
+                will be automatically set to 0.0
+        """
         with GlobalContext(message="absoluteVal", doPrint=self.verbose):
             new2dArray = np.copy(self.orig2dArray)
             selectArr = np.copy(self.orig2dArray)
@@ -598,13 +695,10 @@ class DataAbstract(object):
             theMask = sumMasksUpdate if val < 0.0 else self.sumMasks
 
             if percent:
-                addValues = (
-                    np.ma.array(selectArr, mask=~theMask, fill_value=0)
-                    + np.ma.array(selectArr, mask=~theMask, fill_value=0) * val
-                )
+                maskAry = np.ma.array(selectArr, mask=~theMask, fill_value=0)
+                addValues = maskAry + maskAry * val
             else:
                 addValues = np.ma.array(selectArr, mask=~theMask, fill_value=0) + val
-
             # clip it
             addValues = addValues.clip(min=0.0, max=1.0)
 
@@ -613,17 +707,21 @@ class DataAbstract(object):
 
             np.copyto(new2dArray, addValues, where=~addValues.mask)
             if self.softOn:  # mult soft Value
-                new2dArray = (
-                    new2dArray * self.indicesWeights[:, np.newaxis]
-                    + self.orig2dArray * (1.0 - self.indicesWeights)[:, np.newaxis]
-                )
-
+                iw = self.indicesWeights[:, np.newaxis]
+                new2dArray = new2dArray * iw + self.orig2dArray * (1.0 - iw)
             self.commandForDoIt(new2dArray)
 
     def preSettingValuesFn(self, chunks, actualyVisibleColumns):
-        self.storeUndo = (
-            True  # it tells us that before the first set we need to store values for the undo
-        )
+        """Method to be called before setting values. GUILLAUME
+
+        Arguments:
+            chunks (someType): GUILLAUME
+            actuallyVisibleColumns (someType): GUILLAUME
+
+        """
+        # this tells us that before the first set we need to store values for the undo
+        self.storeUndo = True
+
         # MASK selection array
         lstTopBottom = []
         for top, bottom, left, right in chunks:
@@ -635,7 +733,7 @@ class DataAbstract(object):
 
         # GET the sub ARRAY
         assert self.display2dArray is not None
-        self.sub2DArrayToSet = self.display2dArray[self.Mtop : self.Mbottom + 1,]
+        self.sub2DArrayToSet = self.display2dArray[self.Mtop : self.Mbottom + 1]
         self.orig2dArray = np.copy(self.sub2DArrayToSet)
 
         # GET the mask ARRAY
@@ -682,10 +780,25 @@ class DataAbstract(object):
         pass
 
     def getValue(self, row, column):
+        """Get a value from the display 2d array"""
         assert self.display2dArray is not None
         return self.display2dArray[row][column]
 
+    def setValueInDeformer(self, arrayForSetting):
+        """A function that actually sets the value in the deformer.
+        This abstract function must be implemented in the sub-classes
+
+        Arguments:
+            arrayForSetting (np.array): The array that will be set to the deformer
+        """
+        raise RuntimeError("This is an abstract method, and must be re-implemented in a sub-class")
+
     def commandForDoIt(self, arrayForSetting):
+        """This function will be called by the DoIt method to enable undos
+
+        Arguments:
+            arrayForSetting (np.array): The array that will be set to the deformer
+        """
         self.setValueInDeformer(arrayForSetting)
         if self.sub2DArrayToSet.any():
             np.put(self.sub2DArrayToSet, range(self.sub2DArrayToSet.size), arrayForSetting)
@@ -710,6 +823,7 @@ class DataAbstract(object):
 
     # function to get display  texts
     def createRowText(self):
+        """Create the text for the row headers"""
         if self.isNurbsSurface:
             self.rowText = []
             for indVtx in self.vertices:
@@ -729,6 +843,14 @@ class DataAbstract(object):
 
     # selection
     def getZeroRows(self, selectedColumns):
+        """Get any rows that are zeroed out for the selected columns
+
+        Arguments:
+            selectedColumns (list): The columns to get zeroed rows for
+
+        Returns:
+            np.array: The rows that are zero for the selected columns
+        """
         assert self.display2dArray is not None
         res = self.display2dArray[:, selectedColumns]
         myAny = np.any(res, axis=1)
@@ -736,6 +858,12 @@ class DataAbstract(object):
         return noneZeroRows
 
     def selectVertsOfColumns(self, selectedColumns, doSelect=True):
+        """Get the vertices that have weights for the given columns
+
+        Arguments:
+            selectedColumns (list): The columns to check for weights
+            doSelect (bool): Whether to select the verts
+        """
         selectedIndices = self.getZeroRows(selectedColumns)
 
         if doSelect:
@@ -744,6 +872,11 @@ class DataAbstract(object):
             self.updateDisplayVerts(selectedIndices)
 
     def selectVerts(self, selectedIndices):
+        """Select some vertices
+
+        Arguments:
+            selectedIndices (list): The list of selected indices into our list of vertices
+        """
         selectedVertices = set([self.vertices[ind] for ind in selectedIndices])
         if not selectedVertices:
             cmds.select(clear=True)
@@ -761,7 +894,7 @@ class DataAbstract(object):
             div_t = cmds.getAttr(self.deformedShape + ".tDivisions")
             div_u = cmds.getAttr(self.deformedShape + ".uDivisions")
             prt = (
-                cmds.listRelatives(self.deformedShape, parent=True, path=True)[0]
+                cmds.listRelatives(self.deformedShape, p=True, path=True)[0]
                 if cmds.nodeType(self.deformedShape) == "lattice"
                 else self.deformedShape
             )
@@ -772,16 +905,18 @@ class DataAbstract(object):
             toSel = orderMelList(selectedVertices, onlyStr=True)
             if cmds.nodeType(self.deformedShape) == "mesh":
                 toSel = ["{0}.vtx[{1}]".format(self.deformedShape, vtx) for vtx in toSel]
-            else:
+            else:  # nurbsCurve
                 toSel = ["{0}.cv[{1}]".format(self.deformedShape, vtx) for vtx in toSel]
-        cmds.select(toSel, recursive=True)
+        cmds.select(toSel, replace=True)
 
     # locks
     def addLockVerticesAttribute(self):
+        """Add an attribute to the shape node to keep track of which vertices are locked"""
         if not cmds.attributeQuery("lockedVertices", node=self.deformedShape, exists=True):
             cmds.addAttr(self.deformedShape, longName="lockedVertices", dataType="Int32Array")
 
     def getLocksInfo(self):
+        """Get info on the locks, and set up the defaults"""
         self.lockedColumns = []
         self.lockedVertices = []
         # now vertices
@@ -792,13 +927,23 @@ class DataAbstract(object):
             self.lockedVertices = cmds.getAttr(att) or []
         else:
             self.lockedVertices = []
-
         self.lockedColumns = [False] * self.columnCount
 
     def unLockRows(self, selectedIndices):
+        """Unlock the given rows
+
+        Arguments:
+            selectedIndices (list): The row indices to unlock
+        """
         self.lockRows(selectedIndices, doLock=False)
 
     def lockRows(self, selectedIndices, doLock=True):
+        """Lock the given rows
+
+        Arguments:
+            selectedIndices (list): The row indices to lock
+            doLock (bool): Whether to lock or unlock the rows
+        """
         lockVtx = cmds.getAttr(self.deformedShape + ".lockedVertices") or []
         lockVtx = set(lockVtx)
 
@@ -816,21 +961,55 @@ class DataAbstract(object):
         )
 
     def isRowLocked(self, row):
+        """Query whether the row is locked
+
+        Arguments:
+            row (int): The row to check
+
+        Returns:
+            bool: Whether the row is locked
+        """
         return self.vertices[row] in self.lockedVertices
 
-    def isColumnLocked(self, columnIndex):
+    def isColumnLocked(self, column):
+        """Query whether the column is locked
+
+        Arguments:
+            column (int): The column to check
+
+        Returns:
+            bool: Whether the column is locked
+        """
         return False
 
-    def isLocked(self, row, columnIndex):
-        return self.isColumnLocked(columnIndex) or self.isRowLocked(row)
+    def isLocked(self, row, column):
+        """Query whether either of a given row/column are locked
+
+        Arguments:
+            row (int): The row to check
+            column (int): The column to check
+
+        Returns:
+            bool: Whether the row or column is locked
+        """
+        return self.isColumnLocked(column) or self.isRowLocked(row)
 
     # callBacks
     def renameCB(self, oldName, newName):
-        return
+        """Abstract callback for when an object is renamed
+
+        Arguments:
+            oldName (str): The old name of the object
+            newName (str): The new name of the object
+
+        """
+        pass
 
 
 # UNDO REDO FUNCTIONS
 class DataQuickSet(object):
+    """A class for quickly setting data in Maya"""
+
     def __init__(
         self,
         undoArgs,
@@ -860,39 +1039,53 @@ class DataQuickSet(object):
         self.normalizeWeights = None
 
     def doIt(self):
+        """The maya command doIt function"""
         pass
 
     def redoIt(self):
+        """The maya command redoIt function"""
         if not self.isSkin:
             self.setValues(*self.redoArgs)
         else:
             assert self.theSkinCluster is not None
-            self.blurSkinNode = self.disConnectBlurskinDisplay(self.theSkinCluster)
+            self.blurSkinNode = self.disconnectBlurskinDisplay(self.theSkinCluster)
             self.normalizeWeights = cmds.getAttr(self.theSkinCluster + ".normalizeWeights")
             self.setSkinValue(*self.redoArgs)
             self.postSkinSet(self.theSkinCluster, self.inListVertices)
         self.refreshWindow()
 
     def undoIt(self):
+        """The maya command undoIt function"""
         if not self.isSkin:
             self.setValues(*self.undoArgs)
         else:
             assert self.theSkinCluster is not None
-            self.blurSkinNode = self.disConnectBlurskinDisplay(self.theSkinCluster)
+            self.blurSkinNode = self.disconnectBlurskinDisplay(self.theSkinCluster)
             self.normalizeWeights = cmds.getAttr(self.theSkinCluster + ".normalizeWeights")
             self.setSkinValue(*self.undoArgs)
             self.postSkinSet(self.theSkinCluster, self.inListVertices)
-
         self.refreshWindow()
 
     def refreshWindow(self):
+        """Refresh the window"""
         if self.mainWindow:
             try:
                 self.mainWindow.refreshBtn()
             except Exception:
+                import traceback
+
+                traceback.print_exc()
+                print("Exception Occured while refreshing window, and was ignored")
                 return
 
-    def setValues(self, attsValues):
+    @staticmethod
+    def setValues(attsValues):
+        """Set given values to given attributes
+
+        Arguments:
+            attsValues (list): A list of tuples of (attribute, values)
+
+        """
         if not attsValues:
             return
         for att, vertsIndicesWeights in attsValues:
@@ -915,21 +1108,27 @@ class DataQuickSet(object):
                 arrValue[indices] = values
                 cmds.setAttr(att, arrValue, type=attType)
 
-    def disConnectBlurskinDisplay(self, theSkinCluster):
+    def disconnectBlurskinDisplay(self, theSkinCluster):
+        """Disconnect the blurskin display node from the given skincluster
+
+        Arguments:
+            theSkinCluster (str): The skincluster node name
+
+        Returns:
+            str: The blurSkinDisplay node that was disconnected, or an empty string
+        """
         if cmds.objExists(theSkinCluster):
             inConn = cmds.listConnections(
                 theSkinCluster + ".input[0].inputGeometry",
-                s=True,
-                d=False,
+                destination=False,
                 type="blurSkinDisplay",
             )
             if inConn:
                 blurSkinNode = inConn[0]
                 inConn = cmds.listConnections(
                     theSkinCluster + ".weightList",
-                    s=True,
-                    d=False,
-                    p=True,
+                    destination=False,
+                    plugs=True,
                     type="blurSkinDisplay",
                 )
                 if inConn:
@@ -938,6 +1137,12 @@ class DataQuickSet(object):
         return ""
 
     def postSkinSet(self, theSkinCluster, inListVertices):
+        """A function to clean up after setting skin data
+
+        Arguments:
+            theSkinCluster (str): The skinCluster node name
+            inListVertices (list): The input components
+        """
         cmds.setAttr(theSkinCluster + ".normalizeWeights", self.normalizeWeights)
         if inListVertices and self.blurSkinNode and cmds.objExists(self.blurSkinNode):
             cmds.setAttr(
@@ -947,6 +1152,11 @@ class DataQuickSet(object):
             )
 
     def setSkinValue(self, newArray):
+        """Set data to the skin array
+
+        Arguments:
+            newArray (om.MDoubleArray): The maya array to set to the skincluster
+        """
         assert self.theSkinCluster is not None
         assert self.sknFn is not None
         cmds.setAttr(self.theSkinCluster + ".normalizeWeights", 0)

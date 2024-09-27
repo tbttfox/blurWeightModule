@@ -120,16 +120,26 @@ class ButtonWithValue(QtWidgets.QPushButton):
 #
 ###################################################################################
 class ValueSetting(QtWidgets.QWidget):
-    theStyleSheet = """QDoubleSpinBox {color: black; background-color:rgb(200,200,200) ; border: 1px solid black;text-align: center;}
-                       QDoubleSpinBox:disabled {color: grey; background-color:rgb(170,170,170) ; border: 1px solid black;text-align: center;}
-                    """
+    theStyleSheet = """
+    QDoubleSpinBox {
+        color: black;
+        background-color:rgb(200,200,200);
+        border: 1px solid black;
+        text-align: center;
+    }
+    QDoubleSpinBox:disabled {
+        color: grey;
+        background-color:rgb(170,170,170);
+        border: 1px solid black;
+        text-align: center;
+    }
+    """
 
     def __init__(self, parent=None, singleStep=0.01, precision=2, spacing=0, maximumValue=100.0):
         super(ValueSetting, self).__init__(parent=None)
-        self.theProgress = ProgressItem("skinVal", szrad=0, value=50)
+        self.theProgress = ProgressItem("skinVal", self, szrad=0, value=50)
         self.setAddMode(True)
 
-        self.theProgress.prt = self
         self.mainWindow = parent
 
         layout = QtWidgets.QHBoxLayout(self)
@@ -153,11 +163,9 @@ class ValueSetting(QtWidgets.QWidget):
 
         self.theProgress.setMaximumHeight(18)
 
-        self.theLineEdit = None
-        for chd in self.theSpinner.children():
-            if isinstance(chd, QtWidgets.QLineEdit):
-                self.theLineEdit = chd
-                break
+        self.theLineEdit = self.theSpinner.findChildren(QtWidgets.QLineEdit)[0]
+        assert self.theLineEdit is not None
+
         self.theLineEdit.returnPressed.connect(self.spinnerValueEntered)
 
         self.theSpinner.focusInEvent = self.theSpinner_focusInEvent
@@ -165,7 +173,6 @@ class ValueSetting(QtWidgets.QWidget):
         layout.addWidget(self.theSpinner)
         layout.addWidget(self.theProgress)
 
-        # self.theProgress.valueChanged.connect (self.setVal)
         self.theProgress.punched.connect(self.setVal)
 
     def theSpinner_focusInEvent(self, event):
@@ -230,30 +237,48 @@ class ValueSettingWE(ValueSetting):
 
 
 class ProgressItem(QtWidgets.QProgressBar):
-    theStyleSheet = """QProgressBar {{color: black; background-color:{bgColor} ; border: 1px solid black;text-align: center;
-    border-bottom-right-radius: {szrad}px;
-    border-bottom-left-radius: {szrad}px;
-    border-top-right-radius: {szrad}px;
-    border-top-left-radius: {szrad}px;}}
-    QProgressBar:disabled {{color: black; background-color:{bgColorDisabled} ; border: 1px solid black;text-align: center;
-    border-bottom-right-radius: {szrad}px;
-    border-bottom-left-radius: {szrad}px;
-    border-top-right-radius: {szrad}px;
-    border-top-left-radius: {szrad}px;}}            
-    QProgressBar::chunk {{background:{chunkColor};
-    border-bottom-right-radius: {szrad}px;
-    border-bottom-left-radius: {szrad}px;
-    border-top-right-radius: {szrad}px;
-    border-top-left-radius: {szrad}px;}}
-    QProgressBar::chunk:disabled {{background:{chunkColorDisabled};
-    border-bottom-right-radius: {szrad}px;
-    border-bottom-left-radius: {szrad}px;
-    border-top-right-radius: {szrad}px;
-    border-top-left-radius: {szrad}px;}}
+    theStyleSheet = """
+    QProgressBar {{
+        color: black;
+        background-color:{bgColor};
+        border: 1px solid black;
+        text-align: center;
+        border-bottom-right-radius: {szrad}px;
+        border-bottom-left-radius: {szrad}px;
+        border-top-right-radius: {szrad}px;
+        border-top-left-radius: {szrad}px;
+    }}
+
+    QProgressBar:disabled {{
+        color: black;
+        background-color:{bgColorDisabled};
+        border: 1px solid black;
+        text-align: center;
+        border-bottom-right-radius: {szrad}px;
+        border-bottom-left-radius: {szrad}px;
+        border-top-right-radius: {szrad}px;
+        border-top-left-radius: {szrad}px;
+    }}
+
+    QProgressBar::chunk {{
+        background:{chunkColor};
+        border-bottom-right-radius: {szrad}px;
+        border-bottom-left-radius: {szrad}px;
+        border-top-right-radius: {szrad}px;
+        border-top-left-radius: {szrad}px;
+    }}
+
+    QProgressBar::chunk:disabled {{
+        background:{chunkColorDisabled};
+        border-bottom-right-radius: {szrad}px;
+        border-bottom-left-radius: {szrad}px;
+        border-top-right-radius: {szrad}px;
+        border-top-left-radius: {szrad}px;
+    }}
     """
     punched = QtCore.Signal(float)
 
-    def __init__(self, theName, value=0, **kwargs):
+    def __init__(self, theName, prt, value=0, **kwargs):
         super(ProgressItem, self).__init__()
         self.multiplier = 1
 
@@ -269,7 +294,7 @@ class ProgressItem(QtWidgets.QProgressBar):
             **kwargs,
         )
 
-        self.prt = None
+        self.prt = prt
         self.shiftKeyValue = 0.0
         self.shiftHold = False
         self.currentValue = 0.0
