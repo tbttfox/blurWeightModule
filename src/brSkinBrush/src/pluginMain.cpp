@@ -42,7 +42,8 @@ MStatus initializePlugin(MObject obj) {
         MUserEventMessage::registerUserEvent("brSkinBrush_cleanCloseUndo");
         MUserEventMessage::registerUserEvent("brSkinBrush_cleanOpenUndo");
         MUserEventMessage::registerUserEvent("brSkinBrush_toolOffCleanup");
-
+        MUserEventMessage::registerUserEvent("brSkinBrush_toolOnSetupStart");
+        MUserEventMessage::registerUserEvent("brSkinBrush_toolOnSetupEnd");
     }
 
     return status;
@@ -65,6 +66,8 @@ MStatus uninitializePlugin(MObject obj) {
         MUserEventMessage::deregisterUserEvent("brSkinBrush_cleanCloseUndo");
         MUserEventMessage::deregisterUserEvent("brSkinBrush_cleanOpenUndo");
         MUserEventMessage::deregisterUserEvent("brSkinBrush_toolOffCleanup");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_toolOnSetupStart");
+        MUserEventMessage::deregisterUserEvent("brSkinBrush_toolOnSetupEnd");
     }
 
     return status;

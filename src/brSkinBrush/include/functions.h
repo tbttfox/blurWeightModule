@@ -85,7 +85,6 @@ bool RayIntersectsBBox(MPoint minPt, MPoint maxPt, MPoint Orig, MVector dest);
 bool bboxIntersection(const MPoint& minPoint, const MPoint& maxPoint, const MMatrix& bbSpace,
                       const MPoint& rayPoint, const MVector& rayVector, MPoint& intersection);
 
-void lineSTD(float x1, float y1, float x2, float y2, std::vector<std::pair<float, float>>& posi);
 void lineC(short x0, short y0, short x1, short y1, std::vector<std::pair<short, short>>& posi);
 
 float dist2D(short x0, short y0, short x1, short y1);

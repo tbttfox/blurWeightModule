@@ -72,10 +72,10 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
         moduleImportString +
         MString(
             "toolOnSetupEnd, "
-            "toolOffCleanup, "
             "toolOnSetupStart\n"
         ));
     MGlobal::executePythonCommand("toolOnSetupStart()");
+    MUserEventMessage::postUserEvent("brSkinBrush_toolOnSetupStart");
 
     this->firstPaintDone = false;
     this->pickMaxInfluenceVal = false;
@@ -169,13 +169,13 @@ void SkinBrushContext::toolOnSetup(MEvent &) {
     view.refresh(false, true);
 
     MGlobal::executePythonCommand("toolOnSetupEnd()");
+    MUserEventMessage::postUserEvent("brSkinBrush_toolOnSetupEnd");
 }
 
 void SkinBrushContext::toolOffCleanup() {
     setInViewMessage(false);
     meshFn.updateSurface();  // try avoiding crashes
     if (exitToolCommandVal.length() > 5) MGlobal::executeCommand(exitToolCommandVal);
-    //MGlobal::executePythonCommand("toolOffCleanup()");
     MUserEventMessage::postUserEvent("brSkinBrush_toolOffCleanup");
     if (!this->firstPaintDone) {
         this->firstPaintDone = true;
@@ -1317,7 +1317,7 @@ MStatus SkinBrushContext::doDragCommon(MEvent &event) {
 
         std::string stdMessage = std::string(message.asChar());
         std::string theMessage = std::format("{}: {:.{}f}", stdMessage, adjustValue, precision);
-        std::string headsUpFmt = std::format("headsUpMessage -horizontalOffset {} -verticalOffset {} -time 0.1 {}", offsetX, offsetY, theMessage);
+        std::string headsUpFmt = std::format("headsUpMessage -horizontalOffset {} -verticalOffset {} -time 0.1 \"{}\"", offsetX, offsetY, theMessage);
 
         MGlobal::executeCommand(MString(headsUpFmt.c_str(), headsUpFmt.length()));
 
