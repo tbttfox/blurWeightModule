@@ -429,7 +429,6 @@ MStatus SkinBrushContext::drawTheMesh(MHWRender::MUIDrawManager &drawManager, MV
     drawManager.setLineWidth(1);
 
     MPointArray edgeVertices;
-    unsigned int i = 0;
     for (const auto &pairEdges : this->perEdgeVertices) {
         double multVal = worldVector * this->verticesNormals[pairEdges.first];
         double multVal2 = worldVector * this->verticesNormals[pairEdges.second];
@@ -902,8 +901,6 @@ MStatus SkinBrushContext::refreshPointsNormals() {
 MStatus SkinBrushContext::doPressCommon(MEvent &event) {
     MStatus status = MStatus::kSuccess;
 
-    unsigned int i;
-
     if (meshDag.node().isNull()) return MStatus::kNotFound;
 
     view = M3dView::active3dView();
@@ -1018,7 +1015,6 @@ void SkinBrushContext::growArrayOfHitsFromCenters(std::unordered_map<int, float>
 
     // start of growth---------------------
     bool processing = true;
-    double smallestMult = 5, biggestMult = -5;
 
     std::vector<int> borderOfGrowth;
     borderOfGrowth = vertsVisited;
@@ -1542,17 +1538,20 @@ ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
     // unlockVertices
     ModifierCommands theCommandIndex = this->commandIndex;
 
-    if (this->modifierNoneShiftControl == ModifierKeys::Control){
-        if (this->commandIndex == ModifierCommands::Add){
-            theCommandIndex = ModifierCommands::Remove;
-        }
-    } else if (this->modifierNoneShiftControl == ModifierKeys::Shift){
-        if (this->commandIndex == ModifierCommands::LockVertices){
-            theCommandIndex = ModifierCommands::UnlockVertices;
-        } else {
+    if (this->commandIndex == ModifierCommands::Add){
+        if (this->modifierNoneShiftControl == this->smoothModifier){
             theCommandIndex = ModifierCommands::Smooth;
         }
-    } else if (this->modifierNoneShiftControl == ModifierKeys::ControlShift){
+        else if (this->modifierNoneShiftControl == this->removeModifier){
+            theCommandIndex = ModifierCommands::Remove;
+        }
+    }
+    else if (this->commandIndex == ModifierCommands::LockVertices){
+        if (this->modifierNoneShiftControl == ModifierKeys::Shift){
+            theCommandIndex = ModifierCommands::UnlockVertices;
+        }
+    }
+    else if (this->modifierNoneShiftControl == ModifierKeys::ControlShift){
         theCommandIndex = ModifierCommands::Sharpen;
     }
 
@@ -3240,10 +3239,17 @@ void SkinBrushContext::setInViewMessage(bool display) {
     if (display && messageVal){
         MString cmd = "inViewMessage -position topCenter -statusMessage \""
             "<hl>LMB</hl> to add  |  "
-            "<hl>MMB</hl> to adjust  |  "
-            "<hl>Ctrl</hl> to remove  |  "
-            "<hl>Shift</hl> to smooth"
-            "\"";
+            "<hl>MMB</hl> to adjust  |  ";
+        if (smoothModifier == ModifierKeys::Shift){
+            cmd += "<hl>Ctrl</hl> to remove  |  "
+                "<hl>Shift</hl> to smooth"
+                "\"";
+        }
+        else{
+            cmd += "<hl>Ctrl</hl> to smooth  |  "
+                "<hl>Shift</hl> to remove"
+                "\"";
+        }
         MGlobal::executeCommand(cmd);
     }
     else{

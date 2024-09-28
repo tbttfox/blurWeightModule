@@ -4,7 +4,6 @@ from __future__ import absolute_import
 import os
 import re
 import six
-import time
 
 from maya import cmds, mel, OpenMaya
 from six.moves import range
@@ -15,6 +14,9 @@ from functools import partial
 from . import GET_CONTEXT
 
 from .brushTools import cmdSkinCluster
+
+from .brushTools.hotkeys import HOTKEYS
+
 from .brushTools.brushPythonFunctions import (
     UndoContext,
     setColorsOnJoints,
@@ -1554,6 +1556,7 @@ class SkinPaintWin(Window):
                 "commandIndex": self.getCommandIndex(),
                 "useColorSetsWhilePainting": self.colorSets_rb.isChecked(),
                 "smoothRepeat": self.smoothRepeat_spn.value(),
+                "shiftSmooths": HOTKEYS.SMOOTH_KEY == QtCore.Qt.Key_Shift,
                 "maxColor": self.maxColor_sb.value(),
                 "minColor": self.minColor_sb.value(),
             }

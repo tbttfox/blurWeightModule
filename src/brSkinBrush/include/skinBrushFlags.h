@@ -72,6 +72,9 @@
 #define kPickInfluenceFlag "-pid"
 #define kPickInfluenceFlagLong "-pickInfluence"
 
+#define kShiftSmoothsFlag "-ssm"
+#define kShiftSmoothsFlagLong "-shiftSmooths"
+
 #define kInfluenceIndexFlag "-ii"
 #define kInfluenceIndexFlagLong "-influenceIndex"
 

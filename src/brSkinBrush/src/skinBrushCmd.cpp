@@ -58,6 +58,8 @@ MStatus SkinBrushContextCmd::appendSyntax() {
     syn.addFlag(kPickMaxInfluenceFlag, kPickMaxInfluenceFlagLong, MSyntax::kBoolean);
 
     syn.addFlag(kPickInfluenceFlag, kPickInfluenceFlagLong, MSyntax::kBoolean);
+    syn.addFlag(kShiftSmoothsFlag, kShiftSmoothsFlagLong, MSyntax::kBoolean);
+
     syn.addFlag(kInfluenceIndexFlag, kInfluenceIndexFlagLong, MSyntax::kLong);
     syn.addFlag(kInfluenceNameFlag, kInfluenceNameFlagLong, MSyntax::kString);
     syn.addFlag(kPostSettingFlag, kPostSettingFlagLong, MSyntax::kBoolean);
@@ -227,7 +229,11 @@ MStatus SkinBrushContextCmd::doEditFlags() {
         status = argData.getFlagArgument(kPickInfluenceFlag, 0, value);
         smoothContext->setPickInfluence(value);
     }
-
+    if (argData.isFlagSet(kShiftSmoothsFlag)) {
+        bool value;
+        status = argData.getFlagArgument(kShiftSmoothsFlag, 0, value);
+        smoothContext->setShiftSmooths(value);
+    }
     if (argData.isFlagSet(kInfluenceIndexFlag)) {
         int value;
         status = argData.getFlagArgument(kInfluenceIndexFlag, 0, value);

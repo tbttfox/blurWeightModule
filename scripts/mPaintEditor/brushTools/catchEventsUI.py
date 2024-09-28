@@ -9,6 +9,7 @@ from .brushPythonFunctions import (
     disableUndoContext,
 )
 from . import meshFnIntersection
+from .hotkeys import HOTKEYS
 from past.builtins import long
 
 EVENTCATCHER = None
@@ -40,27 +41,6 @@ MM_LAYOUT = (
     ("Locks Verts", "E", 6),
     ("unlocks Verts", "SE", 7),
 )
-
-
-SMOOTH_KEY = QtCore.Qt.Key_Control
-REMOVE_KEY = QtCore.Qt.Key_Shift
-
-EXIT_KEY = QtCore.Qt.Key_Escape
-SOLO_KEY = QtCore.Qt.Key_S
-MIRROR_KEY = QtCore.Qt.Key_M
-SET_ORBIT_POS_KEY = QtCore.Qt.Key_F
-SOLO_OPAQUE_KEY = QtCore.Qt.Key_A
-
-# +Alt = pick MAX influence
-PICK_INFLUENCE_KEY = QtCore.Qt.Key_D
-
-# ALT KEYS
-TOGGLE_WIREFRAME_KEY = QtCore.Qt.Key_W
-TOGGLE_XRAY_KEY = QtCore.Qt.Key_X
-
-# Handled specially
-MARKING_MENU_KEY = QtCore.Qt.Key_U
-
 
 MM_SOLO_COLORS = (
     ("White", 0),
@@ -465,22 +445,22 @@ class CatchEventsWidget(QtWidgets.QWidget):
         if obj in self.eventFilterWidgetReceiver:
             # action on Release
             if event.type() == QtCore.QEvent.KeyRelease:
-                if event.key() == REMOVE_KEY:
+                if event.key() == HOTKEYS.REMOVE_KEY:
                     self.isRemoveKeyPressed = False
                     self.RemoveKeyReleased.emit()
                     return False
-                elif event.key() == SMOOTH_KEY:
+                elif event.key() == HOTKEYS.SMOOTH_KEY:
                     self.isSmoothKeyPressed = False
                     self.SmoothKeyReleased.emit()
                     return False
-                elif event.key() == MARKING_MENU_KEY:
+                elif event.key() == HOTKEYS.MARKING_MENU_KEY:
                     if self.markingMenuKeyPressed:
                         self.markingMenuKeyPressed = False
                     return True
 
             # action on Press
             elif event.type() == QtCore.QEvent.KeyPress:
-                if event.key() == REMOVE_KEY:
+                if event.key() == HOTKEYS.REMOVE_KEY:
                     if self.isRemoveKeyPressed:  # already pressed
                         return False
                     if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
@@ -488,7 +468,7 @@ class CatchEventsWidget(QtWidgets.QWidget):
                         self.RemoveKeyPressed.emit()
                         return False
 
-                elif event.key() == SMOOTH_KEY:
+                elif event.key() == HOTKEYS.SMOOTH_KEY:
                     if self.isSmoothKeyPressed:  # already pressed
                         return False
                     if QtWidgets.QApplication.mouseButtons() == QtCore.Qt.NoButton:
@@ -496,16 +476,16 @@ class CatchEventsWidget(QtWidgets.QWidget):
                         self.SmoothKeyPressed.emit()
                         return False
 
-                elif event.key() == MARKING_MENU_KEY:
+                elif event.key() == HOTKEYS.MARKING_MENU_KEY:
                     self.markingMenuKeyPressed = True
                     return True
 
-                elif event.key() == EXIT_KEY:
+                elif event.key() == HOTKEYS.EXIT_KEY:
                     with disableUndoContext():
                         self.ExitKeyPressed.emit()
                     return True
 
-                elif event.key() == PICK_INFLUENCE_KEY:
+                elif event.key() == HOTKEYS.PICK_INFLUENCE_KEY:
                     with disableUndoContext():
                         if not event.isAutoRepeat():
                             if event.modifiers() == QtCore.Qt.AltModifier:
@@ -514,38 +494,38 @@ class CatchEventsWidget(QtWidgets.QWidget):
                                 self.PickInfluenceKeyPressed.emit()
                     return True
 
-                elif event.key() == SET_ORBIT_POS_KEY:
+                elif event.key() == HOTKEYS.SET_ORBIT_POS_KEY:
                     with disableUndoContext():
                         if not event.isAutoRepeat():
                             self.SetOrbitPosKeyPressed.emit()
                     return True
 
                 elif event.modifiers() == QtCore.Qt.AltModifier:
-                    if event.key() == TOGGLE_XRAY_KEY:
+                    if event.key() == HOTKEYS.TOGGLE_XRAY_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
                                 self.SetToggleXrayKeyPressed.emit()
                         return True
 
-                    if event.key() == TOGGLE_WIREFRAME_KEY:
+                    if event.key() == HOTKEYS.TOGGLE_WIREFRAME_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
                                 self.ToggleWireframeKeyPressed.emit()
                         return True
 
-                    if event.key() == SOLO_KEY:
+                    if event.key() == HOTKEYS.SOLO_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
                                 self.SoloModeKeyPressed.emit()
                         return True
 
-                    if event.key() == SOLO_OPAQUE_KEY:
+                    if event.key() == HOTKEYS.SOLO_OPAQUE_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
                                 self.SoloOpaqueKeyPressed.emit()
                         return True
 
-                    if event.key() == MIRROR_KEY:
+                    if event.key() == HOTKEYS.MIRROR_KEY:
                         with disableUndoContext():
                             if not event.isAutoRepeat():
                                 self.MirrorKeyPressed.emit()

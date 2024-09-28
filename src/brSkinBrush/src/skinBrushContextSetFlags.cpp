@@ -291,6 +291,17 @@ void SkinBrushContext::setPostSetting(bool value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
+void SkinBrushContext::setShiftSmooths(bool value) {
+    if (value){
+        smoothModifier = ModifierKeys::Shift;
+        removeModifier = ModifierKeys::Control;
+    }
+    else {
+        smoothModifier = ModifierKeys::Control;
+        removeModifier = ModifierKeys::Shift;
+    }
+}
+
 void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
     if (verbose)
         MGlobal::displayInfo(MString("setInfluenceIndex CALLED value [") + value +

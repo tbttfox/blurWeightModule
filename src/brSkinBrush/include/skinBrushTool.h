@@ -373,6 +373,7 @@ class SkinBrushContext : public MPxContext {
     void setDrawTriangles(bool value);
     void setDrawEdges(bool value);
     void setDrawPoints(bool value);
+    void setShiftSmooths(bool value);
     void setDrawTransparency(bool value);
     void setCoverage(bool value);
     void setInfluenceIndex(int value, bool selectInUI);
@@ -671,6 +672,8 @@ class SkinBrushContext : public MPxContext {
     std::vector<float> intensityValuesMirror;  // (length, 0);
 
     ModifierKeys modifierNoneShiftControl = ModifierKeys::NoModifier;  // store the modifier type
+    ModifierKeys smoothModifier = ModifierKeys::Control;  // store the modifier type
+    ModifierKeys removeModifier = ModifierKeys::Shift;  // store the modifier type
 
     int previousfaceHit;   // the faceIndex that was hit during the press common
     int biggestInfluence;  // for while we search for biggest influence
