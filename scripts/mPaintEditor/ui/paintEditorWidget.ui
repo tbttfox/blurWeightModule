@@ -13,27 +13,6 @@
   <property name="windowTitle">
    <string>Display Rig</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">QPushButton{
-	color: rgb(0, 0, 0);
-}
-
-QWidget[bgColor=&quot;green&quot;] {
-	background-color: rgb(190,242,150);
-}
-
-QWidget[bgColor=&quot;blue&quot;] {
-	background-color: rgb(168,210,242);
-}
-
-QWidget[bgColor=&quot;yellow&quot;] {
-	background-color: rgb(242,230,135);
-}
-
-QWidget[bgColor=&quot;orange&quot;] {
-	background-color: rgb(242,185,83);
-}</string>
-  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">

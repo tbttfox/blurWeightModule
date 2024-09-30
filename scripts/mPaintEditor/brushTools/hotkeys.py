@@ -1,49 +1,78 @@
-from Qt import QtCore
+from Qt import QtCore, QtGui
 
-
-class HOTKEYS:
-    """A quick-n-dirty class to hold the hotkeys needed for this tool
-    And eventually, we could update this with json
-    """
-
-    SMOOTH_KEY = QtCore.Qt.Key_Shift
-    REMOVE_KEY = QtCore.Qt.Key_Control
-
-    EXIT_KEY = QtCore.Qt.Key_Escape
-    SOLO_KEY = QtCore.Qt.Key_S
-    MIRROR_KEY = QtCore.Qt.Key_M
-    SET_ORBIT_POS_KEY = QtCore.Qt.Key_F
-    SOLO_OPAQUE_KEY = QtCore.Qt.Key_A
-
-    # +Alt = pick MAX influence
-    PICK_INFLUENCE_KEY = QtCore.Qt.Key_D
-
+_default_hotkeys = {
+    "smooth_key": QtCore.Qt.Key_Shift,
+    "remove_key": QtCore.Qt.Key_Control,
+    "exit_key": QtCore.Qt.Key_Escape,
+    "solo_key": QtCore.Qt.Key_S,
+    "mirror_key": QtCore.Qt.Key_M,
+    "set_orbit_pos_key": QtCore.Qt.Key_F,
+    "solo_opaque_key": QtCore.Qt.Key_A,
+    # +Alt: pick MAX influence
+    "pick_influence_key": QtCore.Qt.Key_D,
     # ALT KEYS
-    TOGGLE_WIREFRAME_KEY = QtCore.Qt.Key_W
-    TOGGLE_XRAY_KEY = QtCore.Qt.Key_X
-
+    "toggle_wireframe_key": QtCore.Qt.Key_W,
+    "toggle_xray_key": QtCore.Qt.Key_X,
     # Handled specially
-    MARKING_MENU_KEY = QtCore.Qt.Key_U
+    "marking_menu_key": QtCore.Qt.Key_U,
+}
 
-    @classmethod
-    def loadDict(cls, hotkeyDict):
-        # Modifier keys
-        cls.SMOOTH_KEY = hotkeyDict.get("smooth_key", QtCore.Qt.Key_Shift)
-        cls.REMOVE_KEY = hotkeyDict.get("remove_key", QtCore.Qt.Key_Control)
+
+class HOTKEY_CLASS:
+    def __init__(self, hotkeyDict):
+        self.updateHotkeys(hotkeyDict)
+
+    def _key_to_string(self, key):
+        if key == QtCore.Qt.Key_Control:
+            return "Ctrl"
+        elif key == QtCore.Qt.Key_Shift:
+            return "Shift"
+        return QtGui.QKeySequence(key).toString()
+
+    def updateHotkeys(self, hotkeyDict):
+        dhCopy = dict(_default_hotkeys)
+        dhCopy.update(hotkeyDict)
+
+        self.SMOOTH_KEY = dhCopy["smooth_key"]
+        self.REMOVE_KEY = dhCopy["remove_key"]
 
         # Regular keys
-        cls.EXIT_KEY = hotkeyDict.get("exit_key", QtCore.Qt.Key_Escape)
-        cls.SOLO_KEY = hotkeyDict.get("solo_key", QtCore.Qt.Key_S)
-        cls.MIRROR_KEY = hotkeyDict.get("mirror_key", QtCore.Qt.Key_M)
-        cls.SET_ORBIT_POS_KEY = hotkeyDict.get("set_orbit_pos_key", QtCore.Qt.Key_F)
-        cls.SOLO_OPAQUE_KEY = hotkeyDict.get("solo_opaque_key", QtCore.Qt.Key_A)
+        self.EXIT_KEY = dhCopy["exit_key"]
+        self.SOLO_KEY = dhCopy["solo_key"]
+        self.MIRROR_KEY = dhCopy["mirror_key"]
+        self.SET_ORBIT_POS_KEY = dhCopy["set_orbit_pos_key"]
+        self.SOLO_OPAQUE_KEY = dhCopy["solo_opaque_key"]
 
         # +Alt = pick MAX influence
-        cls.PICK_INFLUENCE_KEY = hotkeyDict("pick_influence_key", QtCore.Qt.Key_D)
+        self.PICK_INFLUENCE_KEY = dhCopy["pick_influence_key"]
 
         # ALT KEYS
-        cls.TOGGLE_WIREFRAME_KEY = hotkeyDict("toggle_wireframe_key", QtCore.Qt.Key_W)
-        cls.TOGGLE_XRAY_KEY = hotkeyDict("toggle_xray_key", QtCore.Qt.Key_X)
+        self.TOGGLE_WIREFRAME_KEY = dhCopy["toggle_wireframe_key"]
+        self.TOGGLE_XRAY_KEY = dhCopy["toggle_xray_key"]
 
         # Handled specially
-        cls.MARKING_MENU_KEY = hotkeyDict("marking_menu_key", QtCore.Qt.Key_U)
+        self.MARKING_MENU_KEY = dhCopy["marking_menu_key"]
+
+    def buildHotkeyList(self):
+        return [
+            ("Remove", self._key_to_string(self.REMOVE_KEY) + " LMB"),
+            ("Smooth", self._key_to_string(self.SMOOTH_KEY) + " LMB"),
+            ("Sharpen", "Ctrl + Shift + LMB"),
+            ("Size", "MMB left right"),
+            ("Strength", "MMB up down"),
+            ("Fine Strength Size", "Ctrl + MMB"),
+            ("Marking Menu ", self._key_to_string(self.MARKING_MENU_KEY)),
+            ("Pick Influence", self._key_to_string(self.PICK_INFLUENCE_KEY)),
+            ("Pick Vertex ", "ALT + " + self._key_to_string(self.PICK_INFLUENCE_KEY)),
+            ("Toggle Mirror Mode", "ALT + " + self._key_to_string(self.MIRROR_KEY)),
+            ("Toggle Solo Mode", "ALT + " + self._key_to_string(self.SOLO_KEY)),
+            ("Toggle Solo Opaque", "ALT + " + self._key_to_string(self.SOLO_OPAQUE_KEY)),
+            ("Toggle Wireframe", "ALT + " + self._key_to_string(self.TOGGLE_WIREFRAME_KEY)),
+            ("Toggle Xray", "ALT + " + self._key_to_string(self.TOGGLE_XRAY_KEY)),
+            ("Orbit Center To", self._key_to_string(self.SET_ORBIT_POS_KEY)),
+            ("Undo", "CTRL + Z"),
+            ("Quit", self._key_to_string(self.EXIT_KEY)),
+        ]
+
+
+HOTKEYS = HOTKEY_CLASS({})
