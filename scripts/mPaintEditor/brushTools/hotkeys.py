@@ -55,23 +55,91 @@ class HOTKEY_CLASS:
 
     def buildHotkeyList(self):
         return [
-            ("Remove", self._key_to_string(self.REMOVE_KEY) + " LMB"),
-            ("Smooth", self._key_to_string(self.SMOOTH_KEY) + " LMB"),
-            ("Sharpen", "Ctrl + Shift + LMB"),
-            ("Size", "MMB left right"),
-            ("Strength", "MMB up down"),
-            ("Fine Strength Size", "Ctrl + MMB"),
-            ("Marking Menu ", self._key_to_string(self.MARKING_MENU_KEY)),
-            ("Pick Influence", self._key_to_string(self.PICK_INFLUENCE_KEY)),
-            ("Pick Vertex ", "ALT + " + self._key_to_string(self.PICK_INFLUENCE_KEY)),
-            ("Toggle Mirror Mode", "ALT + " + self._key_to_string(self.MIRROR_KEY)),
-            ("Toggle Solo Mode", "ALT + " + self._key_to_string(self.SOLO_KEY)),
-            ("Toggle Solo Opaque", "ALT + " + self._key_to_string(self.SOLO_OPAQUE_KEY)),
-            ("Toggle Wireframe", "ALT + " + self._key_to_string(self.TOGGLE_WIREFRAME_KEY)),
-            ("Toggle Xray", "ALT + " + self._key_to_string(self.TOGGLE_XRAY_KEY)),
-            ("Orbit Center To", self._key_to_string(self.SET_ORBIT_POS_KEY)),
-            ("Undo", "CTRL + Z"),
-            ("Quit", self._key_to_string(self.EXIT_KEY)),
+            (
+                "Remove",
+                self._key_to_string(self.REMOVE_KEY) + " LMB",
+                "Remove the current influence, and re-distribute the weight among remaining influences",
+            ),
+            (
+                "Smooth",
+                self._key_to_string(self.SMOOTH_KEY) + " LMB",
+                "Average each vertex with its neighbors",
+            ),
+            (
+                "Sharpen",
+                "Ctrl + Shift + LMB",
+                "Reverse the average of each vertex with its neighbors",
+            ),
+            (
+                "Size",
+                "MMB left right",
+                "Drag the MMB left/right to change the size of the brush",
+            ),
+            (
+                "Strength",
+                "MMB up down",
+                "Drag the MMB up/down to change the strength of the brush",
+            ),
+            (
+                "Fine Strength Size",
+                "Ctrl + MMB",
+                "Hold Ctrl when changing strength for finer adjustment",
+            ),
+            (
+                "Marking Menu ",
+                self._key_to_string(self.MARKING_MENU_KEY),
+                "Show the marking menu with different paint options",
+            ),
+            (
+                "Pick Influence",
+                self._key_to_string(self.PICK_INFLUENCE_KEY),
+                "Make joints/influences into selectable items for quick-picking",
+            ),
+            (
+                "Pick Vertex ",
+                "ALT + " + self._key_to_string(self.PICK_INFLUENCE_KEY),
+                "Pick the joint/influence with the highest weight for the vertex under the mouse",
+            ),
+            (
+                "Toggle Mirror Mode",
+                "ALT + " + self._key_to_string(self.MIRROR_KEY),
+                "Toggle painting across the mirror axis",
+            ),
+            (
+                "Toggle Solo Mode",
+                "ALT + " + self._key_to_string(self.SOLO_KEY),
+                "Toggle hiding all other influences, and only seeing the influence of the current joint",
+            ),
+            (
+                "Toggle Solo Opaque",
+                "ALT + " + self._key_to_string(self.SOLO_OPAQUE_KEY),
+                "Show which vertices have any weight for the current influence/joint",
+            ),
+            (
+                "Toggle Wireframe",
+                "ALT + " + self._key_to_string(self.TOGGLE_WIREFRAME_KEY),
+                "Show or hide the wireframe while painting (separate from maya's wireframe)",
+            ),
+            (
+                "Toggle Xray",
+                "ALT + " + self._key_to_string(self.TOGGLE_XRAY_KEY),
+                "Toggle Maya's Xray joints",
+            ),
+            (
+                "Orbit Center To",
+                self._key_to_string(self.SET_ORBIT_POS_KEY),
+                "Set the camera orbit point to the position under your mouse",
+            ),
+            (
+                "Undo",
+                "CTRL + Z",
+                "Undo the last weight painting stroke",
+            ),
+            (
+                "Quit",
+                self._key_to_string(self.EXIT_KEY),
+                "Exit the brush",
+            ),
         ]
 
 

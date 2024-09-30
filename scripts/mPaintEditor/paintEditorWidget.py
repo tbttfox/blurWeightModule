@@ -185,7 +185,6 @@ INFLUENCE_COLORS = [
 
 
 class SkinPaintWin(Window):
-    colWidth = 30
     maxWidthCentralWidget = 230
     valueMult = 0.6
     saturationMult = 0.6
@@ -202,7 +201,6 @@ class SkinPaintWin(Window):
         "locks",
         "unLocks",
     ]
-    highlightingBtn = False
 
     def __init__(self, parent=None):
         self.doPrint = False
@@ -216,7 +214,7 @@ class SkinPaintWin(Window):
         QtCompat.loadUi(uiPath, self)
 
         self.useShortestNames = (
-            cmds.optionVar(query="useShortestNames")
+            bool(cmds.optionVar(query="useShortestNames"))
             if cmds.optionVar(exists="useShortestNames")
             else True
         )
@@ -248,10 +246,12 @@ class SkinPaintWin(Window):
         self._eventHandler = None
 
     def addShortCutsHelp(self):
-        for nm1, nm2 in HOTKEYS.buildHotkeyList():
+        for name, hk, tooltip in HOTKEYS.buildHotkeyList():
             helpItem = QtWidgets.QTreeWidgetItem()
-            helpItem.setText(0, nm2)
-            helpItem.setText(1, nm1)
+            helpItem.setText(0, hk)
+            helpItem.setText(1, name)
+            helpItem.setToolTip(0, tooltip)
+            helpItem.setToolTip(1, tooltip)
             self.shortCut_Tree.addTopLevelItem(helpItem)
         self.shortCut_Tree.setStyleSheet(
             """
