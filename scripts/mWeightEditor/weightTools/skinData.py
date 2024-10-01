@@ -1,15 +1,13 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from maya import OpenMaya, OpenMayaAnim
-from maya import cmds
+from maya import OpenMaya, OpenMayaAnim, cmds
 
 import numpy as np
 import re
 from .utils import GlobalContext, getThreeIndices, orderMelList
 
 from .abstractData import DataAbstract
-from six.moves import range
-from six.moves import zip
+from six.moves import range, zip
 
 from .mayaToNumpy import mayaToNumpy, numpyToMaya
 
@@ -128,25 +126,6 @@ class DataOfSkin(DataAbstract):
         problemVerts = list(problemVerts)
         return problemVerts
 
-    def swapOneOnOne(self, indicesSources, indicesDest):
-        indicesSources = list(indicesSources)
-        indicesDest = list(indicesDest)
-        print(indicesSources, indicesDest)
-        with GlobalContext(message="swapOneOnOne", doPrint=True):
-            new2dArray = np.copy(self.orig2dArray)
-            new2dArray[:, indicesDest] = (
-                self.orig2dArray[:, indicesDest] + self.orig2dArray[:, indicesSources]
-            )
-            new2dArray[:, indicesSources] = 0
-        self.actuallySetValue(
-            new2dArray,
-            self.sub2DArrayToSet,
-            self.userComponents,
-            self.influenceIndices,
-            self.shapePath,
-            self.sknFn,
-        )
-
     def normalize(self):
         with GlobalContext(message="normalize", doPrint=True):
             new2dArray = np.copy(self.orig2dArray)
@@ -246,70 +225,6 @@ class DataOfSkin(DataAbstract):
                 oppDriverNames[influence] = influence
                 driverNames_oppIndices[indInfluence] = indInfluence
         return driverNames_oppIndices
-
-    def mirrorArray(self, direction, leftInfluence="*_L_*", rightInfluence="*_R_*"):
-        prt = (
-            cmds.listRelatives(self.deformedShape, path=True, parent=True)[0]
-            if not cmds.nodeType(self.deformedShape) == "transform"
-            else self.deformedShape
-        )
-        for att in [
-            "symmetricVertices",
-            "rightVertices",
-            "leftVertices",
-            "centerVertices",
-        ]:
-            if not cmds.attributeQuery(att, node=prt, exists=True):
-                return
-        symmetricVertices = cmds.getAttr(prt + ".symmetricVertices")
-
-        with GlobalContext(message="mirrorArray", doPrint=self.verbose):
-            driverNames_oppIndices = self.getArrayOppInfluences(
-                leftInfluence=leftInfluence, rightInfluence=rightInfluence
-            )
-            if not driverNames_oppIndices:
-                return
-
-            # skin setting
-            componentType = OpenMaya.MFn.kMeshVertComponent
-            fnComponent = OpenMaya.MFnSingleIndexedComponent()
-            userComponents = fnComponent.create(componentType)
-            symVerts = [int(symmetricVertices[vert]) for vert in self.vertices]
-            symVertsSorted = sorted(symVerts)
-            indicesSort = [symVerts.index(vert) for vert in symVertsSorted]
-            # vertices
-            for vert in symVertsSorted:
-                fnComponent.addElement(int(vert))
-            # joints
-            influenceIndices = OpenMaya.MIntArray()
-            influenceIndices.setLength(self.nbDrivers)
-            for i in range(self.nbDrivers):
-                influenceIndices.set(i, i)
-
-            # now the weights
-            new2dArray = np.copy(self.display2dArray)
-            new2dArray = new2dArray[:, np.array(driverNames_oppIndices)]
-            new2dArray = new2dArray[np.array(indicesSort), :]
-            self.softOn = False
-            if new2dArray is not None:
-                self.actuallySetValue(
-                    new2dArray,
-                    None,
-                    userComponents,
-                    influenceIndices,
-                    self.shapePath,
-                    self.sknFn,
-                )
-
-        if self.blurSkinNode and cmds.objExists(self.blurSkinNode):
-            # set the vertices
-            selVertices = orderMelList(symVertsSorted)
-            inList = ["vtx[{0}]".format(el) for el in selVertices]
-            cmds.setAttr(
-                self.blurSkinNode + ".inputComponents",
-                *([len(inList)] + inList),
-                type="componentList",
-            )
 
     def copyArray(self):
         self.copiedArray = np.copy(self.sub2DArrayToSet)

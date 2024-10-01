@@ -35,12 +35,16 @@ class TableModel(QtCore.QAbstractTableModel):
     def update(self, dataIn):
         self.datatable = dataIn
 
-    def rowCount(self, parent=QtCore.QModelIndex()):
+    def rowCount(self, parent=None):
+        if parent is None:
+            parent = QtCore.QModelIndex()
         if self.datatable is None:
             return 0
         return self.datatable.rowCount
 
-    def columnCount(self, parent=QtCore.QModelIndex()):
+    def columnCount(self, parent=None):
+        if parent is None:
+            parent = QtCore.QModelIndex()
         if self.datatable is None:
             return 0
         elif isinstance(self.datatable, DataOfSkin):
