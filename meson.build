@@ -7,4 +7,3 @@ maya_version = maya_dep.get_variable('maya_version')
 
 subdir('src/blurSkin')
 subdir('src/brSkinBrush')
-subdir('src/wireframeDisplay')

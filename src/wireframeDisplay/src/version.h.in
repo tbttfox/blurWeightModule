@@ -1,3 +1,0 @@
-#pragma once
-#define VERSION_STRING "@VCS_TAG@"
-
