@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import os
 import re
 import six
+from fractions import Fraction
 
 from maya import cmds, mel, OpenMaya
 from six.moves import range
@@ -598,11 +599,7 @@ class SkinPaintWin(Window):
         carryWidgLayoutlayout.setSpacing(0)
 
         for theVal in lstBtns:
-            nm = "{0:.0f}".format(theVal) if theVal == int(theVal) else "{0:.2f}".format(theVal)
-            if theVal == 0.25:
-                nm = "1/4"
-            if theVal == 0.5:
-                nm = "1/2"
+            nm = str(Fraction(theVal))
             newBtn = QtWidgets.QPushButton(nm)
             newBtn.clicked.connect(partial(self.updateStrengthVal, theVal / 100.0))
             newBtn.clicked.connect(self.valueSetter.postSet)
@@ -1100,7 +1097,8 @@ class SkinPaintWin(Window):
 
         self.soloOpaque_cb.toggled.connect(self.opaqueSet)
 
-        self.wireframe_cb.toggled.connect(self.wireframeToggle)
+        self.ctrlSmooths_rb.toggled.connect(self.setSmoothKey)
+
         self.WarningFixSkin_btn.setVisible(False)
         self.WarningFixSkin_btn.clicked.connect(self.fixSparseArray)
 
@@ -1163,10 +1161,6 @@ class SkinPaintWin(Window):
         else:
             self.dgParallel_btn.setText("parallel off")
             cmds.evaluationManager(mode="off")
-
-    def wireframeToggle(self, val):
-        if not val and cmds.objExists("SkinningWireframe"):
-            cmds.delete("SkinningWireframe")
 
     def toggleBrushSwapShaders(self, val):
         cmds.optionVar(intValue=["brushSwapShaders", val])
@@ -1578,6 +1572,17 @@ class SkinPaintWin(Window):
             7: self.unLocks_btn,
         }
         return ret[cmdIdx]
+
+    def setSmoothKey(self):
+        """Switch betwen XSI and Maya smooth key settings"""
+        names = ["smooth_key", "remove_key"]
+        mods = [QtCore.Qt.Key_Shift, QtCore.Qt.Key_Control]
+        if self.ctrlSmooths_rb.isChecked():
+            mods.reverse()
+
+        HOTKEYS.updateHotkeys(dict(zip(names, mods)))
+        self.shortCut_Tree.clear()
+        self.addShortCutsHelp()
 
 
 # -------------------------------------------------------------------------------
