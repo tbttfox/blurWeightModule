@@ -289,12 +289,12 @@ class SkinPaintWin(Window):
         self.colorDialog.currentColorChanged.connect(self.colorSelected)
         self.colorDialog.rejected.connect(self.revertColor)
         self.colorDialog.setWindowFlags(QtCore.Qt.Tool)
-        self.colorDialog.setWindowTitle("pick color")
+        self.colorDialog.setWindowTitle("Pick Color")
         self.colorDialog.setWindowModality(QtCore.Qt.ApplicationModal)
 
     def buildRCMenu(self):
         self.mainPopMenu = QtWidgets.QMenu(self)
-        self.subMenuSoloColor = self.mainPopMenu.addMenu("solo color")
+        self.subMenuSoloColor = self.mainPopMenu.addMenu("Solo Color")
         soloColorIndex = (
             cmds.optionVar(query="soloColor_SkinPaintWin")
             if cmds.optionVar(exists="soloColor_SkinPaintWin")
@@ -311,43 +311,43 @@ class SkinPaintWin(Window):
 
         self.popMenu = QtWidgets.QMenu(self.uiInfluenceTREE)
 
-        selectItems = self.popMenu.addAction("select node")
+        selectItems = self.popMenu.addAction("Select Node")
         selectItems.triggered.connect(partial(self.applyLock, "selJoints"))
         self.popMenu.addAction(selectItems)
 
         self.popMenu.addSeparator()
 
-        colorItems = self.popMenu.addAction("color selected")
+        colorItems = self.popMenu.addAction("Color Selected")
         colorItems.triggered.connect(partial(self.randomColors, True))
         self.popMenu.addAction(colorItems)
 
         self.popMenu.addSeparator()
 
-        lockSel = self.popMenu.addAction("lock Sel")
+        lockSel = self.popMenu.addAction("Lock Sel")
         lockSel.triggered.connect(partial(self.applyLock, "lockSel"))
         self.popMenu.addAction(lockSel)
 
-        allButSel = self.popMenu.addAction("lock all but Sel")
+        allButSel = self.popMenu.addAction("Lock All But Sel")
         allButSel.triggered.connect(partial(self.applyLock, "lockAllButSel"))
         self.popMenu.addAction(allButSel)
 
-        unLockSel = self.popMenu.addAction("unlock Sel")
+        unLockSel = self.popMenu.addAction("Unlock Sel")
         unLockSel.triggered.connect(partial(self.applyLock, "unlockSel"))
         self.popMenu.addAction(unLockSel)
 
-        unLockAllButSel = self.popMenu.addAction("unlock all but Sel")
+        unLockAllButSel = self.popMenu.addAction("Unlock All But Sel")
         unLockAllButSel.triggered.connect(partial(self.applyLock, "unlockAllButSel"))
         self.popMenu.addAction(unLockAllButSel)
 
         self.popMenu.addSeparator()
 
-        unLockSel = self.popMenu.addAction("unlock ALL")
+        unLockSel = self.popMenu.addAction("Unlock ALL")
         unLockSel.triggered.connect(partial(self.applyLock, "clearLocks"))
         self.popMenu.addAction(unLockSel)
 
         self.popMenu.addSeparator()
 
-        resetBindPose = self.popMenu.addAction("reset bindPreMatrix")
+        resetBindPose = self.popMenu.addAction("Reset BindPreMatrix")
         resetBindPose.triggered.connect(self.resetBindPreMatrix)
         self.popMenu.addAction(resetBindPose)
 
@@ -358,7 +358,7 @@ class SkinPaintWin(Window):
             if cmds.optionVar(exists="showZeroDeformers")
             else True
         )
-        chbox = QtWidgets.QCheckBox("show Zero Deformers", self.popMenu)
+        chbox = QtWidgets.QCheckBox("Show Zero Deformers", self.popMenu)
         chbox.setChecked(self.showZeroDeformers)
         chbox.toggled.connect(self.showZeroDefmChecked)
 
@@ -584,7 +584,7 @@ class SkinPaintWin(Window):
         try:
             self.deleteCallBacks()
         except RuntimeError:
-            print("Error removeing callbacks")
+            print("Error removing callbacks")
 
         self.saveUiState()
         super(SkinPaintWin, self).closeEvent(event)
@@ -772,13 +772,13 @@ class SkinPaintWin(Window):
         allInfluences = cmds.skinCluster(skn, query=True, influence=True)
         toAdd = [x for x in sel if x not in allInfluences]
         if toAdd:
-            toAddStr = "add Influences :\n - "
+            toAddStr = "Add Influences :\n - "
             toAddStr += "\n - ".join(toAdd[:10])
             if len(toAdd) > 10:
                 toAddStr += "\n -....and {0} others..... ".format(len(toAdd) - 10)
 
             res = cmds.confirmDialog(
-                title="add Influences",
+                title="Add Influences",
                 message=toAddStr,
                 button=["Yes", "No"],
                 defaultButton="Yes",
@@ -854,10 +854,10 @@ class SkinPaintWin(Window):
         if len(removeable) > 10:
             toRmvStr += "\n -....and {0} others..... ".format(len(removeable) - 10)
 
-        message += "remove Influences :\n - {0}".format(toRmvStr)
+        message += "Remove Influences :\n - {0}".format(toRmvStr)
         if non_removable:
             toNotRmvStr = "\n - ".join([el for el, vtx in non_removable])
-            message += "\n\n\ncannot remove Influences :\n - {0}".format(toNotRmvStr)
+            message += "\n\n\nCannot Remove Influences :\n - {0}".format(toNotRmvStr)
             for nm, vtx in non_removable:
                 selVertices = orderMelList(vtx)
                 inList = [
@@ -866,7 +866,7 @@ class SkinPaintWin(Window):
                 print(nm, "\n", inList, "\n")
 
         res = cmds.confirmDialog(
-            title="remove Influences",
+            title="Remove Influences",
             message=message,
             button=["Yes", "No"],
             defaultButton="Yes",
@@ -891,8 +891,8 @@ class SkinPaintWin(Window):
                     toRmvStr += "\n -....and {0} others..... ".format(len(zeroInfluences) - 10)
 
                 res = cmds.confirmDialog(
-                    title="remove Influences",
-                    message="remove Unused Influences :\n - {0}".format(toRmvStr),
+                    title="Remove Influences",
+                    message="Remove Unused Influences :\n - {0}".format(toRmvStr),
                     button=["Yes", "No"],
                     defaultButton="Yes",
                     cancelButton="No",
@@ -1154,10 +1154,10 @@ class SkinPaintWin(Window):
 
     def changeDGParallel(self, val):
         if val:
-            self.dgParallel_btn.setText("parallel on")
+            self.dgParallel_btn.setText("Parallel On")
             cmds.evaluationManager(mode="parallel")
         else:
-            self.dgParallel_btn.setText("parallel off")
+            self.dgParallel_btn.setText("Parallel Off")
             cmds.evaluationManager(mode="off")
 
     def toggleBrushSwapShaders(self, val):

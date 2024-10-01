@@ -233,27 +233,27 @@ class VertHeaderView(QtWidgets.QHeaderView):
         popMenu = QtWidgets.QMenu(self)
         selectionIsEmpty = self.selectionModel().selection().isEmpty()
 
-        selAction = popMenu.addAction("select vertices")
+        selAction = popMenu.addAction("Select Vertices")
         selAction.triggered.connect(self.selectVerts)
         selAction.setEnabled(not selectionIsEmpty)
         popMenu.addSeparator()
 
-        lockAction = popMenu.addAction("lock selected")
+        lockAction = popMenu.addAction("Lock Selected")
         lockAction.triggered.connect(self.lockSelectedRows)
         lockAction.setEnabled(not selectionIsEmpty)
 
-        lockAllButSelAction = popMenu.addAction("lock all but selected")
+        lockAllButSelAction = popMenu.addAction("Lock All But Selected")
         lockAllButSelAction.triggered.connect(self.lockAllButSelectedRows)
         lockAllButSelAction.setEnabled(not selectionIsEmpty)
 
-        unlockAction = popMenu.addAction("unlock selected")
+        unlockAction = popMenu.addAction("Unlock Selected")
         unlockAction.triggered.connect(self.unlockSelectedRows)
         unlockAction.setEnabled(not selectionIsEmpty)
 
-        highliteAction = popMenu.addAction("highlite lock Verts")
+        highliteAction = popMenu.addAction("Highlight Lock Verts")
         highliteAction.triggered.connect(self.highliteLockRows)
 
-        clearLocksAction = popMenu.addAction("clear all Locks")
+        clearLocksAction = popMenu.addAction("Clear All Locks")
         clearLocksAction.triggered.connect(self.clearLocks)
         popMenu.exec_(self.mapToGlobal(pos))
 
@@ -458,7 +458,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
 
     def lockSelectedColumns(self):
         selectedIndices = self.getSelectedColumns()
-        self._getDataTable().lockColumns(selectedIndices)
+        self._getDatatable().lockColumns(selectedIndices)
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
@@ -475,20 +475,20 @@ class HorizHeaderView(QtWidgets.QHeaderView):
 
     def unlockSelectedColumns(self):
         selectedIndices = self.getSelectedColumns()
-        self._getDataTable().unLockColumns(selectedIndices)
+        self._getDatatable().unLockColumns(selectedIndices)
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
     def selectDeformers(self):
         selectedIndices = self.getSelectedColumns()
-        self._getDataTable().selectDeformers(selectedIndices)
+        self._getDatatable().selectDeformers(selectedIndices)
 
     def displayVertices(self, doSelect=True):
         selectedColumns = self.getSelectedColumns()
-        self._getDataTable().selectVertsOfColumns(selectedColumns, doSelect=doSelect)
+        self._getDatatable().selectVertsOfColumns(selectedColumns, doSelect=doSelect)
 
     def clearLocks(self):
-        self._getDataTable().unLockColumns(list(range(self.count() - 1)))
+        self._getDatatable().unLockColumns(list(range(self.count() - 1)))
         if self.mainWindow is not None:
             self.mainWindow.refreshPaintEditor()
 
@@ -505,42 +505,42 @@ class HorizHeaderView(QtWidgets.QHeaderView):
 
         datatable = self._getDatatable()
         if isinstance(datatable, DataOfSkin):
-            selAction = popMenu.addAction("select deformers")
+            selAction = popMenu.addAction("Select Deformers")
             selAction.triggered.connect(self.selectDeformers)
             selAction.setEnabled(not selectionIsEmpty)
 
-        selVertices = popMenu.addAction("select vertices")
+        selVertices = popMenu.addAction("Select Vertices")
         selVertices.triggered.connect(partial(self.displayVertices, True))
         selVertices.setEnabled(not selectionIsEmpty)
 
         if isinstance(datatable, DataOfSkin):
             popMenu.addSeparator()
 
-            lockAction = popMenu.addAction("lock selected")
+            lockAction = popMenu.addAction("Lock Selected")
             lockAction.triggered.connect(self.lockSelectedColumns)
             lockAction.setEnabled(not selectionIsEmpty)
 
-            lockAllButSelAction = popMenu.addAction("lock all but selected")
+            lockAllButSelAction = popMenu.addAction("Lock All But Selected")
             lockAllButSelAction.triggered.connect(self.lockAllButSelectedColumns)
             lockAllButSelAction.setEnabled(not selectionIsEmpty)
 
-            unlockAction = popMenu.addAction("unlock selected")
+            unlockAction = popMenu.addAction("Unlock Selected")
             unlockAction.triggered.connect(self.unlockSelectedColumns)
             unlockAction.setEnabled(not selectionIsEmpty)
 
-            clearLocksAction = popMenu.addAction("clear all Locks")
+            clearLocksAction = popMenu.addAction("Clear All locks")
             clearLocksAction.triggered.connect(self.clearLocks)
 
             hideColumnIndices = datatable.hideColumnIndices
             columnNames = self.model().columnNames()
             popMenu.addSeparator()
-            hideZeroColumnsAction = popMenu.addAction("hide zero columns")
+            hideZeroColumnsAction = popMenu.addAction("Hide Zero Columns")
             hideZeroColumnsAction.setCheckable(True)
             if self.mainWindow is not None:
                 hideZeroColumnsAction.setChecked(self.mainWindow.hideZeroColumn)
                 hideZeroColumnsAction.toggled.connect(self.mainWindow.toggleZeroColumn)
 
-            subMenuFollow = popMenu.addMenu("show Columns")
+            subMenuFollow = popMenu.addMenu("Show Columns")
             for ind in hideColumnIndices:
                 chbox = QtWidgets.QCheckBox(columnNames[ind], subMenuFollow)
 
@@ -552,7 +552,7 @@ class HorizHeaderView(QtWidgets.QHeaderView):
                 subMenuFollow.addAction(checkableAction)
 
         else:
-            paintAttr = popMenu.addAction("paint attribute")
+            paintAttr = popMenu.addAction("Paint Attribute")
             paintAttr.triggered.connect(self.enterPaintAttribute)
             paintAttr.setEnabled(not selectionIsEmpty)
 

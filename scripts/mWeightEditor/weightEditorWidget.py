@@ -480,7 +480,7 @@ class SkinWeightWin(Window):
             self.dataOfDeformer.renameCB(oldName, newName)
 
     def deleteCB(self, nodeName):
-        print("to be Deleted ", nodeName)
+        print("To Be Deleted ", nodeName)
 
     def addCallBacks(self):
         self.refreshSJ = cmds.scriptJob(event=["SelectionChanged", self.selectionCallBackRefresh])
@@ -519,24 +519,24 @@ class SkinWeightWin(Window):
     def buildRCMenu(self):
         self.popMenu = QtWidgets.QMenu(self)
 
-        resizeAction = self.popMenu.addAction("resize to minimum(MiddleClick)")
+        resizeAction = self.popMenu.addAction("Resize to Minimum (MiddleClick)")
         resizeAction.triggered.connect(self.resizeToMinimum)
 
-        chbox = QtWidgets.QCheckBox("auto Prune", self.popMenu)
+        chbox = QtWidgets.QCheckBox("Auto Prune", self.popMenu)
         chbox.setChecked(self.autoPrune)
         chbox.toggled.connect(self.autoPruneChecked)
         checkableAction = QtWidgets.QWidgetAction(self.popMenu)
         checkableAction.setDefaultWidget(chbox)
         self.popMenu.addAction(checkableAction)
 
-        chbox = QtWidgets.QCheckBox("shortest name", self.popMenu)
+        chbox = QtWidgets.QCheckBox("Shortest Name", self.popMenu)
         chbox.setChecked(self.useShortestNames)
         chbox.toggled.connect(self.useShortestNameChecked)
         checkableAction = QtWidgets.QWidgetAction(self.popMenu)
         checkableAction.setDefaultWidget(chbox)
         self.popMenu.addAction(checkableAction)
 
-        chbox = QtWidgets.QCheckBox("display points", self.popMenu)
+        chbox = QtWidgets.QCheckBox("Display Points", self.popMenu)
         chbox.setChecked(self.useDisplayLocator)
         chbox.toggled.connect(self.useDisplayLocatorChecked)
         checkableAction = QtWidgets.QWidgetAction(self.popMenu)
@@ -814,9 +814,7 @@ class SkinWeightWin(Window):
             self.currentSectionsOrder = {
                 el: ind for ind, el in enumerate(self.dataOfDeformer.driverNames)
             }
-            self.currentSectionsOrderReverse = {
-                ind: el for ind, el in enumerate(self.dataOfDeformer.driverNames)
-            }
+            self.currentSectionsOrderReverse = dict(enumerate(self.dataOfDeformer.driverNames))
         else:
             self.currentSectionsOrder, self.currentSectionsOrderReverse = {}, {}
 
@@ -892,7 +890,9 @@ class SkinWeightWin(Window):
             if result:
                 self.postSetValue()
             else:
-                cmds.confirmDialog(m="Not same number of deformers\nFAILED", t="can't paste")
+                cmds.confirmDialog(
+                    message="Not same number of deformers\nFAILED", title="Can't Paste"
+                )
 
     def doAverage(self):
         self.prepareToSetValue(selectAllIfNothing=True)
