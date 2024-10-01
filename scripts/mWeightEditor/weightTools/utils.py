@@ -9,6 +9,7 @@ import time
 from contextlib import contextmanager
 from maya import cmds, OpenMaya
 from six.moves import range, zip
+from Qt.QtCore import QSettings
 
 
 #
@@ -676,3 +677,35 @@ def addUserEventCallback(eventName, callback):
 
 def removeUserEventCallback(callbackId):
     OpenMaya.MUserEventMessage.removeCallback(callbackId)
+
+
+class Prefs(object):
+    """A wrapper for reading/writing prefs both internal and external to blur"""
+
+    def __init__(self, name):
+        self._bprefs = None
+        try:
+            import blurdev.prefs
+        except ImportError:
+            self._pref = QSettings("Blur", name)
+        else:
+            self._bprefs = blurdev.prefs
+            self._pref = self._bprefs.find("tools/{}".format(name))
+
+    def restoreProperty(self, prop, default=None):
+        if self._bprefs is not None:
+            return self._pref.restoreProperty(prop, default)
+        else:
+            return self._pref.value(prop, default)
+
+    def recordProperty(self, prop, val):
+        if self._bprefs is not None:
+            self._pref.recordProperty(prop, val)
+        else:
+            self._pref.setValue(prop, val)
+
+    def save(self):
+        if self._bprefs is not None:
+            self._pref.save()
+        else:
+            self._pref.sync()

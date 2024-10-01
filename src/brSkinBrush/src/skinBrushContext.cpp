@@ -1551,7 +1551,7 @@ ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
             theCommandIndex = ModifierCommands::UnlockVertices;
         }
     }
-    else if (this->modifierNoneShiftControl == ModifierKeys::ControlShift){
+    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift){
         theCommandIndex = ModifierCommands::Sharpen;
     }
 

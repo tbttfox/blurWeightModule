@@ -57,7 +57,7 @@ def GlobalContext(
             sys.stderr.write("%s" % e)
 
     finally:
-        if cmds.waitCursor(q=True, state=True):
+        if cmds.waitCursor(query=True, state=True):
             cmds.waitCursor(state=False)
         if openUndo:
             cmds.undoInfo(closeChunk=True)

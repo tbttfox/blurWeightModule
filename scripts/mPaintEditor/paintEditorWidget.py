@@ -47,6 +47,7 @@ from mWeightEditor.weightTools.utils import (
     addUserEventCallback,
     SettingVariable,
     orderMelList,
+    Prefs,
 )
 
 try:
@@ -207,11 +208,34 @@ class SkinPaintWin(Window):
         styleSheet = open(os.path.join(os.path.dirname(__file__), "maya.css"), "r").read()
         self.setStyleSheet(styleSheet)
 
+        self._docked = False
         self.refreshSJ = None
         self.kill_scriptJob = []
         self.close_callback = []
 
         self._eventHandler = None
+        self.loadUiState()
+
+    def saveUiState(self):
+        if self._docked:
+            return
+        prefs = Prefs("mPaintEditor")
+
+        prefs.recordProperty("geometry", self.saveGeometry())
+        prefs.recordProperty("shiftSmooths", self.shiftSmooths_rb.isChecked())
+        prefs.save()
+
+    def loadUiState(self):
+        if self._docked:
+            return
+        prefs = Prefs("mPaintEditor")
+
+        geo = prefs.restoreProperty("geometry", None)
+        if geo is not None:
+            self.restoreGeometry(geo)
+
+        shiftSmooths = prefs.restoreProperty("shiftSmooths", True)
+        self.shiftSmooths_rb.setChecked(shiftSmooths)
 
     def addShortCutsHelp(self):
         for name, hk, tooltip in HOTKEYS.buildHotkeyList():
@@ -287,43 +311,57 @@ class SkinPaintWin(Window):
 
         self.popMenu = QtWidgets.QMenu(self.uiInfluenceTREE)
 
-        selectItems = self.popMenu.addAction("select node", partial(self.applyLock, "selJoints"))
+        selectItems = self.popMenu.addAction("select node")
+        selectItems.triggered.connect(partial(self.applyLock, "selJoints"))
         self.popMenu.addAction(selectItems)
+
         self.popMenu.addSeparator()
 
-        colorItems = self.popMenu.addAction("color selected", partial(self.randomColors, True))
+        colorItems = self.popMenu.addAction("color selected")
+        colorItems.triggered.connect(partial(self.randomColors, True))
         self.popMenu.addAction(colorItems)
+
         self.popMenu.addSeparator()
 
-        lockSel = self.popMenu.addAction("lock Sel", partial(self.applyLock, "lockSel"))
+        lockSel = self.popMenu.addAction("lock Sel")
+        lockSel.triggered.connect(partial(self.applyLock, "lockSel"))
         self.popMenu.addAction(lockSel)
-        allButSel = self.popMenu.addAction(
-            "lock all but Sel", partial(self.applyLock, "lockAllButSel")
-        )
+
+        allButSel = self.popMenu.addAction("lock all but Sel")
+        allButSel.triggered.connect(partial(self.applyLock, "lockAllButSel"))
         self.popMenu.addAction(allButSel)
-        unLockSel = self.popMenu.addAction("unlock Sel", partial(self.applyLock, "unlockSel"))
+
+        unLockSel = self.popMenu.addAction("unlock Sel")
+        unLockSel.triggered.connect(partial(self.applyLock, "unlockSel"))
         self.popMenu.addAction(unLockSel)
-        unLockAllButSel = self.popMenu.addAction(
-            "unlock all but Sel", partial(self.applyLock, "unlockAllButSel")
-        )
+
+        unLockAllButSel = self.popMenu.addAction("unlock all but Sel")
+        unLockAllButSel.triggered.connect(partial(self.applyLock, "unlockAllButSel"))
         self.popMenu.addAction(unLockAllButSel)
 
         self.popMenu.addSeparator()
-        unLockSel = self.popMenu.addAction("unlock ALL", partial(self.applyLock, "clearLocks"))
+
+        unLockSel = self.popMenu.addAction("unlock ALL")
+        unLockSel.triggered.connect(partial(self.applyLock, "clearLocks"))
         self.popMenu.addAction(unLockSel)
 
         self.popMenu.addSeparator()
-        resetBindPose = self.popMenu.addAction("reset bindPreMatrix", self.resetBindPreMatrix)
+
+        resetBindPose = self.popMenu.addAction("reset bindPreMatrix")
+        resetBindPose.triggered.connect(self.resetBindPreMatrix)
         self.popMenu.addAction(resetBindPose)
+
         self.popMenu.addSeparator()
+
         self.showZeroDeformers = (
-            cmds.optionVar(query="showZeroDeformers")
+            bool(cmds.optionVar(query="showZeroDeformers"))
             if cmds.optionVar(exists="showZeroDeformers")
             else True
         )
         chbox = QtWidgets.QCheckBox("show Zero Deformers", self.popMenu)
         chbox.setChecked(self.showZeroDeformers)
         chbox.toggled.connect(self.showZeroDefmChecked)
+
         checkableAction = QtWidgets.QWidgetAction(self.popMenu)
         checkableAction.setDefaultWidget(chbox)
         self.popMenu.addAction(checkableAction)
@@ -342,14 +380,14 @@ class SkinPaintWin(Window):
 
     def comboSoloColorChanged(self, ind):
         with UndoContext("comboSoloColorChanged"):
-            cmds.optionVar(intValue=["soloColor_SkinPaintWin", ind])
+            cmds.optionVar(intValue=("soloColor_SkinPaintWin", ind))
             for i in range(3):
                 self.subMenuSoloColor.actions()[i].setChecked(i == ind)
             if isInPaint():
                 cmds.brSkinBrushContext(cmds.currentCtx(), edit=True, soloColorType=ind)
 
     def showZeroDefmChecked(self, checked):
-        cmds.optionVar(intValue=["showZeroDeformers", checked])
+        cmds.optionVar(intValue=("showZeroDeformers", checked))
         self.showZeroDeformers = checked
         self.popMenu.close()
 
@@ -413,15 +451,15 @@ class SkinPaintWin(Window):
         self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeNew, self.exitPaint))
         self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeOpen, self.exitPaint))
         self.close_callback.append(OpenMaya.MSceneMessage.addCallback(OpenMaya.MSceneMessage.kBeforeSave, self.exitPaint))
+
         self.close_callback.append(addNameChangedCallback(self.renameCB))
+
         self.close_callback.append(addUserEventCallback("brSkinBrush_influencesReordered", self.influencesReorderedCB))
         self.close_callback.append(addUserEventCallback("brSkinBrush_updateDisplayStrength", self.strengthChangedCB))
         self.close_callback.append(addUserEventCallback("brSkinBrush_updateDisplaySize", self.sizeChangedCB))
         self.close_callback.append(addUserEventCallback("brSkinBrush_pickedInfluence", self.updateCurrentInfluenceCB))
-
         self.close_callback.append(addUserEventCallback("brSkinBrush_toolOnSetupStart", self.toolOnSetupStart))
         self.close_callback.append(addUserEventCallback("brSkinBrush_toolOnSetupEnd", self.toolOnSetupEnd))
-
         self.close_callback.append(addUserEventCallback("brSkinBrush_afterPaint", afterPaint))
         self.close_callback.append(addUserEventCallback("brSkinBrush_toolOffCleanup", self.toolOffCleanup))
         # fmt: on
@@ -547,6 +585,8 @@ class SkinPaintWin(Window):
             self.deleteCallBacks()
         except RuntimeError:
             print("Error removeing callbacks")
+
+        self.saveUiState()
         super(SkinPaintWin, self).closeEvent(event)
 
     def addButtonsDirectSet(self, lstBtns):
@@ -723,7 +763,7 @@ class SkinPaintWin(Window):
         sel = cmds.ls(sl=True, type="joint")
         skn = self.dataOfSkin.theSkinCluster
         prt = (
-            cmds.listRelatives(self.dataOfSkin.deformedShape, path=-True, parent=True)[0]
+            cmds.listRelatives(self.dataOfSkin.deformedShape, path=True, parent=True)[0]
             if not cmds.nodeType(self.dataOfSkin.deformedShape) == "transform"
             else self.dataOfSkin.deformedShape
         )
@@ -963,7 +1003,6 @@ class SkinPaintWin(Window):
             if thebtn:
                 thebtn.setText("")
                 thebtn.setIcon(ICONS[nm])
-                thebtn.setToolTip(nm)
                 thebtn.clicked.connect(partial(self.brSkinConn, "curve", ind))
         self.flood_btn.clicked.connect(partial(self.brSkinConn, "flood", True))
 
@@ -984,12 +1023,12 @@ class SkinPaintWin(Window):
                 thebtn.setEnabled(False)
 
         self.valueSetter = ValueSettingPE(
-            self, precision=2, text="intensity", commandArg="strength", spacing=2
+            self, precision=2, text="Intensity", commandArg="strength", spacing=2
         )
         self.valueSetter.setAddMode(False, autoReset=False)
 
         self.sizeBrushSetter = ValueSettingPE(
-            self, precision=2, text="brush size", commandArg="size", spacing=2
+            self, precision=2, text="Brush Size", commandArg="size", spacing=2
         )
         self.sizeBrushSetter.setAddMode(False, autoReset=False)
 
@@ -1046,6 +1085,7 @@ class SkinPaintWin(Window):
             checkBox = self.findChild(QtWidgets.QCheckBox, att + "_cb")
             if checkBox:
                 checkBox.toggled.connect(partial(self.brSkinConn, att))
+
         self.colorSets_rb.toggled.connect(partial(self.brSkinConn, "useColorSetsWhilePainting"))
         self.smoothRepeat_spn.valueChanged.connect(partial(self.brSkinConn, "smoothRepeat"))
 
@@ -1095,7 +1135,7 @@ class SkinPaintWin(Window):
         if val:
             indexToChangeTo = (
                 cmds.optionVar(query="mirrorDefaultMode")
-                if cmds.optionVar(query="mirrorDefaultMode", exists=True)
+                if cmds.optionVar(exists="mirrorDefaultMode")
                 else 1
             )
         self.uiSymmetryCB.setCurrentIndex(indexToChangeTo)
@@ -1120,7 +1160,7 @@ class SkinPaintWin(Window):
             cmds.evaluationManager(mode="off")
 
     def toggleBrushSwapShaders(self, val):
-        cmds.optionVar(intValue=["brushSwapShaders", val])
+        cmds.optionVar(intValue=("brushSwapShaders", val))
 
     def brSkinConn(self, nm, val):
         if isInPaint():

@@ -7,14 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>289</width>
-    <height>879</height>
+    <height>782</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Display Rig</string>
-  </property>
-  <property name="toolTip">
-   <string>Add the intensity value to the weight of the current joint</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
@@ -135,6 +132,9 @@
              </property>
              <item row="0" column="0">
               <widget class="QPushButton" name="add_btn">
+               <property name="toolTip">
+                <string>Add the intensity value to the painted vertices</string>
+               </property>
                <property name="text">
                 <string>Add</string>
                </property>
@@ -200,7 +200,7 @@
              <item row="1" column="0">
               <widget class="QPushButton" name="rmv_btn">
                <property name="toolTip">
-                <string>Remove the intesnity value from the weight</string>
+                <string>Remove the intesnity value from the weights</string>
                </property>
                <property name="text">
                 <string>Rmv</string>
@@ -291,7 +291,7 @@
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -382,7 +382,7 @@
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -402,7 +402,7 @@
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -441,7 +441,7 @@
              <item>
               <widget class="QCheckBox" name="coverage_cb">
                <property name="toolTip">
-                <string>Allow painting back-facing faces</string>
+                <string>Allow painting back-facing geometry</string>
                </property>
                <property name="layoutDirection">
                 <enum>Qt::LeftToRight</enum>
@@ -478,7 +478,7 @@ Same behavior as setting Min Color to 1.0</string>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -495,7 +495,7 @@ Same behavior as setting Min Color to 1.0</string>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -616,7 +616,7 @@ Same behavior as setting Min Color to 1.0</string>
                      </size>
                     </property>
                     <property name="toolTip">
-                     <string>Smooth Falloff</string>
+                     <string>Linear Falloff</string>
                     </property>
                     <property name="text">
                      <string>p</string>
@@ -642,6 +642,9 @@ Same behavior as setting Min Color to 1.0</string>
                       <width>24</width>
                       <height>24</height>
                      </size>
+                    </property>
+                    <property name="toolTip">
+                     <string>Smooth Falloff</string>
                     </property>
                     <property name="text">
                      <string>s</string>
@@ -697,13 +700,13 @@ Same behavior as setting Min Color to 1.0</string>
                   </sizepolicy>
                  </property>
                  <property name="toolTip">
-                  <string>Wait until the mouse button is released to apply any brush strokes</string>
+                  <string>Wait until the mouse button is released to apply any changes</string>
                  </property>
                  <property name="layoutDirection">
                   <enum>Qt::RightToLeft</enum>
                  </property>
                  <property name="text">
-                  <string>PostSet</string>
+                  <string>Post Set</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>
@@ -794,7 +797,7 @@ Same behavior as setting Min Color to 1.0</string>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -884,7 +887,7 @@ Click to fix</string>
               </size>
              </property>
              <property name="toolTip">
-              <string>Alt + D</string>
+              <string>Pick the highest-weight Influence of the vertex under the mouse (Alt + D)</string>
              </property>
              <property name="text">
               <string>Pick Vert</string>
@@ -900,7 +903,7 @@ Click to fix</string>
               </size>
              </property>
              <property name="toolTip">
-              <string>D</string>
+              <string>Pick Influences (Joints) in the UI (D)</string>
              </property>
              <property name="text">
               <string>Pick Jnt</string>
@@ -938,7 +941,7 @@ Click to fix</string>
               </size>
              </property>
              <property name="toolTip">
-              <string>Toggle Parallel evaluation</string>
+              <string>Toggle Parallel Evaluation</string>
              </property>
              <property name="text">
               <string>Parallel Off</string>
@@ -1130,6 +1133,12 @@ Click to fix</string>
           </item>
           <item>
            <widget class="QComboBox" name="orderType_cb">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="minimumSize">
              <size>
               <width>60</width>
@@ -1178,9 +1187,12 @@ Click to fix</string>
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::MinimumExpanding</enum>
+            </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -1194,6 +1206,9 @@ Click to fix</string>
               <height>18</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>Show/Hide the options panel</string>
+            </property>
             <property name="text">
              <string>▼ Options ▼</string>
             </property>
@@ -1204,9 +1219,12 @@ Click to fix</string>
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::MinimumExpanding</enum>
+            </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
+              <width>0</width>
               <height>20</height>
              </size>
             </property>
@@ -1253,7 +1271,7 @@ Click to fix</string>
              </size>
             </property>
             <property name="toolTip">
-             <string>Remove Unused Influences</string>
+             <string>Remove Unused Influences (Joints)</string>
             </property>
             <property name="text">
              <string>Del</string>
@@ -1275,9 +1293,9 @@ Click to fix</string>
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-185</y>
+          <y>0</y>
           <width>252</width>
-          <height>723</height>
+          <height>720</height>
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_7">
@@ -1510,6 +1528,56 @@ Click to fix</string>
                <property name="spacing">
                 <number>3</number>
                </property>
+               <item row="0" column="0" colspan="2">
+                <widget class="QCheckBox" name="drawBrush_cb">
+                 <property name="toolTip">
+                  <string>Hide/Show the brush raidus when painting</string>
+                 </property>
+                 <property name="text">
+                  <string>Draw Brush in Paint</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QRadioButton" name="colorSets_rb">
+                 <property name="toolTip">
+                  <string>Paint the mesh using Color Sets</string>
+                 </property>
+                 <property name="text">
+                  <string>Color Sets</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0" colspan="2">
+                <widget class="QCheckBox" name="replaceShader_cb">
+                 <property name="toolTip">
+                  <string>Replace any Arnold shaders with a default one so that multi-color weights show properly
+The Arnold shader will be re-added on brush close</string>
+                 </property>
+                 <property name="text">
+                  <string>Replace Shader on Enter </string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QRadioButton" name="drawManager_rb">
+                 <property name="toolTip">
+                  <string>Paint the mesh using the Draw Manager</string>
+                 </property>
+                 <property name="text">
+                  <string>Draw Manager</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
                <item row="4" column="0" colspan="2">
                 <widget class="QGroupBox" name="drawManager_gb">
                  <property name="title">
@@ -1566,66 +1634,6 @@ Click to fix</string>
                    </widget>
                   </item>
                  </layout>
-                </widget>
-               </item>
-               <item row="0" column="0" colspan="2">
-                <widget class="QCheckBox" name="drawBrush_cb">
-                 <property name="text">
-                  <string>Draw Brush in Paint</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QRadioButton" name="colorSets_rb">
-                 <property name="toolTip">
-                  <string>Paint the mesh using Color Sets</string>
-                 </property>
-                 <property name="text">
-                  <string>Color Sets</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QRadioButton" name="drawManager_rb">
-                 <property name="toolTip">
-                  <string>Paint the mesh using the Draw Manager</string>
-                 </property>
-                 <property name="text">
-                  <string>Draw Manager</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2">
-                <spacer name="horizontalSpacer_13">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="1" column="0">
-                <widget class="QCheckBox" name="replaceShader_cb">
-                 <property name="toolTip">
-                  <string>Replace any Arnold shaders with a default one so that multi-color weights show properly
-The Arnold shader will be re-added on brush close</string>
-                 </property>
-                 <property name="text">
-                  <string>Replace Shader on Enter </string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
                 </widget>
                </item>
               </layout>
@@ -1769,7 +1777,7 @@ The Arnold shader will be re-added on brush close</string>
                   <bool>true</bool>
                  </property>
                  <property name="text">
-                  <string>Search Replace for Influences :</string>
+                  <string>Search/Replace for Mirror Influences :</string>
                  </property>
                 </widget>
                </item>
@@ -1777,6 +1785,9 @@ The Arnold shader will be re-added on brush close</string>
                 <layout class="QHBoxLayout" name="horizontalLayout_3">
                  <item>
                   <widget class="QLineEdit" name="uiLeftNamesLE">
+                   <property name="toolTip">
+                    <string/>
+                   </property>
                    <property name="text">
                     <string>Dfm_L*</string>
                    </property>
@@ -1841,6 +1852,9 @@ The Arnold shader will be re-added on brush close</string>
                      <height>18</height>
                     </size>
                    </property>
+                   <property name="toolTip">
+                    <string>Search radius for mirrored vertices</string>
+                   </property>
                    <property name="decimals">
                     <number>5</number>
                    </property>
@@ -1872,7 +1886,7 @@ The Arnold shader will be re-added on brush close</string>
                <item>
                 <widget class="QCheckBox" name="message_cb">
                  <property name="toolTip">
-                  <string>Show the Top-center in-view messages while painting</string>
+                  <string>Show the Top-center in-view help messages while painting</string>
                  </property>
                  <property name="text">
                   <string>In View Messages</string>
@@ -1918,7 +1932,7 @@ The Arnold shader will be re-added on brush close</string>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
+             <width>0</width>
              <height>20</height>
             </size>
            </property>
