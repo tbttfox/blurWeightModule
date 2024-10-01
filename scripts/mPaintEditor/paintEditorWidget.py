@@ -14,6 +14,9 @@ from functools import partial
 
 from . import GET_CONTEXT
 
+from .influenceTree import InfluenceTree, InfluenceTreeWidgetItem
+
+from .icons import ICONS
 from .brushTools import cmdSkinCluster
 
 from .brushTools.hotkeys import HOTKEYS
@@ -126,46 +129,12 @@ class ValueSettingPE(ValueSetting):
         self.updateBtn()
 
 
-def getIcon(iconNm):
-    fileVar = os.path.realpath(__file__)
-    uiFolder = os.path.dirname(fileVar)
-    iconPth = os.path.join(uiFolder, "img", iconNm + ".png")
-    return QtGui.QIcon(iconPth)
-
-
 def getUiFile(fileVar, subFolder="ui", uiName=None):
     uiFolder, filename = os.path.split(fileVar)
     if uiName is None:
         uiName = os.path.splitext(filename)[0]
     return os.path.join(uiFolder, subFolder, uiName + ".ui")
 
-
-_icons = {
-    "lockedIcon": getIcon("lock-gray-locked"),
-    "unLockIcon": getIcon("lock-gray-unlocked"),
-    "lock": getIcon("lock-48"),
-    "unlock": getIcon("unlock-48"),
-    "del": getIcon("delete_sign-16"),
-    "fromScene": getIcon("arrow-045"),
-    "pinOn": getIcon("pinOn"),
-    "pinOff": getIcon("pinOff"),
-    "gaussian": getIcon("circleGauss"),
-    "poly": getIcon("circlePoly"),
-    "solid": getIcon("circleSolid"),
-    "curveNone": getIcon("brSkinBrushNone"),
-    "curveLinear": getIcon("brSkinBrushLinear"),
-    "curveSmooth": getIcon("brSkinBrushSmooth"),
-    "curveNarrow": getIcon("brSkinBrushNarrow"),
-    "clearText": getIcon("clearText"),
-    "square": getIcon("rect"),
-    "refresh": getIcon("arrow-circle-045-left"),
-    "eye": getIcon("eye"),
-    "eye-half": getIcon("eye-half"),
-    "plus": getIcon("plus-button"),
-    "minus": getIcon("minus-button"),
-    "removeUnused": getIcon("arrow-transition-270--red"),
-    "randomColor": getIcon("color-swatch"),
-}
 
 INFLUENCE_COLORS = [
     (0, 0, 224),
@@ -209,8 +178,6 @@ class SkinPaintWin(Window):
 
         if not cmds.pluginInfo("brSkinBrush", query=True, loaded=True):
             cmds.loadPlugin("brSkinBrush")
-        if not cmds.pluginInfo("wireframeDisplay", query=True, loaded=True):
-            cmds.loadPlugin("wireframeDisplay")
         uiPath = getUiFile(__file__)
         QtCompat.loadUi(uiPath, self)
 
@@ -482,16 +449,6 @@ class SkinPaintWin(Window):
             mshShape = cmds.brSkinBrushContext(GET_CONTEXT.getLatest(), query=True, meshName=True)
             if mshShape and cmds.objExists(mshShape):
                 (theMesh,) = cmds.listRelatives(mshShape, parent=True, path=True)
-                try:
-                    wireDisplay = cmds.listRelatives(
-                        theMesh, shapes=True, path=True, type="wireframeDisplay"
-                    )
-                except RuntimeError:
-                    # RuntimeError: Unknown object type: wireframeDisplay
-                    pass
-                else:
-                    if wireDisplay:
-                        cmds.showHidden(wireDisplay)
                 showBackNurbs(theMesh)
 
             restoreShading()
@@ -610,10 +567,10 @@ class SkinPaintWin(Window):
 
     def changeLock(self, val):
         if val:
-            self.lock_btn.setIcon(_icons["lock"])
+            self.lock_btn.setIcon(ICONS["lock"])
             cmds.scriptJob(kill=self.refreshSJ, force=True)
         else:
-            self.lock_btn.setIcon(_icons["unlock"])
+            self.lock_btn.setIcon(ICONS["unlock"])
             self.refreshSJ = cmds.scriptJob(event=["SelectionChanged", self.refreshCallBack])
         self.unLock = not val
 
@@ -624,7 +581,7 @@ class SkinPaintWin(Window):
             for ind in range(self.uiInfluenceTREE.topLevelItemCount())
         ]
         if val:
-            self.pinSelection_btn.setIcon(_icons["pinOn"])
+            self.pinSelection_btn.setIcon(ICONS["pinOn"])
             for item in allItems:
                 toHide = item not in selectedItems
                 toHide |= not self.showZeroDeformers and item.isZeroDfm
@@ -633,7 +590,7 @@ class SkinPaintWin(Window):
             for item in allItems:
                 toHide = not self.showZeroDeformers and item.isZeroDfm
                 item.setHidden(toHide)
-            self.pinSelection_btn.setIcon(_icons["pinOff"])
+            self.pinSelection_btn.setIcon(ICONS["pinOff"])
 
     def showHideLocks(self, val):
         allItems = [
@@ -641,13 +598,13 @@ class SkinPaintWin(Window):
             for ind in range(self.uiInfluenceTREE.topLevelItemCount())
         ]
         if val:
-            self.showLocks_btn.setIcon(_icons["eye"])
+            self.showLocks_btn.setIcon(ICONS["eye"])
             for item in allItems:
                 item.setHidden(False)
         else:
             for item in allItems:
                 item.setHidden(item.isLocked())
-            self.showLocks_btn.setIcon(_icons["eye-half"])
+            self.showLocks_btn.setIcon(ICONS["eye-half"])
 
     def isInPaint(self):
         currentContext = cmds.currentCtx()
@@ -946,8 +903,8 @@ class SkinPaintWin(Window):
         dialogLayout.insertWidget(dialogLayout.count() - 1, self.uiInfluenceTREE)
         # end changing the treeWidghet
 
-        self.lock_btn.setIcon(_icons["unlock"])
-        self.refresh_btn.setIcon(_icons["refresh"])
+        self.lock_btn.setIcon(ICONS["unlock"])
+        self.refresh_btn.setIcon(ICONS["refresh"])
         self.lock_btn.toggled.connect(self.changeLock)
         self.dgParallel_btn.toggled.connect(self.changeDGParallel)
         self.refresh_btn.clicked.connect(self.refreshBtn)
@@ -955,15 +912,15 @@ class SkinPaintWin(Window):
 
         self.deleteExisitingColorSets_btn.clicked.connect(deleteExistingColorSets)
 
-        self.showLocks_btn.setIcon(_icons["eye"])
+        self.showLocks_btn.setIcon(ICONS["eye"])
         self.showLocks_btn.toggled.connect(self.showHideLocks)
         self.showLocks_btn.setText("")
 
-        self.delete_btn.setIcon(_icons["del"])
+        self.delete_btn.setIcon(ICONS["del"])
         self.delete_btn.setText("")
         self.delete_btn.clicked.connect(self.exitPaint)
 
-        self.pinSelection_btn.setIcon(_icons["pinOff"])
+        self.pinSelection_btn.setIcon(ICONS["pinOff"])
         self.pinSelection_btn.toggled.connect(self.changePin)
         self.pickVertex_btn.clicked.connect(self.pickMaxInfluence)
         self.pickInfluence_btn.clicked.connect(self.pickInfluence)
@@ -996,7 +953,7 @@ class SkinPaintWin(Window):
             thebtn = self.findChild(QtWidgets.QPushButton, btn + "_btn")
             if thebtn:
                 thebtn.setText("")
-                thebtn.setIcon(_icons[icon])
+                thebtn.setIcon(ICONS[icon])
         for ind, nm in enumerate(self.commandArray):
             thebtn = self.findChild(QtWidgets.QPushButton, nm + "_btn")
             if thebtn:
@@ -1005,7 +962,7 @@ class SkinPaintWin(Window):
             thebtn = self.findChild(QtWidgets.QPushButton, nm + "_btn")
             if thebtn:
                 thebtn.setText("")
-                thebtn.setIcon(_icons[nm])
+                thebtn.setIcon(ICONS[nm])
                 thebtn.setToolTip(nm)
                 thebtn.clicked.connect(partial(self.brSkinConn, "curve", ind))
         self.flood_btn.clicked.connect(partial(self.brSkinConn, "flood", True))
@@ -1583,165 +1540,3 @@ class SkinPaintWin(Window):
         HOTKEYS.updateHotkeys(dict(zip(names, mods)))
         self.shortCut_Tree.clear()
         self.addShortCutsHelp()
-
-
-# -------------------------------------------------------------------------------
-# INFLUENCE ITEM
-# -------------------------------------------------------------------------------
-class InfluenceTree(QtWidgets.QTreeWidget):
-    blueBG = QtGui.QBrush(QtGui.QColor(112, 124, 137))
-    redBG = QtGui.QBrush(QtGui.QColor(134, 119, 127))
-    yellowBG = QtGui.QBrush(QtGui.QColor(144, 144, 122))
-    regularBG = QtGui.QBrush(QtGui.QColor(130, 130, 130))
-
-    def getDeformerColor(self, driverName):
-        try:
-            for letter, col in [
-                ("L", self.redBG),
-                ("R", self.blueBG),
-                ("M", self.yellowBG),
-            ]:
-                if "_{0}_".format(letter) in driverName:
-                    return col
-            return self.regularBG
-        except Exception:
-            return self.regularBG
-
-    def paintEnd(self):
-        self.setStyleSheet("")
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-
-    def paintStart(self):
-        self.setStyleSheet("QWidget {border : 2px solid red}\n")
-        self.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        selItems = self.selectedItems()
-        if selItems:
-            self.clearSelection()
-            self.setCurrentItem(selItems[0])
-
-    def __init__(self, *args):
-        self.isOn = False
-        super(InfluenceTree, self).__init__(*args)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.setIndentation(5)
-        self.setColumnCount(5)
-        self.header().hide()
-        self.setColumnWidth(0, 20)
-        self.hideColumn(2)  # column 2 is side alpha name
-        self.hideColumn(3)  # column 3 is the default indices
-        self.hideColumn(4)  # column 4 is the sorted by weight picked indices
-
-    def enterEvent(self, event):
-        self.isOn = True
-        super(InfluenceTree, self).enterEvent(event)
-
-    def leaveEvent(self, event):
-        self.isOn = False
-        super(InfluenceTree, self).leaveEvent(event)
-
-
-class InfluenceTreeWidgetItem(QtWidgets.QTreeWidgetItem):
-    _colors = [
-        (161, 105, 48),
-        (159, 161, 48),
-        (104, 161, 48),
-        (48, 161, 93),
-        (48, 161, 161),
-        (48, 103, 161),
-        (111, 48, 161),
-        (161, 48, 105),
-    ]
-
-    def getColors(self):
-        self._colors = []
-        for i in range(1, 9):
-            col = cmds.displayRGBColor("userDefined{0}".format(i), query=True)
-            self._colors.append([int(el * 255) for el in col])
-
-    def __init__(self, influence, index, col, skinCluster):
-        self.isZeroDfm = False
-        shortName = influence.split(":")[-1]
-        # now sideAlpha
-        spl = shortName.split("_")
-        if len(spl) > 2:
-            spl.append(spl.pop(1))
-        sideAlphaName = "_".join(spl)
-
-        super(InfluenceTreeWidgetItem, self).__init__(
-            [
-                "",
-                shortName,
-                sideAlphaName,
-                "{:09d}".format(index),
-                "{:09d}".format(index),
-            ]
-        )
-        self._influence = influence
-        self._index = index
-        self._skinCluster = skinCluster
-        self.regularBG = col
-        self._indexColor = None
-
-        self.currentColor = self.color()
-
-        self.setBackground(1, self.regularBG)
-        self.darkBG = QtGui.QBrush(QtGui.QColor(120, 120, 120))
-        self.setDisplay()
-
-    def setDisplay(self):
-        self.setIcon(0, self.colorIcon())
-        self.setIcon(1, self.lockIcon())
-        if self.isLocked():
-            self.setBackground(1, self.darkBG)
-        else:
-            self.setBackground(1, self.regularBG)
-
-    def resetBindPose(self):
-        inConn = cmds.listConnections(self._skinCluster + ".bindPreMatrix[{0}]".format(self._index))
-        if not inConn:
-            mat = cmds.getAttr(self._influence + ".worldInverseMatrix")
-            cmds.setAttr(
-                self._skinCluster + ".bindPreMatrix[{0}]".format(self._index),
-                mat,
-                type="matrix",
-            )
-
-    def setColor(self, col):
-        self.currentColor = col
-        self._indexColor = None
-        cmds.setAttr(self._influence + ".wireColorRGB", *col)
-        self.setIcon(0, self.colorIcon())
-
-    def color(self):
-        wireColor = cmds.getAttr(self._influence + ".wireColorRGB")[0]
-        if wireColor == (0.0, 0.0, 0.0):
-            objColor = cmds.getAttr(self._influence + ".objectColor")
-            wireColor = cmds.displayRGBColor("userDefined{0}".format(objColor + 1), query=True)
-
-        ret = [int(255 * el) for el in wireColor]
-        return ret
-
-    def lockIcon(self):
-        return _icons["lockedIcon"] if self.isLocked() else _icons["unLockIcon"]
-
-    def colorIcon(self):
-        pixmap = QtGui.QPixmap(24, 24)
-        pixmap.fill(QtGui.QColor(*self.color()))
-        return QtGui.QIcon(pixmap)
-
-    def setLocked(self, locked, autoHide=False):
-        cmds.setAttr(self._influence + ".lockInfluenceWeights", locked)
-        if locked:
-            self.setSelected(False)
-        if autoHide and locked:
-            self.setHidden(True)
-        self.setDisplay()
-
-    def isLocked(self):
-        return cmds.getAttr(self._influence + ".lockInfluenceWeights")
-
-    def influence(self):
-        return self._influence
-
-    def showWeights(self, value):
-        self.setText(2, str(value))
