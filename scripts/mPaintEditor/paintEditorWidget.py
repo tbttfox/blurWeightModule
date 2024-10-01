@@ -840,13 +840,14 @@ class SkinPaintWin(Window):
         removeable = []
         non_removable = []
         for nm in toRemove:
-            columnIndex = self.dataOfSkin.driverNames.index(nm)
-            res = self.dataOfSkin.display2dArray[:, columnIndex]
-            notNormalizable = np.where(res >= 1.0)[0]
-            if notNormalizable.size == 0:
-                removeable.append(nm)
-            else:
-                non_removable.append((nm, notNormalizable.tolist()))
+            if self.dataOfSkin.display2dArray is not None:
+                columnIndex = self.dataOfSkin.driverNames.index(nm)
+                res = self.dataOfSkin.display2dArray[:, columnIndex]
+                notNormalizable = np.where(res >= 1.0)[0]
+                if notNormalizable.size == 0:
+                    removeable.append(nm)
+                else:
+                    non_removable.append((nm, notNormalizable.tolist()))
 
         message = ""
         toRmvStr = "\n - ".join(removeable[:10])

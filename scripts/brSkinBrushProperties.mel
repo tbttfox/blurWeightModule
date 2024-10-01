@@ -1,13 +1,2 @@
-global proc brSkinBrushProperties()
-{
-    setUITemplate -pushTemplate OptionsTemplate;
-    string $parent = `toolPropertyWindow -query -location`;
-    setParent $parent;
-
-    columnLayout brSkinBrush;
-
-    button -label "Open Skin Brush" brOpenSkinBrushButton;                
-
-    setParent .. ;
-}
+global proc brSkinBrushProperties() { }
 

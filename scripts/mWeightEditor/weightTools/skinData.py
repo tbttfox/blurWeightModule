@@ -245,7 +245,6 @@ class DataOfSkin(DataAbstract):
             else:
                 oppDriverNames[influence] = influence
                 driverNames_oppIndices[indInfluence] = indInfluence
-        print(oppDriverNames)
         return driverNames_oppIndices
 
     def mirrorArray(self, direction, leftInfluence="*_L_*", rightInfluence="*_R_*"):

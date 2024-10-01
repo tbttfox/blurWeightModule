@@ -76,11 +76,10 @@ class Orbit(object):
         return (hit_point, face_idx)
 
     def getValues(self, node, returnVertex=False):
-        meshShpList = cmds.listRelatives(node, s=True, type="mesh")
+        meshShpList = cmds.listRelatives(node, shapes=True, type="mesh")
         self.active_view = self.getTheM3dView()
         if meshShpList:
             self.meshName = meshShpList[0]
-            # print self.meshName
             self.screenPos, self.screenWidth, self.screenHeight = self.getScreenPos(
                 self.active_view
             )
@@ -95,7 +94,7 @@ class Orbit(object):
                 return theVert
             return [hit_pnt.x, hit_pnt.y, hit_pnt.z]
         else:
-            posi = cmds.xform(node, q=True, ws=True, t=True)
+            posi = cmds.xform(node, query=True, worldSpace=True, translation=True)
             return posi
 
     def getUnderCursor(self):
@@ -108,7 +107,6 @@ class Orbit(object):
             popsChildren = cmds.popupMenu("testMenu", query=True, itemArray=True)
             lbl = cmds.menuItem(popsChildren[0], query=True, label=True)
             return lbl.strip(".")
-            cmds.popupMenu("testMenu", e=True, deleteAllItems=True)
         else:
             return ""
 
@@ -135,4 +133,3 @@ class Orbit(object):
         if underCursor and cmds.objExists(underCursor):
             hitPoint = self.getValues(underCursor)
             self.orbitCamera(hitPoint)
-            print(underCursor)

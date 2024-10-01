@@ -692,11 +692,21 @@ class Prefs(object):
             self._bprefs = blurdev.prefs
             self._pref = self._bprefs.find("tools/{}".format(name))
 
-    def restoreProperty(self, prop, default=None):
+    def restoreProperty(self, prop, default=None, typ=None):
         if self._bprefs is not None:
             return self._pref.restoreProperty(prop, default)
         else:
-            return self._pref.value(prop, default)
+            ret = self._pref.value(prop, default)
+            if isinstance(default, bool) or typ is bool:
+                return ret == "true"
+            elif isinstance(default, int) or typ is int:
+                return int(ret)
+            elif isinstance(default, float) or typ is float:
+                try:
+                    return float(ret)
+                except ValueError:
+                    pass
+            return ret
 
     def recordProperty(self, prop, val):
         if self._bprefs is not None:

@@ -204,19 +204,16 @@ void SkinBrushContext::setMaxColor(double value) {
 }
 
 void SkinBrushContext::setCommandIndex(ModifierCommands value) {
-    // MGlobal::displayInfo(MString("setCommandIndex CALLED ") + value);
     commandIndex = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
 void SkinBrushContext::setSmoothRepeat(int value) {
-    // MGlobal::displayInfo(MString("setCommandIndex CALLED ") + value);
     smoothRepeat = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
 void SkinBrushContext::setSoloColor(int value) {
-    // MGlobal::displayInfo(MString("setSoloColor CALLED ") + value);
     soloColorVal = value;
     MString currentColorSet = meshFn.currentColorSetName();  // set multiColor as current Color
 
@@ -285,8 +282,6 @@ void SkinBrushContext::setPickInfluence(bool value) {
 }
 
 void SkinBrushContext::setPostSetting(bool value) {
-    MGlobal::displayInfo(MString("setPostSetting CALLED ") + value);
-
     postSetting = value;
     MToolsInfo::setDirtyFlag(*this);
 }
@@ -402,7 +397,6 @@ double SkinBrushContext::getMinColor() { return minSoloColor; }
 double SkinBrushContext::getMaxColor() { return maxSoloColor; }
 
 MString SkinBrushContext::getInfluenceName() {
-    // MGlobal::displayInfo("getInfluenceName CALLED");
     MString influenceName("FAILED");
     if (this->influenceIndex < this->inflNames.length())
         influenceName = this->inflNames[this->influenceIndex];
