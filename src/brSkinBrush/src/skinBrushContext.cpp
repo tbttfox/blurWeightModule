@@ -712,10 +712,15 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     MColorArray darkEdges;             // (nbVtx, MColor(0.5, 0.5, 0.5));
 
     MColor newCol, col;
-    unsigned int i = 0;
-    std::vector<int> verticesSet;
+
+    std::unordered_map<int, unsigned int> verticesMap;
     std::unordered_set<int> fatFaces_set;
     std::unordered_set<int> fatEdges_set;
+    std::vector<bool> fatFaces_bitset;
+    std::vector<bool> fatEdges_bitset;
+
+    fatFaces_bitset.resize(numFaces);
+    fatEdges_bitset.resize(numEdges);
 
     MColor baseColor, baseMirrorColor;
     float h, s, v;
@@ -753,110 +758,193 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
             baseMirrorColor = baseColor;
         }
     }
-    for (const auto &pt : this->mirroredJoinedArray) {
-        int ptIndex = pt.first;
-        float weightBase = pt.second.first;
-        float weightMirror = pt.second.second;
-        float weight = weightBase + weightMirror;
 
-        if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices))
-            weight = 1.0;  // no transparency on lock / unlocks verts
+    MColorArray &usedColors = (this->soloColorVal == 1) ? colorsSolo : colors;
+    MColorArray &currentColors = (this->soloColorVal == 1) ? this->soloCurrentColors : this->multiCurrentColors;
 
-        MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
-                             this->mayaRawPoints[ptIndex * 3 + 2]);
-        posPoint = posPoint * this->inclusiveMatrix;
-        points.set(posPoint, i);
-        normals.set(verticesNormals[ptIndex], i);
-        // now for colors -------------------------------------------------
-        if (drawTriangles) {
-            if (drawTransparency)
-                transparency = (float)weight;
-            else
-                transparency = 1.0;
-            this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices, colors,
-                                     colorsSolo);
-            if (theCommandIndex != ModifierCommands::LockVertices) {  // not painting locks
-                if (this->soloColorVal == 1) {
-                    col = colorsSolo[i];
-                } else {
-                    col = colors[i];
-                }
-                // now gamma -----------------------------------------------------------------
-                col.get(MColor::kHSV, h, s, v);
-                col.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
-                if (this->soloColorVal == 1) {
-                    colorsSolo[i] = col;
-                } else {
-                    colors[i] = col;
-                }
-            }
-        }
-        if (drawPoints) {
-            if (this->soloColorVal == 1)
-                newCol = weight * baseColor + (1.0 - weight) * this->soloCurrentColors[ptIndex];
-            else
-                newCol = weight * baseColor + (1.0 - weight) * this->multiCurrentColors[ptIndex];
-            pointsColors[i] = newCol;
-        }
-        if (drawEdges) {
-            darkEdges.append(MColor((float)0.5, (float)0.5, (float)0.5, transparency));
-        }
-        i++;
+    // Putting this check in the loop is slow
+    // so it's up-front here at the cost of some code duplication
+    unsigned int i = 0;
+    if (theCommandIndex == ModifierCommands::LockVertices || theCommandIndex == ModifierCommands::UnlockVertices){
+        for (const auto &pt : this->mirroredJoinedArray) {
+            int ptIndex = pt.first;
+            float weightBase = pt.second.first;
+            float weightMirror = pt.second.second;
 
-        // now for the indices of the triangles ------------------------------------
-        if (drawTriangles || drawEdges) {
-            verticesSet.push_back(ptIndex);
+            MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
+                                this->mayaRawPoints[ptIndex * 3 + 2]);
+            posPoint = posPoint * this->inclusiveMatrix;
+            points.set(posPoint, i);
+            normals.set(verticesNormals[ptIndex], i);
+
+            // now for colors -------------------------------------------------
             if (drawTriangles) {
-                for (int f : this->perVertexFaces[ptIndex]) fatFaces_set.insert(f);
+                this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices, colors, colorsSolo);
+            }
+            if (drawPoints) {
+                pointsColors[i] = baseColor;
             }
             if (drawEdges) {
-                for (int e : this->perVertexEdges[ptIndex]) fatEdges_set.insert(e);
+                darkEdges.append(MColor((float)0.5, (float)0.5, (float)0.5, 1.0f));
             }
+
+            // now for the indices of the triangles ------------------------------------
+            if (drawTriangles || drawEdges) {
+                verticesMap[ptIndex] = i;
+                if (drawTriangles) {
+                    for (int f : this->perVertexFaces[ptIndex]){
+                        //fatFaces_set.insert(f);
+                        fatFaces_bitset[f] = true;
+                    }
+                }
+                if (drawEdges) {
+                    for (int e : this->perVertexEdges[ptIndex]){
+                        //fatEdges_set.insert(e);
+                        fatEdges_bitset[e] = true;
+                    }
+                }
+            }
+            i++;
         }
     }
-    // make it unique .... hopefully
+    else {
+        for (const auto &pt : this->mirroredJoinedArray) {
+            int ptIndex = pt.first;
+            float weightBase = pt.second.first;
+            float weightMirror = pt.second.second;
+            float weight = weightBase + weightMirror;
+
+            MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
+                                this->mayaRawPoints[ptIndex * 3 + 2]);
+            posPoint = posPoint * this->inclusiveMatrix;
+            points.set(posPoint, i);
+            normals.set(verticesNormals[ptIndex], i);
+            transparency = (drawTransparency) ? weight : 1.0f;
+
+            // now for colors -------------------------------------------------
+            if (drawTriangles) {
+                this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices, colors, colorsSolo);
+
+                // apply gamma
+                MColor *colRef = &(usedColors[i]);
+                colRef->get(MColor::kHSV, h, s, v);
+                colRef->set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
+            }
+
+            if (drawPoints) {
+                pointsColors[i] = weight * baseColor + (1.0 - weight) * currentColors[ptIndex];
+            }
+            if (drawEdges) {
+                darkEdges.append(MColor((float)0.5, (float)0.5, (float)0.5, transparency));
+            }
+
+            // now for the indices of the triangles ------------------------------------
+            if (drawTriangles || drawEdges) {
+                verticesMap[ptIndex] = i;
+                if (drawTriangles) {
+                    for (int f : this->perVertexFaces[ptIndex]){
+                        //fatFaces_set.insert(f);
+                        fatFaces_bitset[f] = true;
+                    }
+                }
+                if (drawEdges) {
+                    for (int e : this->perVertexEdges[ptIndex]){
+                        //fatEdges_set.insert(e);
+                        fatEdges_bitset[e] = true;
+                    }
+                }
+            }
+
+            i++;
+        }
+    }
+
+
+
     if (drawTriangles) {
-        std::vector<int> facesSet(fatFaces_set.begin(), fatFaces_set.end());
-        // now make the triangles -------------------------------
-        for (int f : facesSet) {
-            for (auto tri : this->perFaceTriangleVertices[f]) {
-                auto it0 = std::find(verticesSet.begin(), verticesSet.end(), tri[0]);
-                if (it0 == verticesSet.end()) continue;
-                auto it1 = std::find(verticesSet.begin(), verticesSet.end(), tri[1]);
-                if (it1 == verticesSet.end()) continue;
-                auto it2 = std::find(verticesSet.begin(), verticesSet.end(), tri[2]);
-                if (it2 == verticesSet.end()) continue;
-                indices.append(it0 - verticesSet.begin());
-                indices.append(it1 - verticesSet.begin());
-                indices.append(it2 - verticesSet.begin());
+
+        // bitset is faster than an unordered_set in this case
+        // may be worth keeping the bitsets around on the brush
+        // so we don't have to constantly allocate memory
+        for (unsigned f = 0; f<fatFaces_bitset.size(); ++f){
+            if (!fatFaces_bitset[f]) continue;
+            for (auto &tri : this->perFaceTriangleVertices[f]) {
+                auto it0 = verticesMap.find(tri[0]);
+                if (it0 == verticesMap.end()) continue;
+                auto it1 = verticesMap.find(tri[1]);
+                if (it1 == verticesMap.end()) continue;
+                auto it2 = verticesMap.find(tri[2]);
+                if (it2 == verticesMap.end()) continue;
+                indices.append(it0->second);
+                indices.append(it1->second);
+                indices.append(it2->second);
             }
         }
+
+        /*
+        for (int f : fatFaces_set) {
+            for (auto &tri : this->perFaceTriangleVertices[f]) {
+                auto it0 = verticesMap.find(tri[0]);
+                if (it0 == verticesMap.end()) continue;
+                auto it1 = verticesMap.find(tri[1]);
+                if (it1 == verticesMap.end()) continue;
+                auto it2 = verticesMap.find(tri[2]);
+                if (it2 == verticesMap.end()) continue;
+                indices.append(it0->second);
+                indices.append(it1->second);
+                indices.append(it2->second);
+            }
+        }
+        */
+
         auto style = MHWRender::MUIDrawManager::kFlat;
-        drawManager.setPaintStyle(style);  // kFlat // kShaded //kStippled
+        drawManager.setPaintStyle(style);  // kFlat // kShaded // kStippled
         if (this->soloColorVal == 1) {
-            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colorsSolo,
-                             &indices);
+            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colorsSolo, &indices);
         } else {
-            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colors,
-                             &indices);
+            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colors, &indices);
         }
     }
+
+
+
     if (drawEdges) {
-        std::vector<int> edgesSet(fatEdges_set.begin(), fatEdges_set.end());
-        // now make the edges -------------------------------
-        for (int e : edgesSet) {
-            auto pairEdges = this->perEdgeVertices[e];
-            auto it0 = std::find(verticesSet.begin(), verticesSet.end(), pairEdges.first);
-            if (it0 == verticesSet.end()) continue;
-            auto it1 = std::find(verticesSet.begin(), verticesSet.end(), pairEdges.second);
-            if (it1 == verticesSet.end()) continue;
-            indicesEdges.append(it0 - verticesSet.begin());
-            indicesEdges.append(it1 - verticesSet.begin());
+
+        // bitset is faster than an unordered_set in this case
+        for (unsigned e = 0; e<fatEdges_bitset.size(); ++e){
+            if (!fatEdges_bitset[e]) continue;
+            auto &pairEdges = this->perEdgeVertices[e];
+
+            auto it0 = verticesMap.find(pairEdges.first);
+            if (it0 == verticesMap.end()) continue;
+            auto it1 = verticesMap.find(pairEdges.second);
+            if (it1 == verticesMap.end()) continue;
+
+            indicesEdges.append(it0->second);
+            indicesEdges.append(it1->second);
         }
+
+        /*
+        for (int e : fatEdges_set) {
+            auto &pairEdges = this->perEdgeVertices[e];
+
+            auto it0 = verticesMap.find(pairEdges.first);
+            if (it0 == verticesMap.end()) continue;
+            auto it1 = verticesMap.find(pairEdges.second);
+            if (it1 == verticesMap.end()) continue;
+
+            indicesEdges.append(it0->second);
+            indicesEdges.append(it1->second);
+
+        }
+        */
+
         drawManager.setDepthPriority(2);
-        drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges,
-                         &indicesEdges);
+        drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges, &indicesEdges);
     }
+
+
+
     if (drawPoints) {
         drawManager.setPointSize(4);
         drawManager.mesh(MHWRender::MUIDrawManager::kPoints, points, NULL, &pointsColors);
@@ -2014,6 +2102,7 @@ MStatus SkinBrushContext::getMesh() {
     meshFn.setObject(this->meshDag);
     numVertices = (unsigned)meshFn.numVertices();
     numFaces = (unsigned)meshFn.numPolygons();
+    numEdges = (unsigned)meshFn.numEdges();
     meshFn.freeCachedIntersectionAccelerator();
     this->accelParams =
         meshFn.uniformGridParams(33, 33, 33);  // I dont know why, but '33' seems to work well
@@ -2726,7 +2815,9 @@ bool SkinBrushContext::getMirrorHit(bool getNormal, int &faceHit, MFloatPoint &h
         faceHit = pointInfo.faceIndex();
         hitPoint = MFloatPoint(mirrorPoint);
     }
-    if (getNormal) meshFn.getClosestNormal(hitPoint, this->normalMirroredVector, MSpace::kWorld);
+    if (getNormal){
+        meshFn.getPolygonNormal(faceHit, this->normalMirroredVector, MSpace::kWorld);
+    }
     return true;
 }
 
@@ -2768,9 +2859,9 @@ bool SkinBrushContext::computeHit(short screenPixelX, short screenPixelY, bool g
     }
 
     // ----------- get normal for display ---------------------
-    if (getNormal)
-        meshFn.getClosestNormal(hitPoint, this->normalVector,
-                                MSpace::kWorld);  // , &closestPolygon);
+    if (getNormal){
+        meshFn.getPolygonNormal(faceHit, this->normalVector, MSpace::kWorld);
+    }
     return true;
 }
 
@@ -3201,16 +3292,13 @@ void SkinBrushContext::getVerticesInVolumeRange(int index, MIntArray &volumeIndi
 //      double              The brush curve-based falloff value.
 //
 double SkinBrushContext::getFalloffValue(double value, double strength) {
-    // MGlobal::displayInfo(MString("Curve ") + curveVal);
-    if (curveVal == 0) return 1.0 * strength;
-    // linear
-    else if (curveVal == 1)
+    if (curveVal == 0) // No falloff
+        return strength;
+    else if (curveVal == 1) // linear
         return value * strength;
-    // smoothstep
-    else if (curveVal == 2)
+    else if (curveVal == 2) // smoothstep
         return (value * value * (3 - 2 * value)) * strength;
-    // narrow - quadratic
-    else if (curveVal == 3)
+    else if (curveVal == 3) // narrow - quadratic
         return (1 - pow((1 - value) / 1, 0.4)) * strength;
     else
         return value;

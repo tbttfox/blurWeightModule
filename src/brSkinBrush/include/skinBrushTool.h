@@ -548,7 +548,7 @@ class SkinBrushContext : public MPxContext {
     MFloatMatrix inclusiveMatrix, inclusiveMatrixInverse;
     MDagPath meshDag, nurbsDag;
     MDagPath origMeshDag;
-    unsigned int numVertices = 0, numFaces = 0;
+    unsigned int numVertices = 0, numFaces = 0, numEdges = 0;
 
     unsigned int numElements = 0;
     unsigned int numCVsInV_ = 0, numCVsInU_ = 0;
