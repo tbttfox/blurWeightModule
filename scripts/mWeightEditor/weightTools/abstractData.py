@@ -578,8 +578,8 @@ class DataAbstract(object):
             if not deformedShape or not cmds.objExists(deformedShape):
                 return False
             # check if reloading is necessary
-            softOn = cmds.softSelect(q=True, softSelectEnabled=True)
-            prevSoftSel = cmds.softSelect(q=True, softSelectDistance=True)
+            softOn = cmds.softSelect(query=True, softSelectEnabled=True)
+            prevSoftSel = cmds.softSelect(query=True, softSelectDistance=True)
             isPreloaded = (
                 self.preSel == sel
                 and prevSoftSel == self.prevSoftSel

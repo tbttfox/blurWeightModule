@@ -733,7 +733,7 @@ class SkinPaintWin(Window):
         # column 4 is the sorted by weight picked indices
 
     def updateCurrentInfluenceCB(self):
-        jointName = self.brSkinBrushContext(
+        jointName = cmds.brSkinBrushContext(
             GET_CONTEXT.getLatest(), query=True, pickedInfluence=True
         )
         self.updateCurrentInfluence(jointName)
@@ -839,15 +839,20 @@ class SkinPaintWin(Window):
         toRemove = [item._influence for item in self.uiInfluenceTREE.selectedItems()]
         removeable = []
         non_removable = []
+
+        # Ensure that the display2dArray is populated
+        self.dataOfSkin.softOn = False
+        self.dataOfSkin.rebuildRawSkin()
+        self.dataOfSkin.convertRawSkinToNumpyArray()
+
         for nm in toRemove:
-            if self.dataOfSkin.display2dArray is not None:
-                columnIndex = self.dataOfSkin.driverNames.index(nm)
-                res = self.dataOfSkin.display2dArray[:, columnIndex]
-                notNormalizable = np.where(res >= 1.0)[0]
-                if notNormalizable.size == 0:
-                    removeable.append(nm)
-                else:
-                    non_removable.append((nm, notNormalizable.tolist()))
+            columnIndex = self.dataOfSkin.driverNames.index(nm)
+            res = self.dataOfSkin.display2dArray[:, columnIndex]
+            notNormalizable = np.where(res >= 1.0)[0]
+            if notNormalizable.size == 0:
+                removeable.append(nm)
+            else:
+                non_removable.append((nm, notNormalizable.tolist()))
 
         message = ""
         toRmvStr = "\n - ".join(removeable[:10])
@@ -881,27 +886,29 @@ class SkinPaintWin(Window):
 
     def removeUnusedInfluences(self):
         skn = self.dataOfSkin.theSkinCluster
-        if skn:
-            allInfluences = set(cmds.skinCluster(skn, query=True, influence=True))
-            weightedInfluences = set(cmds.skinCluster(skn, query=True, weightedInfluence=True))
-            zeroInfluences = list(allInfluences - weightedInfluences)
-            if zeroInfluences:
-                toRmvStr = "\n - ".join(zeroInfluences[:10])
-                if len(zeroInfluences) > 10:
-                    toRmvStr += "\n -....and {0} others..... ".format(len(zeroInfluences) - 10)
+        if not skn:
+            return
+        allInfluences = set(cmds.skinCluster(skn, query=True, influence=True))
+        weightedInfluences = set(cmds.skinCluster(skn, query=True, weightedInfluence=True))
+        zeroInfluences = list(allInfluences - weightedInfluences)
+        if not zeroInfluences:
+            return
+        toRmvStr = "\n - ".join(zeroInfluences[:10])
+        if len(zeroInfluences) > 10:
+            toRmvStr += "\n -....and {0} others..... ".format(len(zeroInfluences) - 10)
 
-                res = cmds.confirmDialog(
-                    title="Remove Influences",
-                    message="Remove Unused Influences :\n - {0}".format(toRmvStr),
-                    button=["Yes", "No"],
-                    defaultButton="Yes",
-                    cancelButton="No",
-                    dismissString="No",
-                )
-                if res == "Yes":
-                    self.delete_btn.click()
-                    cmds.skinCluster(skn, edit=True, removeInfluence=zeroInfluences)
-                    cmds.evalDeferred(self.selectRefresh)
+        res = cmds.confirmDialog(
+            title="Remove Influences",
+            message="Remove Unused Influences :\n - {0}".format(toRmvStr),
+            button=["Yes", "No"],
+            defaultButton="Yes",
+            cancelButton="No",
+            dismissString="No",
+        )
+        if res == "Yes":
+            self.delete_btn.click()
+            cmds.skinCluster(skn, edit=True, removeInfluence=zeroInfluences)
+            cmds.evalDeferred(self.selectRefresh)
 
     def randomColors(self, selected=False):
         colors = []
