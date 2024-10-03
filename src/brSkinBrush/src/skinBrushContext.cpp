@@ -696,16 +696,15 @@ MStatus SkinBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &drawM
 }
 
 MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManager) {
+    // This function is the hottest path when painting
+    // So it can and should be optimized more
+    // I think the endgame for this is to only update the changed vertices each runthrough
     int nbVtx = this->verticesPainted.size();
-
-    float transparency = 1.0;
 
     MFloatPointArray points(nbVtx);
     MFloatVectorArray normals(nbVtx);
     MColor theCol(1, 1, 1), white(1, 1, 1, 1), black(0, 0, 0, 1);
-    MIntArray editVertsIndices;
 
-    MColorArray colors, colorsSolo;
     MColorArray pointsColors(nbVtx, theCol);
 
     MUintArray indices, indicesEdges;  // (nbVtx);
@@ -714,13 +713,13 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     MColor newCol, col;
 
     std::unordered_map<int, unsigned int> verticesMap;
-    std::unordered_set<int> fatFaces_set;
-    std::unordered_set<int> fatEdges_set;
     std::vector<bool> fatFaces_bitset;
     std::vector<bool> fatEdges_bitset;
+    std::vector<bool> vertMap_bitset;
 
     fatFaces_bitset.resize(numFaces);
     fatEdges_bitset.resize(numEdges);
+    vertMap_bitset.resize(numVertices);
 
     MColor baseColor, baseMirrorColor;
     float h, s, v;
@@ -732,7 +731,7 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
     if (drawTransparency || drawPoints) {
         if (theCommandIndex == ModifierCommands::LockVertices)
             baseColor = this->lockVertColor;
-        else if (commandIndex == ModifierCommands::Remove)
+        else if (theCommandIndex == ModifierCommands::Remove)
             baseColor = black;
         else if (theCommandIndex == ModifierCommands::UnlockVertices)
             baseColor = white;
@@ -754,196 +753,445 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
         }
         baseColor.get(MColor::kHSV, h, s, v);
         baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
-        if ((commandIndex != ModifierCommands::Add) && (commandIndex != ModifierCommands::AddPercent)) {
+        if ((theCommandIndex != ModifierCommands::Add) && (theCommandIndex != ModifierCommands::AddPercent)) {
             baseMirrorColor = baseColor;
         }
     }
 
-    MColorArray &usedColors = (this->soloColorVal == 1) ? colorsSolo : colors;
-    MColorArray &currentColors = (this->soloColorVal == 1) ? this->soloCurrentColors : this->multiCurrentColors;
+    // pull data out of the dictionary
+    // TODO: There's probably a copy-less way to do this
+    std::vector<std::pair<int, std::pair<float, float>>> mja;
+    mja.reserve( this->mirroredJoinedArray.size());
+    for (const auto &pt : this->mirroredJoinedArray) {
+        mja.push_back(pt);
+    }
 
-    // Putting this check in the loop is slow
-    // so it's up-front here at the cost of some code duplication
-    unsigned int i = 0;
-    if (theCommandIndex == ModifierCommands::LockVertices || theCommandIndex == ModifierCommands::UnlockVertices){
-        for (const auto &pt : this->mirroredJoinedArray) {
-            int ptIndex = pt.first;
-            float weightBase = pt.second.first;
-            float weightMirror = pt.second.second;
+    MColorArray colors, colorsSolo;
+    colors.setLength(mja.size());
+    colorsSolo.setLength(mja.size());
 
-            MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
-                                this->mayaRawPoints[ptIndex * 3 + 2]);
-            posPoint = posPoint * this->inclusiveMatrix;
-            points.set(posPoint, i);
-            normals.set(verticesNormals[ptIndex], i);
-
-            // now for colors -------------------------------------------------
-            if (drawTriangles) {
-                this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices, colors, colorsSolo);
-            }
-            if (drawPoints) {
-                pointsColors[i] = baseColor;
-            }
-            if (drawEdges) {
-                darkEdges.append(MColor((float)0.5, (float)0.5, (float)0.5, 1.0f));
-            }
-
-            // now for the indices of the triangles ------------------------------------
-            if (drawTriangles || drawEdges) {
-                verticesMap[ptIndex] = i;
-                if (drawTriangles) {
-                    for (int f : this->perVertexFaces[ptIndex]){
-                        //fatFaces_set.insert(f);
-                        fatFaces_bitset[f] = true;
-                    }
-                }
-                if (drawEdges) {
-                    for (int e : this->perVertexEdges[ptIndex]){
-                        //fatEdges_set.insert(e);
-                        fatEdges_bitset[e] = true;
-                    }
-                }
-            }
-            i++;
-        }
+    MColorArray *usedColors;
+    MColorArray *currentColors;
+    if (this->soloColorVal == 1){
+        usedColors = &colorsSolo;
+        currentColors = &this->soloCurrentColors;
     }
     else {
-        for (const auto &pt : this->mirroredJoinedArray) {
+        usedColors = &colors;
+        currentColors = &this->multiCurrentColors;
+    }
+
+    bool doTransparency = drawTransparency;
+    bool applyGamma = true;
+    if (theCommandIndex == ModifierCommands::LockVertices || theCommandIndex == ModifierCommands::UnlockVertices){
+        // Don't do transparency when locking/unlocking vertices
+        doTransparency = false;
+        applyGamma = false;
+    }
+
+#pragma omp parallel for
+    for (unsigned i = 0; i < mja.size(); ++i){
+        const auto &pt = mja[i];
+        int ptIndex = pt.first;
+        MFloatPoint posPoint(
+            this->mayaRawPoints[ptIndex * 3],
+            this->mayaRawPoints[ptIndex * 3 + 1],
+            this->mayaRawPoints[ptIndex * 3 + 2]
+        );
+        posPoint = posPoint * this->inclusiveMatrix;
+        points.set(posPoint, i);
+        normals.set(verticesNormals[ptIndex], i);
+    }
+
+    if (drawTriangles) {
+#pragma omp parallel for
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
             int ptIndex = pt.first;
             float weightBase = pt.second.first;
             float weightMirror = pt.second.second;
-            float weight = weightBase + weightMirror;
+            MColor multColor, soloColor;
+            this->getColorWithMirror(ptIndex, weightBase, weightMirror, colors, colorsSolo, multColor, soloColor);
+            colors.set(multColor, i);
+            colorsSolo.set(soloColor, i);
+        }
 
-            MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
-                                this->mayaRawPoints[ptIndex * 3 + 2]);
-            posPoint = posPoint * this->inclusiveMatrix;
-            points.set(posPoint, i);
-            normals.set(verticesNormals[ptIndex], i);
-            transparency = (drawTransparency) ? weight : 1.0f;
-
-            // now for colors -------------------------------------------------
-            if (drawTriangles) {
-                this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices, colors, colorsSolo);
-
-                // apply gamma
-                MColor *colRef = &(usedColors[i]);
-                colRef->get(MColor::kHSV, h, s, v);
-                colRef->set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
+        if (applyGamma){
+#pragma omp parallel for
+            for (unsigned i = 0; i < mja.size(); ++i){
+                const auto &pt = mja[i];
+                float weightBase = pt.second.first;
+                float weightMirror = pt.second.second;
+                float transparency = (doTransparency) ? weightBase + weightMirror: 1.0;
+                MColor& colRef = (*usedColors)[i];
+                colRef.get(MColor::kHSV, h, s, v);
+                colRef.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
             }
-
-            if (drawPoints) {
-                pointsColors[i] = weight * baseColor + (1.0 - weight) * currentColors[ptIndex];
-            }
-            if (drawEdges) {
-                darkEdges.append(MColor((float)0.5, (float)0.5, (float)0.5, transparency));
-            }
-
-            // now for the indices of the triangles ------------------------------------
-            if (drawTriangles || drawEdges) {
-                verticesMap[ptIndex] = i;
-                if (drawTriangles) {
-                    for (int f : this->perVertexFaces[ptIndex]){
-                        //fatFaces_set.insert(f);
-                        fatFaces_bitset[f] = true;
-                    }
-                }
-                if (drawEdges) {
-                    for (int e : this->perVertexEdges[ptIndex]){
-                        //fatEdges_set.insert(e);
-                        fatEdges_bitset[e] = true;
-                    }
-                }
-            }
-
-            i++;
         }
     }
 
+    if (drawPoints) {
+#pragma omp parallel for
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            float weight = pt.second.first + pt.second.second;
+            pointsColors[i] = weight * baseColor + (1.0 - weight) * (*currentColors)[pt.first];
+        }
+    }
 
+    if (drawEdges) {
+        darkEdges.setLength(mja.size());
+#pragma omp parallel for
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            float transparency = (doTransparency) ? pt.second.first + pt.second.second: 1.0;
+            darkEdges.set(i, 0.5f, 0.5f, 0.5f, transparency);
+        }
+    }
+
+    if (drawTriangles || drawEdges) {
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            verticesMap[pt.first] = i;
+            vertMap_bitset[pt.first] = true;
+        }
+    }
 
     if (drawTriangles) {
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            int ptIndex = pt.first;
+            for (int f : this->perVertexFaces[ptIndex]){
+                fatFaces_bitset[f] = true;
+            }
+        }
+    }
 
+    if (drawEdges) {
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            int ptIndex = pt.first;
+            for (int e : this->perVertexEdges[ptIndex]){
+                fatEdges_bitset[e] = true;
+            }
+        }
+    }
+
+    if (drawTriangles) {
         // bitset is faster than an unordered_set in this case
         // may be worth keeping the bitsets around on the brush
         // so we don't have to constantly allocate memory
         for (unsigned f = 0; f<fatFaces_bitset.size(); ++f){
             if (!fatFaces_bitset[f]) continue;
             for (auto &tri : this->perFaceTriangleVertices[f]) {
+                if (!vertMap_bitset[tri[0]]) continue;
+                if (!vertMap_bitset[tri[1]]) continue;
+                if (!vertMap_bitset[tri[2]]) continue;
                 auto it0 = verticesMap.find(tri[0]);
-                if (it0 == verticesMap.end()) continue;
                 auto it1 = verticesMap.find(tri[1]);
-                if (it1 == verticesMap.end()) continue;
                 auto it2 = verticesMap.find(tri[2]);
-                if (it2 == verticesMap.end()) continue;
                 indices.append(it0->second);
                 indices.append(it1->second);
                 indices.append(it2->second);
             }
         }
-
-        /*
-        for (int f : fatFaces_set) {
-            for (auto &tri : this->perFaceTriangleVertices[f]) {
-                auto it0 = verticesMap.find(tri[0]);
-                if (it0 == verticesMap.end()) continue;
-                auto it1 = verticesMap.find(tri[1]);
-                if (it1 == verticesMap.end()) continue;
-                auto it2 = verticesMap.find(tri[2]);
-                if (it2 == verticesMap.end()) continue;
-                indices.append(it0->second);
-                indices.append(it1->second);
-                indices.append(it2->second);
-            }
-        }
-        */
 
         auto style = MHWRender::MUIDrawManager::kFlat;
         drawManager.setPaintStyle(style);  // kFlat // kShaded // kStippled
-        if (this->soloColorVal == 1) {
-            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colorsSolo, &indices);
-        } else {
-            drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, &colors, &indices);
-        }
+        drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, usedColors, &indices);
     }
 
-
-
     if (drawEdges) {
-
         // bitset is faster than an unordered_set in this case
+        // may be worth keeping the bitsets around on the brush
+        // so we don't have to constantly allocate memory
         for (unsigned e = 0; e<fatEdges_bitset.size(); ++e){
             if (!fatEdges_bitset[e]) continue;
             auto &pairEdges = this->perEdgeVertices[e];
 
+            if (!vertMap_bitset[pairEdges.first]) continue;
+            if (!vertMap_bitset[pairEdges.second]) continue;
             auto it0 = verticesMap.find(pairEdges.first);
-            if (it0 == verticesMap.end()) continue;
             auto it1 = verticesMap.find(pairEdges.second);
-            if (it1 == verticesMap.end()) continue;
-
-            indicesEdges.append(it0->second);
-            indicesEdges.append(it1->second);
-        }
-
-        /*
-        for (int e : fatEdges_set) {
-            auto &pairEdges = this->perEdgeVertices[e];
-
-            auto it0 = verticesMap.find(pairEdges.first);
-            if (it0 == verticesMap.end()) continue;
-            auto it1 = verticesMap.find(pairEdges.second);
-            if (it1 == verticesMap.end()) continue;
-
             indicesEdges.append(it0->second);
             indicesEdges.append(it1->second);
 
         }
-        */
 
         drawManager.setDepthPriority(2);
         drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges, &indicesEdges);
     }
 
+    if (drawPoints) {
+        drawManager.setPointSize(4);
+        drawManager.mesh(MHWRender::MUIDrawManager::kPoints, points, NULL, &pointsColors);
+    }
+    return MStatus::kSuccess;
+}
 
+
+MStatus drawMeshWhileDrag(
+    // Pretty sure These are the only two things that change each frame
+    std::set<int> &verticesPainted, // The full set of vertices that are currently being painted
+    std::unordered_map<int, std::pair<float, float>> &mirroredJoinedArray, // An array of weights and mirror weights: <VertexIndex (weightBase, weightMirrored)>
+
+    int numFaces, // The number of faces on the current mesh
+    int numEdges, // The number of edges on the current mesh
+    int numVertices, // The number of vertices in the current mesh
+    int influenceIndex, // The index of the influence currently being painted
+    int paintMirror, // The mirror behavior index
+    int soloColorVal, // The solo color index
+
+    bool drawTransparency, // Whether to draw transparency
+    bool drawPoints,  // Whether to draw points
+    bool drawTriangles,  // Whether to draw Triangles
+    bool drawEdges,  // Whether to draw Edges
+
+    MColor &lockVertColor,  // The color to draw verts if they're locked
+    MColorArray &jointsColors, // An array of joint colors
+    MColorArray &soloCurrentColors, // Per-vertex array of solo colors
+    MColorArray &multiCurrentColors, // Per-vertex array of multi-colors
+
+    float* mayaRawPoints, // A C-style array pointing to the mesh vertex positions
+
+    ModifierCommands theCommandIndex,  // The current command index
+
+    MIntArray &mirrorInfluences,  // A mapping between the current influence, and the mirrored one
+    MFloatMatrix &inclusiveMatrix,  // The worldspace matrix of the current mesh
+    MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
+
+    std::vector<MIntArray> &perVertexFaces, // The face indices for each vertex
+    std::vector<MIntArray> &perVertexEdges, // The edge indices for each vertex
+    std::vector<std::vector<MIntArray>> &perFaceTriangleVertices, // Somehow get the triangle indices per face
+    std::vector<std::pair<int, int>> &perEdgeVertices, // The endpoint vertex indices of each edge
+
+    MHWRender::MUIDrawManager &drawManager // Maya's DrawManager
+) {
+    // This function is the hottest path when painting
+    // So it can and should be optimized more
+    // I think the endgame for this is to only update the changed vertices each runthrough
+    int nbVtx = verticesPainted.size();
+
+    MFloatPointArray points(nbVtx);
+    MFloatVectorArray normals(nbVtx);
+    MColor theCol(1, 1, 1), white(1, 1, 1, 1), black(0, 0, 0, 1);
+
+    MColorArray pointsColors(nbVtx, theCol);
+
+    MUintArray indices, indicesEdges;  // (nbVtx);
+    MColorArray darkEdges;             // (nbVtx, MColor(0.5, 0.5, 0.5));
+
+    MColor newCol, col;
+
+    std::unordered_map<int, unsigned int> verticesMap;
+    std::vector<bool> fatFaces_bitset;
+    std::vector<bool> fatEdges_bitset;
+    std::vector<bool> vertMap_bitset;
+
+    fatFaces_bitset.resize(numFaces);
+    fatEdges_bitset.resize(numEdges);
+    vertMap_bitset.resize(numVertices);
+
+    MColor baseColor, baseMirrorColor;
+    float h, s, v;
+    // get baseColor ----------------------------------
+    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+    // UnLockVertices
+
+    if (drawTransparency || drawPoints) {
+        if (theCommandIndex == ModifierCommands::LockVertices)
+            baseColor = lockVertColor;
+        else if (theCommandIndex == ModifierCommands::Remove)
+            baseColor = black;
+        else if (theCommandIndex == ModifierCommands::UnlockVertices)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::Smooth)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::Sharpen)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::LockVertices)
+            baseColor = white;
+        else if (theCommandIndex == ModifierCommands::UnlockVertices)
+            baseColor = white;
+        else {
+            baseColor = jointsColors[influenceIndex];
+            if (paintMirror != 0) {
+                baseMirrorColor = jointsColors[mirrorInfluences[influenceIndex]];
+                baseMirrorColor.get(MColor::kHSV, h, s, v);
+                baseMirrorColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
+            }
+        }
+        baseColor.get(MColor::kHSV, h, s, v);
+        baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
+        if ((theCommandIndex != ModifierCommands::Add) && (theCommandIndex != ModifierCommands::AddPercent)) {
+            baseMirrorColor = baseColor;
+        }
+    }
+
+    // pull data out of the dictionary
+    // TODO: There's probably a copy-less way to do this
+    std::vector<std::pair<int, std::pair<float, float>>> mja;
+    mja.reserve( mirroredJoinedArray.size());
+    for (const auto &pt : mirroredJoinedArray) {
+        mja.push_back(pt);
+    }
+
+    MColorArray colors, colorsSolo;
+    colors.setLength(mja.size());
+    colorsSolo.setLength(mja.size());
+
+    MColorArray *usedColors;
+    MColorArray *currentColors;
+    if (soloColorVal == 1){
+        usedColors = &colorsSolo;
+        currentColors = &soloCurrentColors;
+    }
+    else {
+        usedColors = &colors;
+        currentColors = &multiCurrentColors;
+    }
+
+    bool doTransparency = drawTransparency;
+    bool applyGamma = true;
+    if (theCommandIndex == ModifierCommands::LockVertices || theCommandIndex == ModifierCommands::UnlockVertices){
+        // Don't do transparency when locking/unlocking vertices
+        doTransparency = false;
+        applyGamma = false;
+    }
+
+#pragma omp parallel for
+    for (unsigned i = 0; i < mja.size(); ++i){
+        const auto &pt = mja[i];
+        int ptIndex = pt.first;
+        MFloatPoint posPoint(
+            mayaRawPoints[ptIndex * 3],
+            mayaRawPoints[ptIndex * 3 + 1],
+            mayaRawPoints[ptIndex * 3 + 2]
+        );
+        posPoint = posPoint * inclusiveMatrix;
+        points.set(posPoint, i);
+        normals.set(verticesNormals[ptIndex], i);
+    }
+
+    if (drawTriangles) {
+#pragma omp parallel for
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            int ptIndex = pt.first;
+            float weightBase = pt.second.first;
+            float weightMirror = pt.second.second;
+            MColor multColor, soloColor;
+            // TODO: Extract
+            //getColorWithMirror(ptIndex, weightBase, weightMirror, colors, colorsSolo, multColor, soloColor);
+            colors.set(multColor, i);
+            colorsSolo.set(soloColor, i);
+        }
+
+        if (applyGamma){
+#pragma omp parallel for
+            for (unsigned i = 0; i < mja.size(); ++i){
+                const auto &pt = mja[i];
+                float weightBase = pt.second.first;
+                float weightMirror = pt.second.second;
+                float transparency = (doTransparency) ? weightBase + weightMirror: 1.0;
+                MColor& colRef = (*usedColors)[i];
+                colRef.get(MColor::kHSV, h, s, v);
+                colRef.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
+            }
+        }
+    }
+
+    if (drawPoints) {
+#pragma omp parallel for
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            float weight = pt.second.first + pt.second.second;
+            pointsColors[i] = weight * baseColor + (1.0 - weight) * (*currentColors)[pt.first];
+        }
+    }
+
+    if (drawEdges) {
+        darkEdges.setLength(mja.size());
+#pragma omp parallel for
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            float transparency = (doTransparency) ? pt.second.first + pt.second.second: 1.0;
+            darkEdges.set(i, 0.5f, 0.5f, 0.5f, transparency);
+        }
+    }
+
+    if (drawTriangles || drawEdges) {
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            verticesMap[pt.first] = i;
+            vertMap_bitset[pt.first] = true;
+        }
+    }
+
+    if (drawTriangles) {
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            int ptIndex = pt.first;
+            for (int f : perVertexFaces[ptIndex]){
+                fatFaces_bitset[f] = true;
+            }
+        }
+    }
+
+    if (drawEdges) {
+        for (unsigned i = 0; i < mja.size(); ++i){
+            const auto &pt = mja[i];
+            int ptIndex = pt.first;
+            for (int e : perVertexEdges[ptIndex]){
+                fatEdges_bitset[e] = true;
+            }
+        }
+    }
+
+    if (drawTriangles) {
+        // bitset is faster than an unordered_set in this case
+        // may be worth keeping the bitsets around on the brush
+        // so we don't have to constantly allocate memory
+        for (unsigned f = 0; f<fatFaces_bitset.size(); ++f){
+            if (!fatFaces_bitset[f]) continue;
+            for (auto &tri : perFaceTriangleVertices[f]) {
+                if (!vertMap_bitset[tri[0]]) continue;
+                if (!vertMap_bitset[tri[1]]) continue;
+                if (!vertMap_bitset[tri[2]]) continue;
+                auto it0 = verticesMap.find(tri[0]);
+                auto it1 = verticesMap.find(tri[1]);
+                auto it2 = verticesMap.find(tri[2]);
+                indices.append(it0->second);
+                indices.append(it1->second);
+                indices.append(it2->second);
+            }
+        }
+
+        auto style = MHWRender::MUIDrawManager::kFlat;
+        drawManager.setPaintStyle(style);  // kFlat // kShaded // kStippled
+        drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, usedColors, &indices);
+    }
+
+    if (drawEdges) {
+        // bitset is faster than an unordered_set in this case
+        // may be worth keeping the bitsets around on the brush
+        // so we don't have to constantly allocate memory
+        for (unsigned e = 0; e<fatEdges_bitset.size(); ++e){
+            if (!fatEdges_bitset[e]) continue;
+            auto &pairEdges = perEdgeVertices[e];
+
+            if (!vertMap_bitset[pairEdges.first]) continue;
+            if (!vertMap_bitset[pairEdges.second]) continue;
+            auto it0 = verticesMap.find(pairEdges.first);
+            auto it1 = verticesMap.find(pairEdges.second);
+            indicesEdges.append(it0->second);
+            indicesEdges.append(it1->second);
+
+        }
+
+        drawManager.setDepthPriority(2);
+        drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges, &indicesEdges);
+    }
 
     if (drawPoints) {
         drawManager.setPointSize(4);
@@ -1621,7 +1869,7 @@ void SkinBrushContext::doTheAction() {
     MUserEventMessage::postUserEvent("brSkinBrush_afterPaint");
 }
 
-ModifierCommands SkinBrushContext::getCommandIndexModifiers() {
+ModifierCommands SkinBrushContext::getCommandIndexModifiers() const {
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // unlockVertices
     ModifierCommands theCommandIndex = this->commandIndex;
@@ -2000,7 +2248,7 @@ MStatus SkinBrushContext::refreshColors(MIntArray &editVertsIndices, MColorArray
     return status;
 }
 
-MColor SkinBrushContext::getASoloColor(double val) {
+MColor SkinBrushContext::getASoloColor(double val) const {
     // if (verbose) MGlobal::displayInfo(" getASoloColor CALL \n");
 
     if (val == 0) return MColor(0, 0, 0);
@@ -2899,73 +3147,11 @@ void SkinBrushContext::addBrushShapeFallof(std::unordered_map<int, float> &dicVe
     }
 }
 
-void SkinBrushContext::setColor(int vertexIndex, float value, MIntArray &editVertsIndices,
-                                MColorArray &multiEditColors, MColorArray &soloEditColors,
-                                bool useMirror) {
-    // if (verbose) MGlobal::displayInfo(MString("         --> actually painting weights"));
+void SkinBrushContext::getColorWithMirror(int vertexIndex, float valueBase, float valueMirror,
+                                          MColorArray &multiEditColors, MColorArray &soloEditColors,
+                                          MColor &multColor, MColor &soloColor) const {
     MColor white(1, 1, 1, 1);
     MColor black(0, 0, 0, 1);
-    MColor soloColor, multColor;
-    ModifierCommands theCommandIndex = getCommandIndexModifiers();
-
-    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
-        if (theCommandIndex == ModifierCommands::LockVertices) {  // lock verts if not already locked
-            soloColor = this->lockVertColor;
-            multColor = this->lockVertColor;
-        } else {  // unlock verts
-            multColor = this->multiCurrentColors[vertexIndex];
-            soloColor = this->soloCurrentColors[vertexIndex];
-        }
-        this->intensityValuesOrig[vertexIndex] = 1;  // store to not repaint
-    } else if (!this->lockVertices[vertexIndex]) {
-        MColor currentColor = this->multiCurrentColors[vertexIndex];
-        int influenceColorIndex = this->influenceIndex;
-        if (useMirror) influenceColorIndex = this->mirrorInfluences[this->influenceIndex];
-        MColor jntColor = this->jointsColors[influenceColorIndex];
-        if (lockJoints[this->influenceIndex] == 1) jntColor = lockJntColor;
-        // float val = std::log10(value * 9 + 1);
-
-        // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
-        // UnLockVertices
-        if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen) {
-            soloColor = value * white + (1.0 - value) * this->soloCurrentColors[vertexIndex];
-            multColor = value * white + (1.0 - value) * this->multiCurrentColors[vertexIndex];
-        }
-        else {
-            double newW = 0.0;
-            int ind_swl = vertexIndex * nbJoints + this->influenceIndex;
-            if (ind_swl < this->skinWeightList.length())
-                newW = this->skinWeightList[ind_swl];
-            if (theCommandIndex == ModifierCommands::Add) {
-                newW += value;
-                newW = std::min(1.0, newW);
-                multColor = currentColor * (1.0 - newW) + jntColor * newW;  // white
-            } else if (theCommandIndex == ModifierCommands::Remove) {
-                newW -= value;
-                newW = std::max(0.0, newW);
-                multColor = currentColor * (1.0 - value) + black * value;  // white
-            } else if (theCommandIndex == ModifierCommands::AddPercent) {
-                newW += value * newW;
-                newW = std::min(1.0, newW);
-                multColor = currentColor * (1.0 - newW) + jntColor * newW;  // white
-            } else if (theCommandIndex == ModifierCommands::Absolute) {
-                newW = value;                                              // Absolute
-                multColor = currentColor * (1.0 - value) + black * value;  // white
-            }
-            soloColor = getASoloColor(newW);
-        }
-    }
-    editVertsIndices.append(vertexIndex);
-    multiEditColors.append(multColor);
-    soloEditColors.append(soloColor);
-}
-
-void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, float valueMirror,
-                                          MIntArray &editVertsIndices, MColorArray &multiEditColors,
-                                          MColorArray &soloEditColors) {
-    MColor white(1, 1, 1, 1);
-    MColor black(0, 0, 0, 1);
-    MColor soloColor, multColor;
     ModifierCommands theCommandIndex = getCommandIndexModifiers();
 
     float sumValue = valueBase + valueMirror;
@@ -3003,31 +3189,27 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
             if (ind_swlM < this->skinWeightList.length())
                 newWMirror = this->skinWeightList[ind_swlM];
             double sumNewWs = newW + newWMirror;
-            if (theCommandIndex == ModifierCommands::Add) {
-                newW += double(valueBase);
-                newW = std::min(1.0, newW);
-                newWMirror += double(valueMirror);
-                newWMirror = std::min(1.0, newWMirror);
 
-                sumNewWs = newW + newWMirror;
-                double currentColorVal = 1.0 - sumNewWs;
-                if (sumNewWs > 1.0) {
-                    newW /= sumNewWs;
-                    newWMirror /= sumNewWs;
-                    currentColorVal = 0.0;
-                }
-                multColor = currentColor * currentColorVal + jntColor * newW +
-                            jntMirrorColor * newWMirror;  // white
-            } else if (theCommandIndex == ModifierCommands::Remove) {
+            if (theCommandIndex == ModifierCommands::Remove) {
                 newW -= biggestValue;
                 newW = std::max(0.0, newW);
                 multColor = currentColor * (1.0 - biggestValue) + black * biggestValue;  // white
-            } else if (theCommandIndex == ModifierCommands::AddPercent) {
-                newW += valueBase * newW;
-                newW = std::min(1.0, newW);
-                newWMirror += valueMirror * newWMirror;
-                newWMirror = std::min(1.0, newWMirror);
 
+            } else {
+                if (theCommandIndex == ModifierCommands::Add) {
+                    newW += double(valueBase);
+                    newWMirror += double(valueMirror);
+                } else if (theCommandIndex == ModifierCommands::AddPercent) {
+                    newW += valueBase * newW;
+                    newWMirror += valueMirror * newWMirror;
+
+                } else if (theCommandIndex == ModifierCommands::Absolute) {
+                    newW = valueBase;
+                    newWMirror = valueMirror;
+                }
+
+                newW = std::min(1.0, newW);
+                newWMirror = std::min(1.0, newWMirror);
                 sumNewWs = newW + newWMirror;
                 double currentColorVal = 1.0 - sumNewWs;
                 if (sumNewWs > 1.0) {
@@ -3035,31 +3217,13 @@ void SkinBrushContext::setColorWithMirror(int vertexIndex, float valueBase, floa
                     newWMirror /= sumNewWs;
                     currentColorVal = 0.0;
                 }
-                multColor = currentColor * currentColorVal + jntColor * newW +
-                            jntMirrorColor * newWMirror;  // white
-            } else if (theCommandIndex == ModifierCommands::Absolute) {
-                newW = valueBase;
-                newW = std::min(1.0, newW);
-                newWMirror = valueMirror;
-                newWMirror = std::min(1.0, newWMirror);
-
-                sumNewWs = newW + newWMirror;
-                double currentColorVal = 1.0 - sumNewWs;
-                if (sumNewWs > 1.0) {
-                    newW /= sumNewWs;
-                    newWMirror /= sumNewWs;
-                    currentColorVal = 0.0;
-                }
-                multColor = currentColor * currentColorVal + jntColor * newW +
-                            jntMirrorColor * newWMirror;  // white
+                multColor = currentColor * currentColorVal + jntColor * newW + jntMirrorColor * newWMirror;  // white
             }
             soloColor = getASoloColor(newW);
         }
     }
-    editVertsIndices.append(vertexIndex);
-    multiEditColors.append(multColor);
-    soloEditColors.append(soloColor);
 }
+
 
 MStatus SkinBrushContext::preparePaint(std::unordered_map<int, float> &dicVertsDist,
                                        std::unordered_map<int, float> &dicVertsDistPrevPaint,
@@ -3129,8 +3293,12 @@ MStatus SkinBrushContext::doPerformPaint() {
         int ptIndex = pt.first;
         float weightBase = pt.second.first;
         float weightMirror = pt.second.second;
-        this->setColorWithMirror(ptIndex, weightBase, weightMirror, editVertsIndices,
-                                 multiEditColors, soloEditColors);
+        MColor multColor, soloColor;
+        this->getColorWithMirror(ptIndex, weightBase, weightMirror, multiEditColors, soloEditColors, multColor, soloColor);
+        editVertsIndices.append(ptIndex);
+        multiEditColors.append(multColor);
+        soloEditColors.append(soloColor);
+
     }
     // do actually set colors -----------------------------------
     if (this->soloColorVal == 0) {
@@ -3292,16 +3460,19 @@ void SkinBrushContext::getVerticesInVolumeRange(int index, MIntArray &volumeIndi
 //      double              The brush curve-based falloff value.
 //
 double SkinBrushContext::getFalloffValue(double value, double strength) {
-    if (curveVal == 0) // No falloff
-        return strength;
-    else if (curveVal == 1) // linear
-        return value * strength;
-    else if (curveVal == 2) // smoothstep
-        return (value * value * (3 - 2 * value)) * strength;
-    else if (curveVal == 3) // narrow - quadratic
-        return (1 - pow((1 - value) / 1, 0.4)) * strength;
-    else
-        return value;
+
+    switch (curveVal) {
+        case 0: // no falloff
+            return strength;
+        case 1: // linear
+            return value * strength;
+        case 2: // smoothstep
+            return (value * value * (3 - 2 * value)) * strength;
+        case 3: // narrow - quadratic
+            return (1 - pow((1 - value) / 1, 0.4)) * strength;
+        default:
+            return value;
+    }
 }
 
 //

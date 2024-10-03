@@ -268,7 +268,7 @@ class SkinBrushContext : public MPxContext {
     MStatus doDragCommon(MEvent &event);
     MStatus doReleaseCommon(MEvent &event);
     void doTheAction();
-    ModifierCommands getCommandIndexModifiers();
+    ModifierCommands getCommandIndexModifiers() const;
     MStatus getMesh();
     MStatus getTheOrigMeshForMirror();
 
@@ -296,16 +296,12 @@ class SkinBrushContext : public MPxContext {
     MStatus refreshColors(MIntArray &editVertsIndices, MColorArray &multiEditColors,
                           MColorArray &soloEditColors);
     MStatus editSoloColorSet(bool doBlack);
-    MColor getASoloColor(double val);
+    MColor getASoloColor(double val) const;
     MStatus refreshPointsNormals();
 
-    void setColor(int vertexIndex, float value, MIntArray &editVertsIndices,
-                  MColorArray &multiEditColors, MColorArray &soloEditColors,
-                  bool useMirror = false);
-
-    void setColorWithMirror(int vertexIndex, float valueBase, float valueMirror,
-                            MIntArray &editVertsIndices, MColorArray &multiEditColors,
-                            MColorArray &soloEditColors);
+    void getColorWithMirror(int vertexIndex, float valueBase, float valueMirror,
+                           MColorArray &multiEditColors, MColorArray &soloEditColors,
+                           MColor &multColor, MColor &soloColor) const;
 
     MStatus querySkinClusterValues(MObject &skinCluster, MIntArray &verticesIndices, bool doColors);
     MStatus fillArrayValues(MObject &skinCluster, bool doColors);
