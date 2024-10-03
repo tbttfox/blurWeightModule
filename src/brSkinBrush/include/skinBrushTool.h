@@ -71,8 +71,9 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include <format>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 // Macro for the press/drag/release methods in case there is nothing
 // selected or the tool gets applied outside any geometry. If the actual

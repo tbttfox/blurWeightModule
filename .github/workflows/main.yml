@@ -2,15 +2,15 @@ name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
     tags:
       - v*
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 # matrix:
 #   maya: [2024]
-#   os: [macos-latest, ubuntu-latest, windows-latest]
+#   os: [ubuntu-latest, windows-latest]
 #   include: 
 #     - maya: 2024
 #       update: 2
@@ -38,6 +38,8 @@ jobs:
             maya: 2022
           - os: macos-latest
             maya: 2023
+          - os: macos-latest
+            maya: 2025  # No idea how to link to Qt6 on Mac
           - os: macos-13
             maya: 2024
           - os: macos-13
@@ -56,6 +58,7 @@ jobs:
         with:
           maya: ${{ matrix.maya }}
           update: ${{ matrix.update }}
+          extract-qt: true
 
       - name: Build
         uses: blurstudio/mayaModuleActions/mesonBuild@v1
@@ -70,7 +73,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-${{ matrix.maya }}-plugin
-          path: build/*.${{ steps.get-devkit.outputs.plugin-ext }}
+          path: output_Maya${{ matrix.maya }}/*.${{ steps.get-devkit.outputs.plugin-ext }}
           if-no-files-found: error
 
   upload_release:

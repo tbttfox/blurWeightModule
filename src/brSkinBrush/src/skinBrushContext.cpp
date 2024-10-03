@@ -1648,9 +1648,12 @@ MStatus SkinBrushContext::doDragCommon(MEvent &event) {
         if (event.isModifierShift()) precision = 3;
 
         std::string stdMessage = std::string(message.asChar());
-        std::string theMessage = std::format("{}: {:.{}f}", stdMessage, adjustValue, precision);
-        std::string headsUpFmt = std::format("headsUpMessage -horizontalOffset {} -verticalOffset {} -time 0.1 \"{}\"", offsetX, offsetY, theMessage);
 
+        std::stringstream stream;
+        stream << std::fixed << std::setprecision(precision) << adjustValue;
+
+        std::string theMessage = stdMessage + ": " + stream.str();
+        std::string headsUpFmt = "headsUpMessage -horizontalOffset "+ std::to_string(offsetX) +" -verticalOffset "+ std::to_string(offsetY) +" -time 0.1 \""+ theMessage +"\"";
         MGlobal::executeCommand(MString(headsUpFmt.c_str(), headsUpFmt.length()));
 
         // Also, adjust the slider in the tool settings window if it's

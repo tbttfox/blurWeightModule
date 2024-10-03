@@ -56,7 +56,9 @@ endif
 
 maya_inc_dir = maya_install_path / maya_inc_suffix
 message('Searching Maya Include directory:', maya_inc_dir)
-maya_inc = include_directories(maya_inc_dir)
+
+maya_inc_folders = [maya_inc_dir]
+
 
 maya_lib_dir = maya_install_path / maya_lib_suffix
 message('Searching Maya lib directory:', maya_lib_dir)
@@ -75,25 +77,44 @@ maya_libs = [
 
 # Link to maya's qt libs if required
 # This doesn't do MOC stuff ... yet
+qt_ver = 5
 if maya_link_qt
   fs = import('fs')
+
+  qt_lib_dir = maya_lib_dir
   if not fs.is_dir(maya_inc_dir / 'QtCore')
-    error(
-      'Could not find Maya QT headers with `maya_link_qt` defined\n',
-      'You probably need to unzip `include/qt_*-include.zip`\n',
-      'Checking in folder: ', maya_inc_dir,
-    )
+    # Check for the maya 2025+ Qt.zip folder
+    qt_include_dir = maya_install_path / 'Qt' / 'include'
+    if fs.is_dir(qt_include_dir)
+      maya_inc_folders += qt_include_dir
+      qt_lib_dir = maya_install_path / 'Qt' / 'lib'
+      qt_ver = 6
+      if os_name == 'darwin'
+        error(
+          'I have no idea how to link to Autodesk\'s Qt6 headers and libs on macOS. If you do, please help'
+        )
+      endif
+    else
+      error(
+        'Could not find Maya QT headers with `maya_link_qt` defined\n',
+        'You probably need to unzip `include/qt_*-include.zip` or `Qt.zip`\n',
+        'Checking in folders: ', maya_inc_dir, qt_include_dir,
+      )
+    endif
   endif
 
-  maya_qt_lib_names = ['Qt5Core', 'Qt5Gui', 'Qt5Widgets']
+  maya_qt_lib_names = [f'Qt@qt_ver@Core', f'Qt@qt_ver@Gui', f'Qt@qt_ver@Widgets']
+
   if maya_qt_extra_includes != ''
     maya_qt_lib_names += maya_qt_extra_includes.split(';')
   endif
 
   foreach lib_name : maya_qt_lib_names
-      maya_libs += cmplr.find_library(lib_name, dirs : maya_lib_dir)
+      maya_libs += cmplr.find_library(lib_name, dirs : qt_lib_dir)
   endforeach
 endif
+
+maya_inc = include_directories(maya_inc_folders)
 
 maya_dep = declare_dependency(
   dependencies : maya_libs,
