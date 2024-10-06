@@ -77,8 +77,18 @@ maya_libs = [
 
 # Link to maya's qt libs if required
 # This doesn't do MOC stuff ... yet
-qt_ver = 5
 if maya_link_qt
+
+  qt_ver = 5
+  if maya_version.version_compare('>=2025')
+    qt_ver = 6
+
+    if meson.backend().startswith('vs')
+      maya_compile_args += '/Zc:__cplusplus'
+    endif
+
+  endif
+
   fs = import('fs')
 
   qt_lib_dir = maya_lib_dir
@@ -88,7 +98,6 @@ if maya_link_qt
     if fs.is_dir(qt_include_dir)
       maya_inc_folders += qt_include_dir
       qt_lib_dir = maya_install_path / 'Qt' / 'lib'
-      qt_ver = 6
       if os_name == 'darwin'
         error(
           'I have no idea how to link to Autodesk\'s Qt6 headers and libs on macOS. If you do, please help'
