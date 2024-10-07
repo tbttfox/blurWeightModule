@@ -614,7 +614,7 @@ MStatus skinBrushTool::getSkinClusterObj() {
     MFnDependencyNode nodeFn(skinObj);
     MGlobal::displayInfo(MString("    input skin name: ") + nodeFn.name());
 
-    status = findMesh(skinObj, meshDag, true);
+    status = findMesh(skinObj, meshDag);
     return status;
 }
 
