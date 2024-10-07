@@ -279,7 +279,13 @@ class SkinBrushContext : public MPxContext {
     void getConnectedVerticesSecond();
     void getConnectedVerticesThird();
     void getConnectedVerticesTyler();
-    void getConnectedVerticesFlatten();
+    void getConnectedVerticesFlatten(
+        std::vector<int>& perVertexVerticesSetFLAT,
+        std::vector<int>& perVertexVerticesSetINDEX,
+        std::vector<int>& perFaceVerticesSetFLAT,
+        std::vector<int>& perFaceVerticesSetINDEX
+    ) const;
+
     std::vector<int> getSurroundingVerticesPerVert(int vertexIndex) const;
     std::vector<int> getSurroundingVerticesPerFace(int vertexIndex) const;
 

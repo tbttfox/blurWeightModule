@@ -6,7 +6,6 @@
 // the context
 // ---------------------------------------------------------------------
 
-const char helpString[] = "it's a custom brush weights.";
 
 // ---------------------------------------------------------------------
 // general methods when calling the context
@@ -58,7 +57,7 @@ SkinBrushContext::SkinBrushContext() {
 void SkinBrushContext::toolOnSetup(MEvent &) {
     MStatus status = MStatus::kSuccess;
 
-    setHelpString(helpString);
+    setHelpString("it's a custom brush weights.");
     setInViewMessage(true);
 
     if (enterToolCommandVal.length() > 5) MGlobal::executeCommand(enterToolCommandVal);
@@ -2357,8 +2356,12 @@ MStatus SkinBrushContext::getMesh() {
     getConnectedVerticesSecond();
     getConnectedVerticesThird();
     getFromMeshNormals();
-    getConnectedVerticesFlatten();
-
+    getConnectedVerticesFlatten(
+        this->perVertexVerticesSetFLAT,
+        this->perVertexVerticesSetINDEX,
+        this->perFaceVerticesSetFLAT,
+        this->perFaceVerticesSetINDEX
+    );
     this->mayaRawPoints = meshFn.getRawPoints(&status);
     this->lockVertices = MIntArray(this->numVertices, 0);
 
@@ -2404,11 +2407,10 @@ MStatus SkinBrushContext::getTheOrigMeshForMirror() {
     // get the orgi vertices -----------------------------------
     meshOrigFn.setObject(origMeshDag);
     mayaOrigRawPoints = meshOrigFn.getRawPoints(&status);
-    this->accelParamsOrigMesh =
-        meshOrigFn.uniformGridParams(33, 33, 33);  // I dont know why, but '33' seems to work well
+    // I dont know why, but '33' seems to work well
+    this->accelParamsOrigMesh = meshOrigFn.uniformGridParams(33, 33, 33);
 
     MObject origMeshNode = origMeshDag.node();
-
     status = intersectorOrigShape.create(origMeshNode);  // , matrix);
 
     // Create the intersector for the closest point operation for
@@ -2421,6 +2423,216 @@ MStatus SkinBrushContext::getTheOrigMeshForMirror() {
 /*
 store vertices connections
 */
+
+
+void  getAllConnections(
+    MFnMesh &meshFn,  // For getting the mesh data
+    MDagPath &meshDag,  // So I can get the "maya canonical" edges
+
+    std::vector<std::vector<int>> &perVertexFaces,  // x[vertIdx] -> [list-of-faceIdxs]
+    std::vector<std::vector<int>> &perVertexEdges,  // x[vertIdx] -> [list-of-edgeIdxs]
+    std::vector<std::vector<int>> &perVertexVertices, // x[vertIdx] -> [list-of-vertIdxs that share a face with the input]
+    std::vector<std::vector<int>> &perFaceVertices,  // x[faceIdx] -> [list-of-vertIdxs]
+    std::vector<std::array<int, 2>> &perEdgeVertices, // x[edgeIdx] -> [pair-of-vertIdxs]
+    std::vector<std::vector<std::array<int, 3>>> &perFaceTriangleVertices // x[face][triIdx] -> [list_of_vertIdxs]
+){
+    // Get the data from the mesh and dag path
+    MIntArray counts, flatFaces, triangleCounts, triangleVertices;
+    meshFn.getVertices(counts, flatFaces);
+    meshFn.getTriangles(triangleCounts, triangleVertices);
+    int numVertices = meshFn.numVertices();
+    int numFaces = meshFn.numPolygons();
+    int numEdges = meshFn.numEdges();
+
+    // Reset all the output vectors
+    perVertexFaces.clear();
+    perVertexFaces.resize(numVertices);
+    perVertexEdges.clear();
+    perVertexEdges.resize(numVertices);
+    perVertexVertices.clear();
+    perVertexVertices.resize(numVertices);
+
+    perFaceVertices.clear();
+    perFaceVertices.resize(numFaces);
+    perFaceTriangleVertices.clear();
+    perFaceTriangleVertices.resize(numFaces);
+
+    perEdgeVertices.clear();
+    perEdgeVertices.resize(numEdges);
+
+
+    // Get the face/vert correlations
+    unsigned int iter = 0, triIter = 0;
+    for (unsigned int faceId = 0; faceId < numFaces; ++faceId) {
+        for (int i = 0; i < counts[faceId]; ++i, ++iter) {
+            int indVertex = flatFaces[iter];
+            perFaceVertices[faceId].push_back(indVertex);
+            perVertexFaces[indVertex].push_back(faceId);
+        }
+        perFaceTriangleVertices[faceId].resize(triangleCounts[faceId]);
+        for (int triId = 0; triId < triangleCounts[faceId]; ++triId) {
+            perFaceTriangleVertices[faceId][triId][0] = triangleVertices[triIter++];
+            perFaceTriangleVertices[faceId][triId][1] = triangleVertices[triIter++];
+            perFaceTriangleVertices[faceId][triId][2] = triangleVertices[triIter++];
+        }
+    }
+
+    // Get the edge/vert correlations
+    MItMeshEdge edgeIter(meshDag);
+    for (unsigned i = 0; !edgeIter.isDone(); edgeIter.next(), ++i) {
+        int pt0Index = edgeIter.index(0);
+        int pt1Index = edgeIter.index(1);
+        perVertexEdges[pt0Index].push_back(i);
+        perVertexEdges[pt1Index].push_back(i);
+        perEdgeVertices[i][0] = pt0Index;
+        perEdgeVertices[i][1] = pt1Index;
+    }
+
+    // Build the face-growing neighbors
+#pragma omp parallel for
+    for (int vertIdx = 0; vertIdx < numVertices; ++vertIdx) {
+        std::vector<int> &toAdd = perVertexVertices[vertIdx];
+        for (int faceIdx: perVertexFaces[vertIdx])
+            std::vector<int> &faceVerts = perFaceVerticesSet[faceIdx];
+            toAdd.insert(toAdd.end(),faceVerts.begin(),faceVerts.end());
+        }
+        // For such a short vec, sorting then erasing is the fastest
+        std::sort(toAdd.begin(), toAdd.end());
+        toAdd.erase(std::unique(toAdd.begin(), toAdd.end()), toAdd.end());
+    }
+
+    // TODO: Flatten all connections
+    // And make a class type that provides easy access to count/connect data
+
+}
+
+
+
+
+void getConnectedVertices(
+    int numFaces,
+    int numVertices,
+    const MDagPath &meshDag,
+    const MFnMesh &meshFn,
+
+    int &fullVertexListLength,
+    std::vector<MIntArray>& perFaceVertices,
+    std::vector<MIntArray>& perVertexFaces,
+    std::vector<std::vector<MIntArray>>& perFaceTriangleVertices,
+    std::vector<MIntArray>& perVertexEdges,
+    std::vector<std::pair<int, int>>& perEdgeVertices,
+    MIntArray &VertexCountPerPolygon,
+    MIntArray &fullVertexList
+    ) {
+
+    // MIntArray vertexCount, vertexList;
+    meshFn.getVertices(VertexCountPerPolygon, fullVertexList);
+    fullVertexListLength = fullVertexList.length();
+
+    MIntArray triangleCounts, triangleVertices;  // get the triangles to draw the mesh
+    meshFn.getTriangles(triangleCounts, triangleVertices);
+
+    // First set array sizes ----------------------------------------------
+    perFaceVertices.clear();
+    perVertexFaces.clear();
+    perFaceTriangleVertices.clear();
+
+    perFaceVertices.resize(numFaces);
+    perVertexFaces.resize(numVertices);
+    perFaceTriangleVertices.resize(numFaces);
+
+    // end set array sizes ----------------------------------------------
+    // First run --------------------------------------------------------
+    for (unsigned int faceId = 0, iter = 0, triIter = 0; faceId < VertexCountPerPolygon.length();
+        ++faceId) {
+        perFaceVertices[faceId].clear();
+        for (int i = 0; i < VertexCountPerPolygon[faceId]; ++i, ++iter) {
+            int indVertex = fullVertexList[iter];
+            perFaceVertices[faceId].append(indVertex);
+            perVertexFaces[indVertex].append(faceId);
+        }
+        perFaceTriangleVertices[faceId].resize(triangleCounts[faceId]);
+        for (int triId = 0; triId < triangleCounts[faceId]; ++triId) {
+            perFaceTriangleVertices[faceId][triId].setLength(3);
+            perFaceTriangleVertices[faceId][triId][0] = triangleVertices[triIter++];
+            perFaceTriangleVertices[faceId][triId][1] = triangleVertices[triIter++];
+            perFaceTriangleVertices[faceId][triId][2] = triangleVertices[triIter++];
+        }
+    }
+    // get the edgesIndices to draw the wireframe --------------------
+    MItMeshEdge edgeIter(meshDag);
+
+    perEdgeVertices.clear();
+    perVertexEdges.clear();
+    perEdgeVertices.resize(edgeIter.count());
+    perVertexEdges.resize(numVertices);
+
+    unsigned int i = 0;
+    for (; !edgeIter.isDone(); edgeIter.next()) {
+        int pt0Index = edgeIter.index(0);
+        int pt1Index = edgeIter.index(1);
+        perVertexEdges[pt0Index].append(i);
+        perVertexEdges[pt1Index].append(i);
+        perEdgeVertices[i++] = std::make_pair(pt0Index, pt1Index);
+    }
+}
+
+void getConnectedVerticesSecond(
+    const MIntArray &perFaceVertices,
+    int numFaces,
+
+    std::vector<std::vector<int>> &perFaceVerticesSet
+) {
+    // Second run --------------------------------------------------------
+    perFaceVerticesSet.clear();
+    perFaceVerticesSet.resize(numFaces);
+    for (int faceTmp = 0; faceTmp < numFaces; ++faceTmp) {
+        std::vector<int> tmpSet;
+        MIntArray surroundingVertices = perFaceVertices[faceTmp];
+
+        tmpSet.resize(surroundingVertices.length());
+        surroundingVertices.get(&tmpSet[0]);
+
+        std::sort(tmpSet.begin(), tmpSet.end());
+        perFaceVerticesSet[faceTmp] = tmpSet;
+    }
+}
+
+void getConnectedVerticesThird(
+    std::vector<std::vector<int>> &perVertexVerticesSet,
+    std::vector<MIntArray> &perVertexFaces,
+    std::vector<std::vector<int>> &perFaceVerticesSet,
+    int numVertices
+) {
+    // fill the std_array connectedSetVertices ------------------------
+    perVertexVerticesSet.clear();
+    perVertexVerticesSet.resize(numVertices);
+
+#pragma omp parallel for
+    for (int vtxTmp = 0; vtxTmp < numVertices; ++vtxTmp) {
+        std::vector<int> connVetsSet2;
+        MIntArray connectFaces = perVertexFaces[vtxTmp];
+        for (int fct = 0; fct < connectFaces.length(); ++fct) {
+            auto surroundingVertices = perFaceVerticesSet[connectFaces[fct]];
+            std::vector<int> connVetsSetTMP;
+
+            std::set_union(connVetsSet2.begin(), connVetsSet2.end(), surroundingVertices.begin(),
+                           surroundingVertices.end(), std::back_inserter(connVetsSetTMP));
+            connVetsSet2 = connVetsSetTMP;
+        }
+        auto it = std::find(connVetsSet2.begin(), connVetsSet2.end(), vtxTmp);
+        if (it != std::end(connVetsSet2)) {
+            connVetsSet2.erase(it);
+            perVertexVerticesSet[vtxTmp] = connVetsSet2;
+        }
+    }
+}
+
+
+
+
+
+
 
 void SkinBrushContext::getConnectedVertices() {
     MStatus status;
@@ -2482,7 +2694,7 @@ void SkinBrushContext::getConnectedVerticesSecond() {
     perFaceVerticesSet.resize(this->numFaces);
     for (int faceTmp = 0; faceTmp < numFaces; ++faceTmp) {
         std::vector<int> tmpSet;
-        MIntArray surroundingVertices = perFaceVertices[faceTmp];
+        MIntArray surroundingVertices = this->perFaceVertices[faceTmp];
 
         tmpSet.resize(surroundingVertices.length());
         surroundingVertices.get(&tmpSet[0]);
@@ -2575,7 +2787,12 @@ void SkinBrushContext::getFromMeshNormals() {
         }
     }
 }
-void SkinBrushContext::getConnectedVerticesFlatten() {
+void SkinBrushContext::getConnectedVerticesFlatten(
+    std::vector<int> &perVertexVerticesSetFLAT,
+    std::vector<int> &perVertexVerticesSetINDEX,
+    std::vector<int> &perFaceVerticesSetFLAT,
+    std::vector<int> &perFaceVerticesSetINDEX
+) const {
     perVertexVerticesSetFLAT.clear();
     perVertexVerticesSetINDEX.clear();
     int sum = 0;
