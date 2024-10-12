@@ -173,7 +173,6 @@ void SkinBrushContext::toolOffCleanup() {
         this->firstPaintDone = true;
         MUserEventMessage::postUserEvent("brSkinBrush_cleanCloseUndo");
     }
-
 }
 
 void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }
@@ -1304,6 +1303,8 @@ MStatus SkinBrushContext::doPressCommon(MEvent &event) {
 }
 
 
+
+
 std::vector<int> getSurroundingVerticesPerVert(
     int vertexIndex,
     const std::vector<int> &perVertexVerticesSetFLAT,
@@ -1329,6 +1330,8 @@ void growArrayOfHitsFromCenters(
 
     std::unordered_map<int, float> &dicVertsDist // Return value
 ) {
+    if (AllHitPoints.length() == 0) return;
+
     // set of visited vertices
     std::vector<int> vertsVisited, vertsWithinDistance;
 
@@ -1338,33 +1341,33 @@ void growArrayOfHitsFromCenters(
     std::sort(vertsVisited.begin(), vertsVisited.end());
     vertsWithinDistance = vertsVisited;
 
-    // start of growth---------------------
-    bool processing = true;
-
+    // start of growth
     std::vector<int> borderOfGrowth;
     borderOfGrowth = vertsVisited;
 
-    if (AllHitPoints.length() == 0) return;  // if not it will crash
-
-    // make the std vector points for faster sorting -----------
+    // make the std vector points for faster sorting
     std::vector<point_t> points;
     for (auto hitPt : AllHitPoints) {
         points.push_back(std::make_tuple(hitPt.x, hitPt.y, hitPt.z));
     }
-    while (processing) {
-        processing = false;
-        // -------------------- grow the vertices ----------------------------------------------
+
+    bool keepGoing = true;
+    while (keepGoing) {
+        keepGoing = false;
+
+        // grow the vertices
         std::vector<int> setOfVertsGrow;
-        for (int vertexIndex : borderOfGrowth) {
+        for (const int &vertexIndex : borderOfGrowth) {
             setOfVertsGrow = setOfVertsGrow + getSurroundingVerticesPerVert(
                 vertexIndex, perVertexVerticesSetFLAT, perVertexVerticesSetINDEX
             );
         }
-        // get the vertices that are grown -----------------------------------------------------
+
+        // get the vertices that are grown
         std::vector<int> verticesontheborder = setOfVertsGrow - vertsVisited;
         std::vector<int> foundGrowVertsWithinDistance;
 
-        // for all vertices grown ------------------------------
+        // for all vertices grown
         for (int vertexBorder : verticesontheborder) {
             // First check the normal
             if (!coverageVal) {
@@ -1374,7 +1377,6 @@ void growArrayOfHitsFromCenters(
             }
             float closestDist = -1;
             // find the closestDistance and closest Vertex from visited vertices
-            // ------------------------
             point_t thisPoint = std::make_tuple(mayaRawPoints[vertexBorder * 3],
                                                 mayaRawPoints[vertexBorder * 3 + 1],
                                                 mayaRawPoints[vertexBorder * 3 + 2]);
@@ -1390,7 +1392,7 @@ void growArrayOfHitsFromCenters(
             if (closestDist <= sizeVal) {  // if in radius of the brush
                 // we found a vertex in the radius
                 // now add to the visited and add the distance to the dictionnary
-                processing = true;
+                keepGoing = true;
                 foundGrowVertsWithinDistance.push_back(vertexBorder);
                 auto ret = dicVertsDist.insert(std::make_pair(vertexBorder, closestDist));
                 if (!ret.second) ret.first->second = std::min(closestDist, ret.first->second);
@@ -2425,12 +2427,27 @@ MStatus SkinBrushContext::getTheOrigMeshForMirror() {
 store vertices connections
 */
 
+
+
+
+
+
+/* Build a class that gives fast read access to arbitrarily sized
+faces by dense index.
+
+
+
+
+
+
+*/
 class FlatCounts {
 private:
     std::vector<size_t> offsets;  // actually offsets
     std::vector<int> values;
 
 public:
+    // Constructor from counts/vals pair of vectors
     FlatCounts(const std::vector<int> &inCounts, const std::vector<int> &inVals){
         values = inVals;
 
@@ -2443,6 +2460,7 @@ public:
         }
     }
 
+    // Constructor from vector-of-vectors
     FlatCounts(const std::vector<std::vector<int>> &inVals){
         offsets.resize(inVals.size() + 1);
         offsets[0] = 0;
@@ -2451,6 +2469,41 @@ public:
             v += sub.size();
             offsets[i++] = v;
             values.insert(values.end(), sub.begin(), sub.end());
+        }
+    }
+
+    // Constructor from unordered_map of vectors
+    FlatCounts(const std::unordered_map<int, std::vector<int>> &inVals){
+        std::vector<int> allkeys;
+        allkeys.reserve(inVals.size());
+        for (const auto& [key, value] : inVas) {
+            allkeys.push_back(key);
+        }
+        std::sort(allkeys.begin(), allkeys.end());
+
+        size_t offset = 0;
+        for (size_t i=0; i<allkeys[allkeys.size() - 1]; ++i){
+            auto search = inVals.find(i);
+            if (search != inVals.end()){
+                offset += search->second.size();
+                values.insert(values.end(), search->second.begin(), search->second.end());
+            }
+            offsets.push_back(offset);
+        }
+    }
+
+    // Constructor from map of vectors
+    FlatCounts(const std::map<int, std::vector<int>> &inVals){
+        size_t offset = 0;
+        size_t prev = 0;
+        for (const auto& [key, value] : inVals){
+            for (size_t k = prev; k < key; k++){
+                // Fill in the sections we skipped
+                offsets.push_back(offset);
+            }
+            prev = k;
+            offset += value.length();
+            values.insert(values.end(), value.begin(), value.end());
         }
     }
 
@@ -2544,8 +2597,17 @@ void  getAllConnections(
     FlatCounts pvEdges(perVertexEdges);
     FlatCounts pvVerts(perVertexVertices);
     FlatCounts pfVerts(perFaceVertices);
-
 }
+
+
+
+
+
+
+
+
+
+
 
 
 void SkinBrushContext::getConnectedVertices() {
@@ -2602,6 +2664,7 @@ void SkinBrushContext::getConnectedVertices() {
         this->perEdgeVertices[i++] = std::make_pair(pt0Index, pt1Index);
     }
 }
+
 void SkinBrushContext::getConnectedVerticesSecond() {
     // Second run --------------------------------------------------------
     this->perFaceVerticesSet.clear();
@@ -2617,6 +2680,7 @@ void SkinBrushContext::getConnectedVerticesSecond() {
         perFaceVerticesSet[faceTmp] = tmpSet;
     }
 }
+
 void SkinBrushContext::getConnectedVerticesThird() {
     // fill the std_array connectedSetVertices ------------------------
     this->perVertexVerticesSet.clear();
@@ -2701,6 +2765,7 @@ void SkinBrushContext::getFromMeshNormals() {
         }
     }
 }
+
 void SkinBrushContext::getConnectedVerticesFlatten(
     std::vector<int> &perVertexVerticesSetFLAT,
     std::vector<int> &perVertexVerticesSetINDEX,
@@ -2940,9 +3005,9 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject &skinCluster, bool doColors
     }
     this->skinWeightList = MDoubleArray(nbElements * this->nbJoints, 0.0);
 
-// MThreadUtils::syncNumOpenMPThreads();
-// in option C/C++ turn omp on !!!!
-#pragma omp parallel for  // collapse(2)
+    // MThreadUtils::syncNumOpenMPThreads();
+    // in option C/C++ turn omp on !!!!
+    #pragma omp parallel for  // collapse(2)
     for (int i = 0; i < nbElements; ++i) {
         // weightList[i]
         MPlug ith_weights_plug = weight_list_plug.elementByPhysicalIndex(i);
@@ -3470,6 +3535,9 @@ MObject SkinBrushContext::allVertexComponents(){
 //      None
 //
 
+
+
+
 double getFalloffValue(int curveVal, double value, double strength) {
     switch (curveVal) {
         case 0: // no falloff
@@ -3484,7 +3552,6 @@ double getFalloffValue(int curveVal, double value, double strength) {
             return value;
     }
 }
-
 
 
 
