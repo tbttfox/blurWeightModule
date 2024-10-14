@@ -1,4 +1,36 @@
 
+/*
+#computeHit
+#drawMeshWhileDrag
+#expandHit
+#getASoloColor
+#getColorWithMirror
+#getCommandIndexModifiers
+#getFalloffValue
+#getMirrorHit
+#getSurroundingVerticesPerVert
+#growArrayOfHitsFromCenters
+#addBrushShapeFallof
+#mergeMirrorArray
+
+applyCommand
+applyCommandMirror
+doDrag
+doDragCommon
+doPerformPaint
+doPress
+doPressCommon
+doRelease
+doReleaseCommon
+doTheAction
+
+preparePaint
+refreshColors
+refreshPointsNormals
+
+*/
+
+
 
 #include "enums.h"
 #include <math.h>
@@ -50,6 +82,7 @@
 
 #include <algorithm>
 #include <set>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -86,10 +119,6 @@ MColor getASoloColor(
     }
     return soloColor;
 }
-
-
-
-
 
 
 ModifierCommands getCommandIndexModifiers(
@@ -915,6 +944,534 @@ void getVerticesInVolumeRange(
         vtxIter.next();
     }
 }
+
+
+
+
+
+
+
+
+
+bool getMirrorHit(
+    int paintMirror,
+    MFloatPoint &origHitPoint,
+    MMeshIntersector &intersectorOrigShape,
+    MMeshIntersector &intersector,
+    double mirrorMinDist,
+    std::vector<std::vector<MIntArray>> &perFaceTriangleVertices,
+    const float *mayaRawPoints,
+    MFloatMatrix &inclusiveMatrix,
+    MFloatPoint &centerOfBrush,
+
+    int &faceHit,
+    MFloatPoint &hitPoint
+) {
+    MStatus stat;
+
+    MMatrix mirrorMatrix;
+    double XVal = 1., YVal = 1.0, ZVal = 1.0;
+    if ((paintMirror == 1) || (paintMirror == 4) || (paintMirror == 7)) XVal = -1.;
+    if ((paintMirror == 2) || (paintMirror == 5) || (paintMirror == 8)) YVal = -1.;
+    if ((paintMirror == 3) || (paintMirror == 6) || (paintMirror == 9)) ZVal = -1.;
+    mirrorMatrix.matrix[0][0] = XVal;
+    mirrorMatrix.matrix[0][1] = 0;
+    mirrorMatrix.matrix[0][2] = 0;
+    mirrorMatrix.matrix[1][0] = 0;
+    mirrorMatrix.matrix[1][1] = YVal;
+    mirrorMatrix.matrix[1][2] = 0;
+    mirrorMatrix.matrix[2][0] = 0;
+    mirrorMatrix.matrix[2][1] = 0;
+    mirrorMatrix.matrix[2][2] = ZVal;
+
+    // we're going to mirror by x -1'
+    MPointOnMesh pointInfo;
+    if (paintMirror > 0 && paintMirror < 4) {  // if we compute the orig mesh
+        MPoint pointToMirror = MPoint(origHitPoint);
+        MPoint mirrorPoint = pointToMirror * mirrorMatrix;
+
+        stat = intersectorOrigShape.getClosestPoint(mirrorPoint, pointInfo, mirrorMinDist);
+        if (MS::kSuccess != stat) return false;
+
+        faceHit = pointInfo.faceIndex();
+        int hitTriangle = pointInfo.triangleIndex();
+        float hitBary1, hitBary2;
+        pointInfo.getBarycentricCoords(hitBary1, hitBary2);
+
+        MIntArray triangle = perFaceTriangleVertices[faceHit][hitTriangle];
+
+        float hitBary3 = (1 - hitBary1 - hitBary2);
+        float x = mayaRawPoints[triangle[0] * 3] * hitBary1 +
+                  mayaRawPoints[triangle[1] * 3] * hitBary2 +
+                  mayaRawPoints[triangle[2] * 3] * hitBary3;
+        float y = mayaRawPoints[triangle[0] * 3 + 1] * hitBary1 +
+                  mayaRawPoints[triangle[1] * 3 + 1] * hitBary2 +
+                  mayaRawPoints[triangle[2] * 3 + 1] * hitBary3;
+        float z = mayaRawPoints[triangle[0] * 3 + 2] * hitBary1 +
+                  mayaRawPoints[triangle[1] * 3 + 2] * hitBary2 +
+                  mayaRawPoints[triangle[2] * 3 + 2] * hitBary3;
+        hitPoint = MFloatPoint(x, y, z) * inclusiveMatrix;
+    } else {
+        MPoint mirrorPoint = MPoint(centerOfBrush) * mirrorMatrix;
+        stat = intersector.getClosestPoint(mirrorPoint, pointInfo, mirrorMinDist);
+        if (MS::kSuccess != stat) return false;
+
+        faceHit = pointInfo.faceIndex();
+        hitPoint = MFloatPoint(mirrorPoint);
+    }
+    return true;
+}
+
+bool computeHit(
+    short screenPixelX,
+    short screenPixelY,
+    bool getNormal,
+    M3dView &view,
+    MPoint &worldPoint,
+    MVector &worldVector,
+    MFnMesh &meshFn,
+    MMeshIsectAccelParams &accelParams,
+    float pressDistance,
+    int paintMirror,
+    std::vector<std::vector<MIntArray>> &perFaceTriangleVertices,
+    const float *mayaOrigRawPoints,
+    MFloatPoint &origHitPoint,
+    MVector &normalVector,
+
+    int &faceHit,
+    MFloatPoint &hitPoint
+){
+    MStatus stat;
+
+    view.viewToWorld(screenPixelX, screenPixelY, worldPoint, worldVector);
+
+    // float hitRayParam;
+    float hitBary1;
+    float hitBary2;
+    int hitTriangle;
+    // If v1, v2, and v3 vertices of that triangle,
+    // then the barycentric coordinates are such that
+    // hitPoint = (*hitBary1)*v1 + (*hitBary2)*v2 + (1 - *hitBary1 - *hitBary2)*v3;
+    // If no hit was found, the referenced value will not be modified,
+
+    bool foundIntersect =
+        meshFn.closestIntersection(worldPoint, worldVector, nullptr, nullptr, false, MSpace::kWorld,
+                                   9999, false, &accelParams, hitPoint, &pressDistance,
+                                   &faceHit, &hitTriangle, &hitBary1, &hitBary2, 0.0001f, &stat);
+
+    if (!foundIntersect) return false;
+
+    if (paintMirror > 0 && paintMirror < 4) {  // if we compute the orig
+        MIntArray triangle = perFaceTriangleVertices[faceHit][hitTriangle];
+        float hitBary3 = (1 - hitBary1 - hitBary2);
+        float x = mayaOrigRawPoints[triangle[0] * 3] * hitBary1 +
+                  mayaOrigRawPoints[triangle[1] * 3] * hitBary2 +
+                  mayaOrigRawPoints[triangle[2] * 3] * hitBary3;
+        float y = mayaOrigRawPoints[triangle[0] * 3 + 1] * hitBary1 +
+                  mayaOrigRawPoints[triangle[1] * 3 + 1] * hitBary2 +
+                  mayaOrigRawPoints[triangle[2] * 3 + 1] * hitBary3;
+        float z = mayaOrigRawPoints[triangle[0] * 3 + 2] * hitBary1 +
+                  mayaOrigRawPoints[triangle[1] * 3 + 2] * hitBary2 +
+                  mayaOrigRawPoints[triangle[2] * 3 + 2] * hitBary3;
+        origHitPoint = MFloatPoint(x, y, z);
+    }
+
+    // ----------- get normal for display ---------------------
+    if (getNormal){
+        meshFn.getPolygonNormal(faceHit, normalVector, MSpace::kWorld);
+    }
+    return true;
+}
+
+std::vector<int> getSurroundingVerticesPerFace(
+    int vertexIndex,
+    std::vector<int> &perFaceVerticesSetFLAT,
+    std::vector<int> &perFaceVerticesSetINDEX
+) {
+    auto first = perFaceVerticesSetFLAT.begin() + perFaceVerticesSetINDEX[vertexIndex];
+    auto last = perFaceVerticesSetFLAT.begin() + perFaceVerticesSetINDEX[vertexIndex + (int)1];
+    std::vector<int> newVec(first, last);
+    return newVec;
+}
+
+
+
+
+bool expandHit(
+    int faceHit,
+    const float *mayaRawPoints,
+    double sizeVal,
+    std::vector<int> &perFaceVerticesSetFLAT,
+    std::vector<int> &perFaceVerticesSetINDEX,
+
+    MFloatPoint &hitPoint,
+    std::unordered_map<int, float> &dicVertsDist
+) {
+    // ----------- compute the vertices around ---------------------
+    std::vector<int> verticesSet = getSurroundingVerticesPerFace(faceHit, perFaceVerticesSetFLAT, perFaceVerticesSetINDEX);
+    bool foundHit = false;
+    for (int ptIndex : verticesSet) {
+        MFloatPoint posPoint(
+            mayaRawPoints[ptIndex * 3],
+            mayaRawPoints[ptIndex * 3 + 1],
+            mayaRawPoints[ptIndex * 3 + 2]
+        );
+        float dist = posPoint.distanceTo(hitPoint);
+        if (dist <= sizeVal) {
+            foundHit = true;
+            auto ret = dicVertsDist.insert(std::make_pair(ptIndex, dist));
+            if (!ret.second) ret.first->second = std::min(dist, ret.first->second);
+        }
+    }
+    return foundHit;
+}
+
+
+
+
+void addBrushShapeFallof(
+    double strengthVal,
+    double smoothStrengthVal,
+    ModifierKeys modifierNoneShiftControl,
+    ModifierCommands commandIndex,
+    bool fractionOversamplingVal,
+    int oversamplingVal,
+    double sizeVal,
+    int curveVal,
+
+    std::unordered_map<int, float> &dicVertsDist
+) {
+    double valueStrength = strengthVal;
+    if (modifierNoneShiftControl == ModifierKeys::ControlShift || commandIndex == ModifierCommands::Smooth) {
+        valueStrength = smoothStrengthVal;  // smooth always we use the smooth value different of
+                                            // the regular value
+    }
+
+    if (fractionOversamplingVal) valueStrength /= oversamplingVal;
+
+    for (auto &element : dicVertsDist) {
+        float value = 1.0 - (element.second / sizeVal);
+        value = (float)getFalloffValue(curveVal, value, valueStrength);
+
+        element.second = value;
+    }
+}
+
+
+void mergeMirrorArray(
+    std::unordered_map<int, std::pair<float, float>> &mirroredJoinedArray,
+    std::unordered_map<int, float> &valuesBase,
+    std::unordered_map<int, float> &valuesMirrored
+) {
+    mirroredJoinedArray.clear();
+    for (const auto &elem : valuesBase) {
+        int theVert = elem.first;
+        float theWeight = elem.second;
+        std::pair<float, float> secondElem(theWeight, 0.0);
+        std::pair<int, std::pair<float, float>> toAdd(theVert, secondElem);
+        mirroredJoinedArray.insert(toAdd);
+    }
+
+    for (const auto &elem : valuesMirrored) {
+        int theVert = elem.first;
+        float theWeight = elem.second;
+        std::pair<float, float> secondElem(0.0, theWeight);
+        std::pair<int, std::pair<float, float>> toAdd(theVert, secondElem);
+        auto ret = mirroredJoinedArray.insert(toAdd);
+        if (!ret.second) {
+            std::pair<float, float> origSecondElem = ret.first->second;
+            origSecondElem.second = theWeight;
+            ret.first->second = origSecondElem;
+        }
+    }
+}
+
+
+
+MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, int indexCurrVert,
+                         int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
+                         MDoubleArray& theWeights, double strengthVal) {
+    MStatus stat;
+    int sizeVertices = verticesAround.size();
+    unsigned int i, jnt, posi;
+
+    MDoubleArray sumWeigths(nbJoints, 0.0);
+    // compute sum weights
+    for (int vertIndex : verticesAround) {
+        for (jnt = 0; jnt < nbJoints; jnt++) {
+            posi = vertIndex * nbJoints + jnt;
+            sumWeigths[jnt] += fullWeightArray[posi];
+        }
+    }
+    double totalBaseVtxUnlock = 0.0, totalBaseVtxLock = 0.0;
+    ;
+    double totalVtxUnlock = 0.0, totalVtxLock = 0.0;
+
+    for (jnt = 0; jnt < nbJoints; jnt++) {
+        // get if jnt is locked
+        bool isLockJnt = lockJoints[jnt] == 1;
+        int posi = currentVertex * nbJoints + jnt;
+        // get currentWeight of currentVtx
+        double currentW = fullWeightArray[posi];
+
+        sumWeigths[jnt] /= sizeVertices;
+        sumWeigths[jnt] = strengthVal * sumWeigths[jnt] + (1.0 - strengthVal) * currentW;  // add with strength
+        double targetW = sumWeigths[jnt];
+
+        // sum it all
+        if (!isLockJnt) {
+            totalBaseVtxUnlock += currentW;
+            totalVtxUnlock += targetW;
+        } else {
+            totalBaseVtxLock += currentW;
+            totalVtxLock += targetW;
+        }
+    }
+    // setting part ---------------
+    double normalizedValueAvailable = 1.0 - totalBaseVtxLock;
+
+    if (normalizedValueAvailable > 0.0 && totalVtxUnlock > 0.0) {  // we have room to set weights
+        double mult = normalizedValueAvailable / totalVtxUnlock;
+        for (jnt = 0; jnt < nbJoints; jnt++) {
+            bool isLockJnt = lockJoints[jnt] == 1;
+            int posiToSet = indexCurrVert * nbJoints + jnt;
+            int posi = currentVertex * nbJoints + jnt;
+
+            double currentW = fullWeightArray[posi];
+            double targetW = sumWeigths[jnt];
+
+            if (isLockJnt) {
+                theWeights[posiToSet] = currentW;
+            } else {
+                targetW *= mult;  // normalement divide par 1, sauf cas lock joints
+                theWeights[posiToSet] = targetW;
+            }
+        }
+    } else {  // normalize problem let's revert
+        for (jnt = 0; jnt < nbJoints; jnt++) {
+            int posiToSet = indexCurrVert * nbJoints + jnt;
+            int posi = currentVertex * nbJoints + jnt;
+
+            double currentW = fullWeightArray[posi];
+            theWeights[posiToSet] = currentW;  // set the base Weight
+        }
+    }
+    return MS::kSuccess;
+}
+
+
+
+
+MStatus applyCommand(
+    int influence,
+    int nbJoints,
+    int smoothRepeat,
+    std::unordered_map<int, float> &valuesToSet,
+    bool ignoreLockVal,
+    MDoubleArray &skinWeightList,
+    MIntArray &lockJoints,
+    double smoothStrengthVal,
+    MIntArray &ignoreLockJoints,
+    bool doNormalize,
+    MObject &skinObj,
+    MDoubleArray &skinWeightsForUndo,
+    bool isNurbs,
+    MDagPath &meshDag,
+    MIntArray &influenceIndices,
+    int numCVsInV_,
+    MDagPath nurbsDag,
+    bool normalize,
+    MFnMesh &meshFn,
+    MFnNurbsSurface &nurbsFn,
+    const std::vector<int> &perVertexVerticesSetFLAT,
+    const std::vector<int> &perVertexVerticesSetINDEX,
+
+    ModifierCommands commandIndex,
+    ModifierKeys modifierNoneShiftControl,
+    ModifierKeys smoothModifier,  // Constant
+    ModifierKeys removeModifier  // Constant
+) {
+    MStatus status;
+    // we need to sort all of that one way or another ---------------- here it is ------
+    std::map<int, double> valuesToSetOrdered(valuesToSet.begin(), valuesToSet.end());
+
+    ModifierCommands theCommandIndex = getCommandIndexModifiers(commandIndex, modifierNoneShiftControl, smoothModifier, removeModifier);
+
+    double multiplier = 1.0;
+
+    if ((theCommandIndex != ModifierCommands::LockVertices) && (theCommandIndex != ModifierCommands::UnlockVertices)) {
+        MDoubleArray theWeights((int)nbJoints * valuesToSetOrdered.size(), 0.0); int repeatLimit = 1;
+        if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen)
+            repeatLimit = smoothRepeat;
+
+        for (int repeat = 0; repeat < repeatLimit; ++repeat) {
+            if (theCommandIndex == ModifierCommands::Smooth) {
+                int i = 0;
+                for (const auto &elem : valuesToSetOrdered) {
+                    int theVert = elem.first;
+                    double theWeight = elem.second;
+                    std::vector<int> vertsAround = getSurroundingVerticesPerVert(theVert, perVertexVerticesSetFLAT, perVertexVerticesSetINDEX);
+
+                    status = setAverageWeight(vertsAround, theVert, i, nbJoints, lockJoints, skinWeightList, theWeights, smoothStrengthVal * theWeight);
+                    i++;
+                }
+            } else {
+                if (ignoreLockVal) {
+                    status =
+                        editArray(theCommandIndex, influence, nbJoints, ignoreLockJoints, skinWeightList, valuesToSetOrdered, theWeights, doNormalize, multiplier);
+                } else {
+                    if (lockJoints[influence] == 1 && theCommandIndex != ModifierCommands::Sharpen)
+                        return status;  //  if locked and it's not sharpen --> do nothing
+                    status = editArray(theCommandIndex, influence, nbJoints, lockJoints, skinWeightList, valuesToSetOrdered, theWeights, doNormalize, multiplier);
+                }
+                if (status == MStatus::kFailure) {
+                    return status;
+                }
+            }
+            // now set the weights -----------------------------------------------------
+            // here we should normalize -----------------------------------------------------
+            int i = 0;
+            // int prevVert = -1;
+            for (const auto &elem : valuesToSetOrdered) {
+                int theVert = elem.first;
+                for (int j = 0; j < nbJoints; ++j) {
+                    int ind_swl = theVert * nbJoints + j;
+                    if (ind_swl >= skinWeightList.length())
+                        skinWeightList.setLength(ind_swl + 1);
+                    double val = 0.0;
+                    int ind_tw = i * nbJoints + j;
+                    if (ind_tw < theWeights.length())
+                        val = theWeights[ind_tw];
+                    skinWeightList[ind_swl] = val;
+                }
+                i++;
+            }
+        }
+        MIntArray objVertices;
+        for (const auto &elem : valuesToSetOrdered) {
+            int theVert = elem.first;
+            objVertices.append(theVert);
+        }
+
+        MFnSingleIndexedComponent compFn;
+        MObject weightsObj = compFn.create(MFn::kMeshVertComponent);
+        compFn.addElements(objVertices);
+
+        // Set the new weights.
+        // Initialize the skin cluster.
+        MFnSkinCluster skinFn(skinObj, &status);
+        CHECK_MSTATUS_AND_RETURN_IT(status);
+        skinWeightsForUndo.clear();
+        if (!isNurbs) {
+            skinFn.setWeights(meshDag, weightsObj, influenceIndices, theWeights, normalize, &skinWeightsForUndo);
+        } else {
+            MFnDoubleIndexedComponent doubleFn;
+            MObject weightsObjNurbs = doubleFn.create(MFn::kSurfaceCVComponent);
+            int uVal, vVal;
+            for (int vert : objVertices) {
+
+                vVal = (int)vert % (int)numCVsInV_;
+                uVal = (int)vert / (int)numCVsInV_;
+                doubleFn.addElement(uVal, vVal);
+            }
+            skinFn.setWeights(nurbsDag, weightsObjNurbs, influenceIndices, theWeights, normalize, &skinWeightsForUndo);
+            transferPointNurbsToMesh(meshFn, nurbsFn);  // we transfer the points postions
+        }
+        // in do press common
+        // update values ---------------
+        refreshPointsNormals();
+    }
+    return status;
+}
+
+
+
+
+
+
+void preparePaint(
+    bool postSetting,
+    ModifierCommands commandIndex,
+    ModifierKeys modifierNoneShiftControl,
+    MIntArray &lockVertices,
+    MIntArray &mirrorInfluences,
+    int influenceIndex,
+    int numVertices,
+
+
+    std::unordered_map<int, float> &dicVertsDist,
+    std::unordered_map<int, float> &dicVertsDistPrevPaint,
+    std::vector<float> &intensityValues,
+    std::unordered_map<int, float> &skinValToSet,
+    std::set<int> &theVerticesPainted,
+    bool mirror
+) {
+
+    // MGlobal::displayInfo("perform Paint");
+    double multiplier = 1.0;
+    if (!postSetting && commandIndex != ModifierCommands::Smooth)
+        multiplier = .1;  // less applying if dragging paint
+
+    bool isCommandLock =
+        ((commandIndex == ModifierCommands::LockVertices) || (commandIndex == ModifierCommands::UnlockVertices))
+        && (modifierNoneShiftControl != ModifierKeys::Control);
+
+    auto endOfFind = dicVertsDistPrevPaint.end();
+    for (const auto &element : dicVertsDist) {
+        int index = element.first;
+        float value = element.second * multiplier;
+        // check if need to set this color, we store in intensityValues to check if it's already at
+        // 1 -------
+        if ((lockVertices[index] == 1 && !isCommandLock) || intensityValues[index] == 1) {
+            continue;
+        }
+        // get the correct value of paint by adding this value -----
+        value += intensityValues[index];
+        auto res = dicVertsDistPrevPaint.find(index);
+        if (res != endOfFind) {  // we substract the smallest
+            value -= std::min(res->second, element.second);
+        }
+        value = std::min(value, (float)1.0);
+        intensityValues[index] = value;
+
+        // add to array of values to set at the end---------------
+        // we need to check if it is in the regular array and make adjustements
+        auto ret = skinValToSet.insert(std::make_pair(index, value));
+        if (!ret.second)
+            ret.first->second = std::max(value, ret.first->second);
+        else
+            theVerticesPainted.insert(index);
+        // end add to array of values to set at the end--------------------
+    }
+    dicVertsDistPrevPaint = dicVertsDist;
+
+    if (!postSetting) {
+        // MGlobal::displayInfo("apply the skin stuff");
+        // still have to deal with the colors damn it
+        if (skinValToSet.size() > 0) {
+            int theInfluence = influenceIndex;
+            if (mirror) theInfluence = mirrorInfluences[influenceIndex];
+            applyCommand(theInfluence, skinValToSet);
+            intensityValues = std::vector<float>(numVertices, 0);
+            dicVertsDistPrevPaint.clear();
+            skinValToSet.clear();
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
