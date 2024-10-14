@@ -1,5 +1,6 @@
 
 
+#include "enums.h"
 #include <math.h>
 
 
@@ -50,9 +51,191 @@
 #include <algorithm>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
+#include <array>
+#include <span>
 
 
+typedef float coord_t;
+typedef std::array<coord_t, 3> point_t;
+
+
+
+MColor getASoloColor(
+    double val,
+    double maxSoloColor,
+    double minSoloColor,
+    int soloColorTypeVal,
+    int influenceIndex,
+    MColorArray &jointsColors
+) {
+    if (val == 0) return MColor(0, 0, 0);
+    val = (maxSoloColor - minSoloColor) * val + minSoloColor;
+    MColor soloColor;
+    if (soloColorTypeVal == 0) {  // black and white
+        soloColor = MColor(val, val, val);
+    } else if (soloColorTypeVal == 1) {  // lava
+        val *= 2;
+        if (val > 1)
+            soloColor = MColor(val, (val - 1), 0);
+        else
+            soloColor = MColor(val, 0, 0);
+    } else {  // influence
+        soloColor = val * jointsColors[influenceIndex];
+    }
+    return soloColor;
+}
+
+
+
+
+
+
+ModifierCommands getCommandIndexModifiers(
+    ModifierCommands commandIndex,
+    ModifierKeys modifierNoneShiftControl,
+    ModifierKeys smoothModifier,  // Constant
+    ModifierKeys removeModifier  // Constant
+) {
+    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+    // unlockVertices
+    ModifierCommands theCommandIndex = commandIndex;
+
+    if (commandIndex == ModifierCommands::Add){
+        if (modifierNoneShiftControl == smoothModifier){
+            theCommandIndex = ModifierCommands::Smooth;
+        }
+        else if (modifierNoneShiftControl == removeModifier){
+            theCommandIndex = ModifierCommands::Remove;
+        }
+    }
+    else if (commandIndex == ModifierCommands::LockVertices){
+        if (modifierNoneShiftControl == ModifierKeys::Shift){
+            theCommandIndex = ModifierCommands::UnlockVertices;
+        }
+    }
+    if (modifierNoneShiftControl == ModifierKeys::ControlShift){
+        theCommandIndex = ModifierCommands::Sharpen;
+    }
+
+    return theCommandIndex;
+}
+
+void getColorWithMirror(
+    int vertexIndex,
+    int influenceIndex,
+    float valueBase,
+    float valueMirror,
+    int nbJoints,
+
+    double maxSoloColor,
+    double minSoloColor,
+    int soloColorTypeVal,
+
+    MColorArray &multiEditColors,
+    MColorArray &multiCurrentColors,
+    MColorArray &soloEditColors,
+    MColorArray &soloCurrentColors,
+    MColorArray &jointsColors,
+    MColor &lockVertColor,
+    MColor &lockJntColor,
+    MColor &multColor,
+    MColor &soloColor,
+
+    MIntArray &lockVertices,
+    MIntArray &lockJoints,
+    MIntArray &mirrorInfluences,
+    MDoubleArray &skinWeightList,
+
+    ModifierCommands commandIndex,
+    ModifierKeys modifierNoneShiftControl,
+    ModifierKeys smoothModifier,  // Constant
+    ModifierKeys removeModifier  // Constant
+
+) {
+    MColor white(1, 1, 1, 1);
+    MColor black(0, 0, 0, 1);
+    ModifierCommands theCommandIndex = getCommandIndexModifiers(commandIndex, modifierNoneShiftControl, smoothModifier, removeModifier);
+
+    float sumValue = valueBase + valueMirror;
+    sumValue = std::min(float(1.0), sumValue);
+    float biggestValue = std::max(valueBase, valueMirror);
+
+    if ((theCommandIndex == ModifierCommands::LockVertices) || (theCommandIndex == ModifierCommands::UnlockVertices)) {
+        if (theCommandIndex == ModifierCommands::LockVertices) {  // lock verts if not already locked
+            soloColor = lockVertColor;
+            multColor = lockVertColor;
+        } else {  // unlock verts
+            multColor = multiCurrentColors[vertexIndex];
+            soloColor = soloCurrentColors[vertexIndex];
+        }
+    } else if (!lockVertices[vertexIndex]) {
+        MColor currentColor = multiCurrentColors[vertexIndex];
+        int influenceMirrorColorIndex = mirrorInfluences[influenceIndex];
+        MColor jntColor = jointsColors[influenceIndex];
+        MColor jntMirrorColor = jointsColors[influenceMirrorColorIndex];
+        if (lockJoints[influenceIndex] == 1) jntColor = lockJntColor;
+        if (lockJoints[influenceMirrorColorIndex] == 1) jntMirrorColor = lockJntColor;
+        // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+        // UnLockVertices
+
+        if (theCommandIndex == ModifierCommands::Smooth || theCommandIndex == ModifierCommands::Sharpen) {
+            soloColor = biggestValue * white + (1.0 - biggestValue) * soloCurrentColors[vertexIndex];
+            multColor = biggestValue * white + (1.0 - biggestValue) * multiCurrentColors[vertexIndex];
+        } else {
+            double newW = 0.0;
+            int ind_swl = vertexIndex * nbJoints + influenceIndex;
+            if (ind_swl < skinWeightList.length())
+                newW = skinWeightList[ind_swl];
+            double newWMirror = 0.0;
+            int ind_swlM = vertexIndex * nbJoints + influenceMirrorColorIndex;
+            if (ind_swlM < skinWeightList.length())
+                newWMirror = skinWeightList[ind_swlM];
+            double sumNewWs = newW + newWMirror;
+
+            if (theCommandIndex == ModifierCommands::Remove) {
+                newW -= biggestValue;
+                newW = std::max(0.0, newW);
+                multColor = currentColor * (1.0 - biggestValue) + black * biggestValue;  // white
+
+            } else {
+                if (theCommandIndex == ModifierCommands::Add) {
+                    newW += double(valueBase);
+                    newWMirror += double(valueMirror);
+                } else if (theCommandIndex == ModifierCommands::AddPercent) {
+                    newW += valueBase * newW;
+                    newWMirror += valueMirror * newWMirror;
+
+                } else if (theCommandIndex == ModifierCommands::Absolute) {
+                    newW = valueBase;
+                    newWMirror = valueMirror;
+                }
+
+                newW = std::min(1.0, newW);
+                newWMirror = std::min(1.0, newWMirror);
+                sumNewWs = newW + newWMirror;
+                double currentColorVal = 1.0 - sumNewWs;
+                if (sumNewWs > 1.0) {
+                    newW /= sumNewWs;
+                    newWMirror /= sumNewWs;
+                    currentColorVal = 0.0;
+                }
+                multColor = currentColor * currentColorVal + jntColor * newW + jntMirrorColor * newWMirror;  // white
+            }
+            soloColor = getASoloColor(
+                newW,
+                maxSoloColor,
+                minSoloColor,
+                soloColorTypeVal,
+                influenceIndex,
+                jointsColors
+            );
+
+
+        }
+    }
+}
 
 MStatus drawMeshWhileDrag(
     // Pretty sure These are the only two things that change each frame
@@ -123,28 +306,31 @@ MStatus drawMeshWhileDrag(
     // UnLockVertices
 
     if (drawTransparency || drawPoints) {
-        if (theCommandIndex == ModifierCommands::LockVertices)
-            baseColor = lockVertColor;
-        else if (theCommandIndex == ModifierCommands::Remove)
-            baseColor = black;
-        else if (theCommandIndex == ModifierCommands::UnlockVertices)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::Smooth)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::Sharpen)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::LockVertices)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::UnlockVertices)
-            baseColor = white;
-        else {
-            baseColor = jointsColors[influenceIndex];
-            if (paintMirror != 0) {
-                baseMirrorColor = jointsColors[mirrorInfluences[influenceIndex]];
-                baseMirrorColor.get(MColor::kHSV, h, s, v);
-                baseMirrorColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
-            }
+        switch (theCommandIndex) {
+            case ModifierCommands::LockVertices:
+                baseColor = lockVertColor;
+                break;
+            case ModifierCommands::Remove:
+                baseColor = black;
+                break;
+            case ModifierCommands::UnlockVertices:
+                baseColor = white;
+                break;
+            case ModifierCommands::Smooth:
+                baseColor = white;
+                break;
+            case ModifierCommands::Sharpen:
+                baseColor = white;
+                break;
+            default:
+                baseColor = jointsColors[influenceIndex];
+                if (paintMirror != 0) {
+                    baseMirrorColor = jointsColors[mirrorInfluences[influenceIndex]];
+                    baseMirrorColor.get(MColor::kHSV, h, s, v);
+                    baseMirrorColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
+                }
         }
+
         baseColor.get(MColor::kHSV, h, s, v);
         baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
         if ((theCommandIndex != ModifierCommands::Add) && (theCommandIndex != ModifierCommands::AddPercent)) {
@@ -324,8 +510,6 @@ MStatus drawMeshWhileDrag(
     return MStatus::kSuccess;
 }
 
-
-
 std::vector<int> getSurroundingVerticesPerVert(
     int vertexIndex,
     const std::vector<int> &perVertexVerticesSetFLAT,
@@ -337,7 +521,12 @@ std::vector<int> getSurroundingVerticesPerVert(
     return newVec;
 };
 
-
+coord_t distance_sq(const point_t& a, const point_t& b) {
+    coord_t x = a[0] - b[0];
+    coord_t y = a[1] - b[1];
+    coord_t z = a[2] - b[2];
+    return x * x + y * y + z * z;
+}
 
 void growArrayOfHitsFromCenters(
     bool coverageVal,
@@ -354,22 +543,22 @@ void growArrayOfHitsFromCenters(
     if (AllHitPoints.length() == 0) return;
 
     // set of visited vertices
-    std::vector<int> vertsVisited, vertsWithinDistance;
+    std::unordered_set<int> vertsVisited, vertsWithinDistance;
 
     for (const auto& element : dicVertsDist) {
-        vertsVisited.push_back(element.first);
+        vertsVisited.insert(element.first);
     }
-    std::sort(vertsVisited.begin(), vertsVisited.end());
     vertsWithinDistance = vertsVisited;
 
     // start of growth
-    std::vector<int> borderOfGrowth;
+    std::unordered_set<int> borderOfGrowth;
     borderOfGrowth = vertsVisited;
 
     // make the std vector points for faster sorting
     std::vector<point_t> points;
     for (auto hitPt : AllHitPoints) {
-        points.push_back(std::make_tuple(hitPt.x, hitPt.y, hitPt.z));
+        point_t tmp = {hitPt.x, hitPt.y, hitPt.z};
+        points.push_back(tmp);
     }
 
     bool keepGoing = true;
@@ -377,16 +566,24 @@ void growArrayOfHitsFromCenters(
         keepGoing = false;
 
         // grow the vertices
-        std::vector<int> setOfVertsGrow;
+        //std::vector<int> setOfVertsGrow;
+        std::unordered_set<int> setOfVertsGrow;
         for (const int &vertexIndex : borderOfGrowth) {
-            setOfVertsGrow = setOfVertsGrow + getSurroundingVerticesPerVert(
+            std::vector<int> ttt = getSurroundingVerticesPerVert(
                 vertexIndex, perVertexVerticesSetFLAT, perVertexVerticesSetINDEX
             );
+            setOfVertsGrow.insert(ttt.begin(), ttt.end());
         }
 
         // get the vertices that are grown
-        std::vector<int> verticesontheborder = setOfVertsGrow - vertsVisited;
-        std::vector<int> foundGrowVertsWithinDistance;
+        std::vector<int> verticesontheborder;
+        std::set_difference(
+            setOfVertsGrow.begin(), setOfVertsGrow.end(),
+            vertsVisited.begin(), vertsVisited.end(),
+            std::inserter(verticesontheborder, verticesontheborder.end())
+        );
+
+        std::unordered_set<int> foundGrowVertsWithinDistance;
 
         // for all vertices grown
         for (int vertexBorder : verticesontheborder) {
@@ -398,9 +595,11 @@ void growArrayOfHitsFromCenters(
             }
             float closestDist = -1;
             // find the closestDistance and closest Vertex from visited vertices
-            point_t thisPoint = std::make_tuple(mayaRawPoints[vertexBorder * 3],
-                                                mayaRawPoints[vertexBorder * 3 + 1],
-                                                mayaRawPoints[vertexBorder * 3 + 2]);
+            point_t thisPoint;
+            thisPoint[0] = mayaRawPoints[vertexBorder * 3];
+            thisPoint[1] = mayaRawPoints[vertexBorder * 3 + 1];
+            thisPoint[2] = mayaRawPoints[vertexBorder * 3 + 2];
+
             auto glambda = [&thisPoint](const point_t &a, const point_t &b) {
                 float aRes = distance_sq(a, thisPoint);
                 float bRes = distance_sq(b, thisPoint);
@@ -408,50 +607,32 @@ void growArrayOfHitsFromCenters(
             };
             std::partial_sort(points.begin(), points.begin() + 1, points.end(), glambda);
             auto closestPoint = points.front();
-            closestDist = distance(closestPoint, thisPoint);
+            closestDist = std::sqrt(distance_sq(closestPoint, thisPoint));
             // get the new distance between the closest visited vertex and the grow vertex
             if (closestDist <= sizeVal) {  // if in radius of the brush
                 // we found a vertex in the radius
                 // now add to the visited and add the distance to the dictionnary
                 keepGoing = true;
-                foundGrowVertsWithinDistance.push_back(vertexBorder);
+                foundGrowVertsWithinDistance.insert(vertexBorder);
                 auto ret = dicVertsDist.insert(std::make_pair(vertexBorder, closestDist));
                 if (!ret.second) ret.first->second = std::min(closestDist, ret.first->second);
             }
         }
         // this vertices has been visited, let's not consider them anymore
-        std::sort(foundGrowVertsWithinDistance.begin(), foundGrowVertsWithinDistance.end());
-        vertsVisited = vertsVisited + verticesontheborder;
-        vertsWithinDistance = vertsWithinDistance + foundGrowVertsWithinDistance;
 
+        vertsVisited.insert(verticesontheborder.begin(), verticesontheborder.end());
+        vertsWithinDistance.insert(foundGrowVertsWithinDistance.begin(), foundGrowVertsWithinDistance.end());
         borderOfGrowth = foundGrowVertsWithinDistance;
     }
 }
 
-
-
-
 void copyToFloatMatrix(const MMatrix& src, MFloatMatrix& dst) {
-    dst[0][0] = (float)src[0][0];
-    dst[0][1] = (float)src[0][1];
-    dst[0][2] = (float)src[0][2];
-    dst[0][3] = (float)src[0][3];
-    dst[1][0] = (float)src[1][0];
-    dst[1][1] = (float)src[1][1];
-    dst[1][2] = (float)src[1][2];
-    dst[1][3] = (float)src[1][3];
-    dst[2][0] = (float)src[2][0];
-    dst[2][1] = (float)src[2][1];
-    dst[2][2] = (float)src[2][2];
-    dst[2][3] = (float)src[2][3];
-    dst[3][0] = (float)src[3][0];
-    dst[3][1] = (float)src[3][1];
-    dst[3][2] = (float)src[3][2];
-    dst[3][3] = (float)src[3][3];
+    for (unsigned i = 0; i < 4; ++i){
+        for (unsigned j = 0; j < 4; ++j){
+            dst[i][j] = (float)src[i][j];
+        }
+    }
 }
-
-
-
 
 template <typename T=int>
 class FlatCounts {
@@ -526,13 +707,18 @@ private:
     std::vector<T> values;
 
 public:
-    void set(const std::vector<std::array<int, C>> &perEdgeVertices){
-        values.reserve(perEdgeVertices.size() * C);
-        for (const auto & ev : perEdgeVertices){
+    void set(const std::vector<std::array<int, C>> &invals){
+        values.reserve(invals.size() * C);
+        for (const auto & ev : invals){
             for (const auto & v : ev){
                 values.push_back(v);
             }
         }
+    }
+
+    void set(const T* invals, size_t length){
+        values.clear();
+        values.insert(values.end(), invals, invals + (length * C));
     }
 
     size_t length() const{
@@ -544,7 +730,6 @@ public:
     }
 };
 
-
 template <typename T=int, size_t C = 3>
 class DoubleChunks {
 private:
@@ -552,11 +737,19 @@ private:
     std::vector<T> values;
 
 public:
-    void set(const std::vector<std::vector<std::array<int, C>>> &perEdgeVertices){
+    void set(const std::vector<std::vector<std::array<T, C>>> &perEdgeVertices){
+        values.clear();
+        offsets.clear();
+        offsets.push_back(0);
+        size_t offset = 0;
         values.reserve(perEdgeVertices.size() * C);
-        for (const auto & ev : perEdgeVertices){
-            for (const auto & v : ev){
-                values.push_back(v);
+        for (const auto & eev : perEdgeVertices){
+            offset += eev.size();
+            offsets.push_back(offset);
+            for (const auto & ev : eev){
+                for (const auto & v : ev){
+                    values.push_back(v);
+                }
             }
         }
     }
@@ -574,22 +767,16 @@ public:
     }
 };
 
-
-
-
-
-
 void  getAllConnections(
     MFnMesh &meshFn,  // For getting the mesh data
     MDagPath &meshDag,  // So I can get the "maya canonical" edges
 
-    FlatCounts &pvFaces,  // x[vertIdx] -> [list-of-faceIdxs]
-    FlatCounts &pvEdges,  // x[vertIdx] -> [list-of-edgeIdxs]
-    FlatCounts &pvVerts,  // x[vertIdx] -> [list-of-vertIdxs that share a face with the input]
-    FlatCounts &pfVerts,  // x[faceIdx] -> [list-of-vertIdxs]
-    FlatChunks &peVerts,  // x[edgeIdx] -> [pair-of-vertIdxs]
-    DoubleChunks &pftVerts,  // x(face, triIdx) -> [list_of_vertIdxs]
-
+    FlatCounts<int> &pvFaces,  // x[vertIdx] -> [list-of-faceIdxs]
+    FlatCounts<int> &pvEdges,  // x[vertIdx] -> [list-of-edgeIdxs]
+    FlatCounts<int> &pvVerts,  // x[vertIdx] -> [list-of-vertIdxs that share a face with the input]
+    FlatCounts<int> &pfVerts,  // x[faceIdx] -> [list-of-vertIdxs]
+    FlatChunks<int> &peVerts,  // x[edgeIdx] -> [pair-of-vertIdxs]
+    DoubleChunks<int> &pftVerts  // x(face, triIdx) -> [list_of_vertIdxs]
 ){
     // Get the data from the mesh and dag path
     MIntArray counts, flatFaces, triangleCounts, triangleVertices;
@@ -603,8 +790,8 @@ void  getAllConnections(
     std::vector<std::vector<int>> perVertexEdges;
     std::vector<std::vector<int>> perVertexVertices;
     std::vector<std::vector<int>> perFaceVertices;
-    std::vector<std::array<int, 2>> &perEdgeVertices;
-    std::vector<std::vector<std::array<int, 3>>> &perFaceTriangleVertices;
+    std::vector<std::array<int, 2>> perEdgeVertices;
+    std::vector<std::vector<std::array<int, 3>>> perFaceTriangleVertices;
 
     // Reset all the output vectors
     perVertexFaces.resize(numVertices);
@@ -654,8 +841,7 @@ void  getAllConnections(
         toAdd.erase(std::unique(toAdd.begin(), toAdd.end()), toAdd.end());
     }
 
-    // TODO: Flatten all connections
-    // And make a class type that provides easy access to count/connect data
+    // Put all the data in flattened arrays
     pvFaces.set(perVertexFaces);
     pvEdges.set(perVertexEdges);
     pvVerts.set(perVertexVertices);
@@ -663,8 +849,6 @@ void  getAllConnections(
     peVerts.set(perEdgeVertices);
     pftVerts.set(perFaceTriangleVertices);
 }
-
-
 
 double getFalloffValue(int curveVal, double value, double strength) {
     switch (curveVal) {
@@ -680,8 +864,6 @@ double getFalloffValue(int curveVal, double value, double strength) {
             return value;
     }
 }
-
-
 
 void getVerticesInVolumeRange(
     int index,
@@ -733,9 +915,6 @@ void getVerticesInVolumeRange(
         vtxIter.next();
     }
 }
-
-
-
 
 
 
