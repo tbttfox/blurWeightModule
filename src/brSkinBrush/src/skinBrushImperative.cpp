@@ -111,9 +111,6 @@ struct drawingDeformers {
 };
 
 
-
-
-
 MColor getASoloColor(
     double val,
     double maxSoloColor,
@@ -2929,347 +2926,54 @@ MStatus doDragCommon(
     return status;
 }
 
-MStatus doDrag(
-    bool postSetting,
-    bool useColorSetsWhilePainting,
-    bool pickMaxInfluenceVal,
-    bool drawBrushVal,
-    bool pickInfluenceVal,
-    MStatus &pressStatus,
-    MColor &colorVal,
-    int lineWidthVal,
-    bool successFullDragHit,
-    MFloatPoint &centerOfBrush,
-    MVector &normalVector,
-    double sizeVal,
-    bool sizeAdjust,
-    MFloatPoint surfacePointAdjust,
-    MVector worldVectorAdjust,
-    double adjustValue,
-    bool volumeVal,
-    bool drawRangeVal,
-    double rangeVal,
-    short startScreenX,
-    short startScreenY,
 
-    std::set<int> &verticesPainted, // The full set of vertices that are currently being painted
-    std::unordered_map<int, std::pair<float, float>> &mirroredJoinedArray, // An array of weights and mirror weights: <VertexIndex (weightBase, weightMirrored)>
-
-    int numFaces, // The number of faces on the current mesh
-    int numEdges, // The number of edges on the current mesh
+MStatus editSoloColorSet(
     int numVertices, // The number of vertices in the current mesh
-    int influenceIndex, // The index of the influence currently being painted
-    int paintMirror, // The mirror behavior index
-    int soloColorVal, // The solo color index
-
-    bool drawTransparency, // Whether to draw transparency
-    bool drawPoints,  // Whether to draw points
-    bool drawTriangles,  // Whether to draw Triangles
-    bool drawEdges,  // Whether to draw Edges
-
-    MColor &lockVertColor,  // The color to draw verts if they're locked
-    MColorArray &jointsColors, // An array of joint colors
-    MColorArray &soloCurrentColors, // Per-vertex array of solo colors
-    MColorArray &multiCurrentColors, // Per-vertex array of multi-colors
-
-    float* mayaRawPoints, // A C-style array pointing to the mesh vertex positions
-
-    ModifierCommands theCommandIndex,  // The current command index
-
-    MIntArray &mirrorInfluences,  // A mapping between the current influence, and the mirrored one
-    MFloatMatrix &inclusiveMatrix,  // The worldspace matrix of the current mesh
-    MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
-
-    std::vector<MIntArray> &perVertexFaces, // The face indices for each vertex
-    std::vector<MIntArray> &perVertexEdges, // The edge indices for each vertex
-    std::vector<std::vector<MIntArray>> &perFaceTriangleVertices, // Somehow get the triangle indices per face
-    std::vector<std::pair<int, int>> &perEdgeVertices, // The endpoint vertex indices of each edge
-
-    MEvent &event,
-    MHWRender::MUIDrawManager &drawManager,
-    const MHWRender::MFrameContext &context,
-
-    short screenX,
-    short screenY,
-    std::unordered_map<int, float> &dicVertsDistSTART,
-    std::unordered_map<int, float> &previousPaint,
-    std::unordered_map<int, float> &previousMirrorPaint,
-    std::unordered_map<int, float> &dicVertsMirrorDistSTART,
-    std::unordered_map<int, float> &skinValuesToSet,
-    std::unordered_map<int, float> &skinValuesMirrorToSet,
-    MFloatPoint &inMatrixHit,
-    MFloatPoint &inMatrixHitMirror,
-    bool successFullMirrorHit,
-
-    M3dView &view,
-    MPoint &worldPoint,
-    MVector &worldVector,
-    MFnMesh &meshFn,
-    MMeshIsectAccelParams &accelParams,
-    float pressDistance,
-    const float *mayaOrigRawPoints,
-    MFloatPoint &origHitPoint,
-    int previousfaceHit,
-    MFloatMatrix &inclusiveMatrixInverse,
-    bool successFullDragMirrorHit,
-    MFloatPoint &centerOfMirrorBrush,
-    ModifierKeys modifierNoneShiftControl,
-    MFloatPointArray &AllHitPoints,
-    MFloatPointArray &AllHitPointsMirror,
-    std::vector<float> &intensityValuesOrig,
-    std::vector<float> &intensityValuesMirror,
-    bool performBrush,
-    int &undersamplingSteps,
-    int &undersamplingVal,
-    bool initAdjust,
-    double smoothStrengthVal,
-    double strengthVal,
-    bool shiftMiddleDrag,
-    double storedDistance,
-    short viewCenterX,
-    short viewCenterY,
-
-    std::vector<int> &perFaceVerticesSetFLAT,
-    std::vector<int> &perFaceVerticesSetINDEX,
-
-    MMeshIntersector &intersectorOrigShape,
-    MMeshIntersector &intersector,
-    double mirrorMinDist,
-
-    bool coverageVal,
-    const std::vector<int> &perVertexVerticesSetFLAT,
-    const std::vector<int> &perVertexVerticesSetINDEX,
-    ModifierCommands commandIndex,
-    bool fractionOversamplingVal,
-    int oversamplingVal,
-    int curveVal,
-
-    MIntArray &lockVertices,
     int nbJoints,
-    int smoothRepeat,
-    bool ignoreLockVal,
+    int influenceIndex,
     MDoubleArray &skinWeightList,
-    MIntArray &lockJoints,
-    MIntArray &ignoreLockJoints,
-    bool doNormalize,
-    MObject &skinObj,
-    MDoubleArray &skinWeightsForUndo,
-    bool isNurbs,
-    MDagPath &meshDag,
-    MIntArray &influenceIndices,
-    int numCVsInV_,
-    MDagPath &nurbsDag,
-    bool normalize,
-    MFnNurbsSurface &nurbsFn,
-    const float* rawNormals, // A C-style array pointing to the mesh vertex positions
-    MIntArray &verticesNormalsIndices,
-    ModifierKeys smoothModifier,  // Constant
-    ModifierKeys removeModifier,  // Constant
-
+    MIntArray &lockVertices,
+    MDoubleArray &soloColorsValues,
+    MColorArray &soloCurrentColors,
+    MColor &lockVertColor,
+    MFnMesh &meshFn,
     double maxSoloColor,
     double minSoloColor,
     int soloColorTypeVal,
-    MColor &lockJntColor,
-    bool toggleColorState
+    MColorArray &jointsColors,
+    bool doBlack
 ) {
-    MStatus status = MStatus::kSuccess;
-    if (pickMaxInfluenceVal || pickInfluenceVal) {
-        return MS::kFailure;
-    }
+    MStatus status;
 
-    status = doDragCommon(
-        screenX,
-        screenY,
-        dicVertsDistSTART,
-        previousPaint,
-        previousMirrorPaint,
-        dicVertsMirrorDistSTART,
-        skinValuesToSet,
-        skinValuesMirrorToSet,
-        verticesPainted,
-        inMatrixHit,
-        inMatrixHitMirror,
-        paintMirror,
-        successFullMirrorHit,
-        drawBrushVal,
-        view,
-        worldPoint,
-        worldVector,
-        meshFn,
-        accelParams,
-        pressDistance,
-        perFaceTriangleVertices,
-        mayaOrigRawPoints,
-        origHitPoint,
-        normalVector,
-        previousfaceHit,
-        inclusiveMatrixInverse,
-        successFullDragHit,
-        successFullDragMirrorHit,
-        centerOfBrush,
-        centerOfMirrorBrush,
-        modifierNoneShiftControl,
-        AllHitPoints,
-        AllHitPointsMirror,
-        intensityValuesOrig,
-        intensityValuesMirror,
-        useColorSetsWhilePainting,
-        postSetting,
-        performBrush,
-        undersamplingSteps,
-        undersamplingVal,
-        startScreenX,
-        startScreenY,
-        initAdjust,
-        sizeAdjust,
-        sizeVal,
-        smoothStrengthVal,
-        strengthVal,
-        shiftMiddleDrag,
-        storedDistance,
-        adjustValue,
-        viewCenterX,
-        viewCenterY,
-        inclusiveMatrix,
-
-        mayaRawPoints,
-        perFaceVerticesSetFLAT,
-        perFaceVerticesSetINDEX,
-
-        intersectorOrigShape,
-        intersector,
-        mirrorMinDist,
-
-        coverageVal,
-        perVertexVerticesSetFLAT,
-        perVertexVerticesSetINDEX,
-        verticesNormals,
-        commandIndex,
-        fractionOversamplingVal,
-        oversamplingVal,
-        curveVal,
-
-        lockVertices,
-        mirrorInfluences,
-        influenceIndex,
-        numVertices,
-        nbJoints,
-        smoothRepeat,
-        ignoreLockVal,
-        skinWeightList,
-        lockJoints,
-        ignoreLockJoints,
-        doNormalize,
-        skinObj,
-        skinWeightsForUndo,
-        isNurbs,
-        meshDag,
-        influenceIndices,
-        numCVsInV_,
-        nurbsDag,
-        normalize,
-        nurbsFn,
-        rawNormals, // A C-style array pointing to the mesh vertex positions
-        verticesNormalsIndices,
-        smoothModifier,  // Constant
-        removeModifier,  // Constant
-        mirroredJoinedArray,
-
-        soloColorVal,
-        maxSoloColor,
-        minSoloColor,
-        soloColorTypeVal,
-        multiCurrentColors,
-        soloCurrentColors,
-        jointsColors,
-        lockVertColor,
-        lockJntColor,
-        toggleColorState,
-        event
-
-    );
-
-
-
-    if (postSetting && !useColorSetsWhilePainting) {
-        drawManager.beginDrawable();
-        drawMeshWhileDrag(
-            verticesPainted,
-            mirroredJoinedArray,
-            numFaces,
-            numEdges,
-            numVertices,
-            influenceIndex,
-            paintMirror,
-            soloColorVal,
-            drawTransparency,
-            drawPoints, 
-            drawTriangles, 
-            drawEdges, 
-            lockVertColor, 
-            jointsColors,
-            soloCurrentColors,
-            multiCurrentColors,
-            mayaRawPoints,
-            theCommandIndex, 
-            mirrorInfluences, 
-            inclusiveMatrix, 
-            verticesNormals,
-            perVertexFaces,
-            perVertexEdges,
-            perFaceTriangleVertices,
-            perEdgeVertices,
-            drawManager
-        );
-        drawManager.endDrawable();
-    }
-    CHECK_MSTATUS_AND_RETURN_SILENT(status);
-
-    // -----------------------------------------------------------------
-    // display when painting or setting the brush size
-    // -----------------------------------------------------------------
-    if (drawBrushVal || (event.mouseButton() == MEvent::kMiddleMouse)) {
-        CHECK_MSTATUS_AND_RETURN_SILENT(pressStatus);
-        drawManager.beginDrawable();
-
-        drawManager.setColor(MColor((pow(colorVal.r, 0.454f)), (pow(colorVal.g, 0.454f)),
-                                    (pow(colorVal.b, 0.454f))));
-        drawManager.setLineWidth((float)lineWidthVal);
-        // Draw the circle in regular paint mode.
-        // The range circle doens't get drawn here to avoid visual
-        // clutter.
-        if (event.mouseButton() == MEvent::kLeftMouse) {
-            if (successFullDragHit)
-                drawManager.circle(centerOfBrush, normalVector, sizeVal);
+    MColorArray colToSet;
+    MIntArray vtxToSet;
+    for (unsigned int theVert = 0; theVert < numVertices; ++theVert) {
+        double val = 0.0;
+        int ind_swl = theVert * nbJoints + influenceIndex;
+        if (ind_swl < skinWeightList.length())
+            val = skinWeightList[ind_swl];
+        bool isVtxLocked = lockVertices[theVert] == 1;
+        bool update = doBlack || !(soloColorsValues[theVert] == 0 && val == 0);
+        if (update) {  // dont update the black
+            MColor soloColor = getASoloColor(
+                val,
+                maxSoloColor,
+                minSoloColor,
+                soloColorTypeVal,
+                influenceIndex,
+                jointsColors
+            );
+            soloCurrentColors[theVert] = soloColor;
+            soloColorsValues[theVert] = val;
+            if (isVtxLocked)
+                colToSet.append(lockVertColor);
+            else
+                colToSet.append(soloColor);
+            vtxToSet.append(theVert);
         }
-        // Adjusting the brush settings with the middle mouse button.
-        else if (event.mouseButton() == MEvent::kMiddleMouse) {
-            // When adjusting the size the circle needs to remain with
-            // a static position but the size needs to change.
-            drawManager.setColor(MColor(1, 0, 1));
-
-            if (sizeAdjust) {
-                drawManager.circle(surfacePointAdjust, worldVectorAdjust, adjustValue);
-                if (volumeVal && drawRangeVal)
-                    drawManager.circle(surfacePointAdjust, worldVectorAdjust,
-                                       adjustValue * rangeVal);
-            }
-            // When adjusting the strength the circle needs to remain
-            // fixed and only the strength indicator changes.
-            else {
-                drawManager.circle(surfacePointAdjust, worldVectorAdjust, sizeVal);
-                if (volumeVal && drawRangeVal)
-                    drawManager.circle(surfacePointAdjust, worldVectorAdjust, sizeVal * rangeVal);
-
-                MPoint start(startScreenX, startScreenY);
-                MPoint end(startScreenX, startScreenY + adjustValue * 500);
-                drawManager.line2d(start, end);
-
-                drawManager.circle2d(end, lineWidthVal + 3.0, true);
-            }
-        }
-        drawManager.endDrawable();
     }
+    meshFn.setSomeColors(vtxToSet, colToSet, &soloColorSet);
+    meshFn.setSomeColors(vtxToSet, colToSet, &soloColorSet2);
 
     return status;
 }
@@ -3281,6 +2985,17 @@ void setInfluenceIndex(
     int soloColorVal, // The solo color index
     MFnMesh &meshFn,  // For getting the mesh data
     int value,
+    int numVertices,
+    int nbJoints,
+    MDoubleArray &skinWeightList,
+    MIntArray &lockVertices,
+    MDoubleArray &soloColorsValues,
+    MColorArray &soloCurrentColors,
+    MColor &lockVertColor,
+    double maxSoloColor,
+    double minSoloColor,
+    int soloColorTypeVal,
+    MColorArray &jointsColors,
     bool selectInUI
 ) {
     if (value != influenceIndex) {
@@ -3296,7 +3011,22 @@ void setInfluenceIndex(
             MString currentColorSet = meshFn.currentColorSetName();  // get current soloColor
             if (currentColorSet != soloColorSet)
                 meshFn.setCurrentColorSetName(soloColorSet);
-            editSoloColorSet(false);
+            editSoloColorSet(
+                numVertices,
+                nbJoints,
+                influenceIndex,
+                skinWeightList,
+                lockVertices,
+                soloColorsValues,
+                soloCurrentColors,
+                lockVertColor,
+                meshFn,
+                maxSoloColor,
+                minSoloColor,
+                soloColorTypeVal,
+                jointsColors,
+                false
+            );
         }
         meshFn.updateSurface();  // for proper redraw hopefully
     }
@@ -3365,6 +3095,17 @@ MStatus doPressCommon(
     MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
     MObject &skinObj,
 
+    int nbJoints,
+    MIntArray &lockVertices,
+    MDoubleArray &soloColorsValues,
+    MColorArray &soloCurrentColors,
+    MColor &lockVertColor,
+    double maxSoloColor,
+    double minSoloColor,
+    int soloColorTypeVal,
+    MColorArray &jointsColors,
+    bool toggleColorState,
+
     MEvent &event
 ) {
     MStatus status = MStatus::kSuccess;
@@ -3388,9 +3129,26 @@ MStatus doPressCommon(
                 soloColorVal, // The solo color index
                 meshFn,  // For getting the mesh data
                 biggestInfluence,
+                numVertices,
+                nbJoints,
+                skinWeightList,
+                lockVertices,
+                soloColorsValues,
+                soloCurrentColors,
+                lockVertColor,
+                maxSoloColor,
+                minSoloColor,
+                soloColorTypeVal,
+                jointsColors,
                 true // true for select in UI
             ); 
-            maya2019RefreshColors();
+            maya2019RefreshColors(
+                true,
+                view,
+                toggleColorState,
+                soloColorVal,
+                meshFn
+            );
         }
 
         return MStatus::kNotFound;
@@ -3493,18 +3251,20 @@ MStatus doPressCommon(
     return status;
 }
 
-MStatus doPress(
-    MEvent &event,
-    MHWRender::MUIDrawManager &drawMgr,
-    const MHWRender::MFrameContext &context
-) {
-    pressStatus = doPressCommon(event);
-    CHECK_MSTATUS_AND_RETURN_SILENT(pressStatus);
-    doDrag(event, drawMgr, context);
-    return MStatus::kSuccess;
-}
-
 MStatus doReleaseCommon(
+    MFnMesh &meshFn,  // For getting the mesh data
+    bool pickMaxInfluenceVal,
+    bool pickInfluenceVal,
+    bool refreshDone,
+    bool initAdjust,
+    MStatus &pressStatus,
+    bool sizeAdjust,
+    double sizeVal,
+    double adjustValue,
+    double smoothStrengthVal,
+    double strengthVal,
+    bool performBrush,
+
     MEvent &event
 ) {
     // Don't continue if no mesh has been set.
@@ -3534,15 +3294,66 @@ MStatus doReleaseCommon(
     return MS::kSuccess;
 }
 
-MStatus doRelease(
-    MEvent &event,
-    MHWRender::MUIDrawManager &drawMgr,
-    const MHWRender::MFrameContext &context
-) {
-    return doReleaseCommon(event);
+
+
+MStatus getListLockJoints(MObject& skinCluster, int nbJoints, MIntArray indicesForInfluenceObjects,
+                          MIntArray& jointsLocks) {
+    MStatus stat;
+
+    MFnDependencyNode skinClusterDep(skinCluster);
+    MPlug influenceLock_plug = skinClusterDep.findPlug("lockWeights", false);
+
+    int nbPlugs = influenceLock_plug.numElements();
+    jointsLocks.clear();
+    jointsLocks.setLength(nbJoints);
+    for (int i = 0; i < nbJoints; ++i) jointsLocks.set(0, i);
+
+    for (int i = 0; i < nbPlugs; ++i) {
+        MPlug lockPlug = influenceLock_plug.elementByPhysicalIndex(i);
+        int isLocked = 0;
+        if (lockPlug.isConnected()) {
+            MPlugArray connections;
+            lockPlug.connectedTo(connections, true, false);
+            if (connections.length() > 0) {
+                MPlug theConn = connections[0];
+                isLocked = theConn.asInt();
+            }
+        } else {
+            isLocked = lockPlug.asInt();
+        }
+        int logicalInd = lockPlug.logicalIndex();
+        logicalInd = indicesForInfluenceObjects[logicalInd];
+        if (logicalInd < 0 || logicalInd >= nbJoints) {
+            MGlobal::displayError(MString("CRASH i : ") + i + MString("logical Index: ") +
+                                  lockPlug.logicalIndex() +
+                                  MString(" | indicesForInfluenceObjects ") + logicalInd);
+            continue;
+        }
+        jointsLocks.set(isLocked, logicalInd);
+    }
+    return stat;
 }
 
-void doTheAction() {
+
+void doTheAction(
+    std::set<int> &verticesPainted,
+    MIntArray &lockJoints,
+    int nbJoints,
+    MObject &skinObj,
+    MIntArray indicesForInfluenceObjects,
+    MIntArray &lockVertices,
+    int paintMirror,
+    MIntArray &mirrorInfluences,
+    int influenceIndex,
+    std::unordered_map<int, float> &skinValuesToSet,
+    std::unordered_map<int, float> &skinValuesMirrorToSet,
+    bool postSetting,
+    MDoubleArray &fullUndoSkinWeightList,
+    MFnMesh &meshFn,  // For getting the mesh data
+    std::unordered_map<int, float> &previousPaint,
+    std::unordered_map<int, float> &previousMirrorPaint,
+    bool firstPaintDone
+) {
     // If the smoothing has been performed send the current values to
     // the tool command along with the necessary data for undo and redo.
     // The same goes for the select mode.
@@ -3632,75 +3443,6 @@ void doTheAction() {
         MUserEventMessage::postUserEvent("brSkinBrush_cleanCloseUndo");
     }
 
-    cmd = (skinBrushTool *)newToolCommand();
-    cmd->setColor(colorVal);
-    cmd->setCurve(curveVal);
-    cmd->setDrawBrush(drawBrushVal);
-    cmd->setDrawRange(drawRangeVal);
-    cmd->setPythonImportPath(moduleImportString);
-    cmd->setEnterToolCommand(enterToolCommandVal);
-    cmd->setExitToolCommand(exitToolCommandVal);
-    cmd->setFractionOversampling(fractionOversamplingVal);
-    cmd->setIgnoreLock(ignoreLockVal);
-    cmd->setLineWidth(lineWidthVal);
-    cmd->setOversampling(oversamplingVal);
-    cmd->setRange(rangeVal);
-    cmd->setSize(sizeVal);
-    cmd->setStrength(strengthVal);
-    // storing options for the finalize optionVar
-    cmd->setMinColor(minSoloColor);
-    cmd->setMaxColor(maxSoloColor);
-    cmd->setSoloColor(soloColorVal);
-    cmd->setSoloColorType(soloColorTypeVal);
-
-    cmd->setPaintMirror(paintMirror);
-    cmd->setUseColorSetsWhilePainting(useColorSetsWhilePainting);
-    cmd->setDrawTriangles(drawTriangles);
-    cmd->setDrawEdges(drawEdges);
-    cmd->setDrawPoints(drawPoints);
-    cmd->setDrawTransparency(drawTransparency);
-    cmd->setPostSetting(postSetting);
-    cmd->setCoverage(coverageVal);
-    cmd->setMessage(messageVal);
-    cmd->setSmoothRepeat(smoothRepeat);
-
-    cmd->setSmoothStrength(smoothStrengthVal);
-    cmd->setUndersampling(undersamplingVal);
-    cmd->setVolume(volumeVal);
-    cmd->setCommandIndex(theCommandIndex);
-
-    cmd->setUndoLocks(undoLocks);
-    cmd->setRedoLocks(redoLocks);
-
-    MFnDependencyNode skinDep(skinObj);
-    MString skinName = skinDep.name();
-    cmd->setMesh(meshDag);
-
-    if (isNurbs) {
-        cmd->setNurbs(nurbsDag);
-        cmd->setnumCVInV(numCVsInV_);
-    }
-    cmd->setSkinCluster(skinObj);
-    cmd->setIsNurbs(isNurbs);
-
-    cmd->setInfluenceIndices(influenceIndices);
-    MString iname = getInfluenceName();
-    cmd->setInfluenceName(iname);
-
-    cmd->setUndoVertices(editVertsIndices);
-    if (!postSetting) {
-        cmd->setWeights(prevWeights);
-    } else {
-        cmd->setWeights(skinWeightsForUndo);
-    }
-    cmd->setNormalize(normalize);
-    cmd->setContextPointer(this);
-
-    // Regular context implementations usually call
-    // (MPxToolCommand)::redoIt at this point but in this case it
-    // is not necessary since the the smoothing already has been
-    // performed. There is no need to apply the values twice.
-    cmd->finalize();
     maya2019RefreshColors();
     MUserEventMessage::postUserEvent("brSkinBrush_afterPaint");
 }
