@@ -12,8 +12,12 @@
 #growArrayOfHitsFromCenters
 #addBrushShapeFallof
 #mergeMirrorArray
+#preparePaint
+#refreshPointsNormals
+#refreshColors
 
-applyCommand
+#applyCommand
+
 applyCommandMirror
 doDrag
 doDragCommon
@@ -24,9 +28,6 @@ doRelease
 doReleaseCommon
 doTheAction
 
-preparePaint
-refreshColors
-refreshPointsNormals
 
 */
 
@@ -945,14 +946,6 @@ void getVerticesInVolumeRange(
     }
 }
 
-
-
-
-
-
-
-
-
 bool getMirrorHit(
     int paintMirror,
     MFloatPoint &origHitPoint,
@@ -1094,9 +1087,6 @@ std::vector<int> getSurroundingVerticesPerFace(
     return newVec;
 }
 
-
-
-
 bool expandHit(
     int faceHit,
     const float *mayaRawPoints,
@@ -1126,9 +1116,6 @@ bool expandHit(
     return foundHit;
 }
 
-
-
-
 void addBrushShapeFallof(
     double strengthVal,
     double smoothStrengthVal,
@@ -1156,7 +1143,6 @@ void addBrushShapeFallof(
         element.second = value;
     }
 }
-
 
 void mergeMirrorArray(
     std::unordered_map<int, std::pair<float, float>> &mirroredJoinedArray,
@@ -1186,14 +1172,12 @@ void mergeMirrorArray(
     }
 }
 
-
-
 MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, int indexCurrVert,
                          int nbJoints, MIntArray& lockJoints, MDoubleArray& fullWeightArray,
                          MDoubleArray& theWeights, double strengthVal) {
     MStatus stat;
     int sizeVertices = verticesAround.size();
-    unsigned int i, jnt, posi;
+    unsigned int jnt, posi;
 
     MDoubleArray sumWeigths(nbJoints, 0.0);
     // compute sum weights
@@ -1203,9 +1187,8 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
             sumWeigths[jnt] += fullWeightArray[posi];
         }
     }
-    double totalBaseVtxUnlock = 0.0, totalBaseVtxLock = 0.0;
-    ;
-    double totalVtxUnlock = 0.0, totalVtxLock = 0.0;
+    double totalBaseVtxLock = 0.0;
+    double totalVtxUnlock = 0.0;
 
     for (jnt = 0; jnt < nbJoints; jnt++) {
         // get if jnt is locked
@@ -1220,11 +1203,9 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
 
         // sum it all
         if (!isLockJnt) {
-            totalBaseVtxUnlock += currentW;
             totalVtxUnlock += targetW;
         } else {
             totalBaseVtxLock += currentW;
-            totalVtxLock += targetW;
         }
     }
     // setting part ---------------
@@ -1259,8 +1240,226 @@ MStatus setAverageWeight(std::vector<int>& verticesAround, int currentVertex, in
     return MS::kSuccess;
 }
 
+MStatus editArray(ModifierCommands command, int influence, int nbJoints, MIntArray& lockJoints,
+                  MDoubleArray& fullWeightArray, std::map<int, double>& valuesToSet,
+                  MDoubleArray& theWeights, bool normalize, double mutliplier) {
+    MStatus stat;
+    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
+    // UnLockVertices
+    //
+    if (lockJoints.length() < nbJoints) {
+        MGlobal::displayInfo(MString("-> editArray FAILED | nbJoints ") + nbJoints +
+                             MString(" | lockJoints ") + lockJoints.length());
+        return MStatus::kFailure;
+    }
+    if (command == ModifierCommands::Sharpen) {
+        int i = 0;
+        for (const auto& elem : valuesToSet) {
+            int theVert = elem.first;
+            double theVal = mutliplier * elem.second + 1.0;
+            double substract = theVal / nbJoints;
+            MDoubleArray producedWeigths(nbJoints, 0.0);
+            double totalBaseVtxLock = 0.0;
+            double totalVtxUnlock = 0.0;
+            for (int j = 0; j < nbJoints; ++j) {
+                // check the zero val ----------
+                double currentW = fullWeightArray[theVert * nbJoints + j];
+                double targetW = (currentW * theVal) - substract;
+                targetW = std::max(0.0, std::min(targetW, 1.0));  // clamp
+                producedWeigths.set(targetW, j);
 
+                if (lockJoints[j] == 0) {  // unlock
+                    totalVtxUnlock += targetW;
+                } else {
+                    totalBaseVtxLock += currentW;
+                }
+            }
+            // now normalize for lockJoints
+            double normalizedValueAvailable = 1.0 - totalBaseVtxLock;
+            if (normalizedValueAvailable > 0.0 &&
+                totalVtxUnlock > 0.0) {  // we have room to set weights
+                double mult = normalizedValueAvailable / totalVtxUnlock;
+                for (unsigned int j = 0; j < nbJoints; ++j) {
+                    double currentW = fullWeightArray[theVert * nbJoints + j];
+                    double targetW = producedWeigths[j];
+                    if (lockJoints[j] == 0) {  // unlock
+                        targetW *= mult;       // normalement divide par 1, sauf cas lock joints
+                        theWeights[i * nbJoints + j] = targetW;
+                    } else {
+                        theWeights[i * nbJoints + j] = currentW;
+                    }
+                }
+            } else {
+                for (unsigned int j = 0; j < nbJoints; ++j) {
+                    theWeights[i * nbJoints + j] = fullWeightArray[theVert * nbJoints + j];
+                }
+            }
+            i++;
+        }
+    } else {
+        // do the command --------------------------
+        int i = -1;  // i is a short index instead of theVert
+        for (const auto& elem : valuesToSet) {
+            i++;
+            int theVert = elem.first;
+            double theVal = mutliplier * elem.second;
+            // get the sum of weights
 
+            double sumUnlockWeights = 0.0;
+            for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                int indexArray_theWeight = i * nbJoints + jnt;
+                int indexArray_fullWeightArray = theVert * nbJoints + jnt;
+
+                if (indexArray_theWeight > theWeights.length()) {
+                    MGlobal::displayInfo(
+                        MString(
+                            "-> editArray FAILED | indexArray_theWeight  > theWeights.length()") +
+                        indexArray_theWeight + MString(" > ") + theWeights.length());
+                    return MStatus::kFailure;
+                }
+                if (indexArray_fullWeightArray > fullWeightArray.length()) {
+                    MGlobal::displayInfo(MString("-> editArray FAILED | indexArray_fullWeightArray "
+                                                 " > fullWeightArray.length()") +
+                                         indexArray_fullWeightArray + MString(" > ") +
+                                         fullWeightArray.length());
+                    return MStatus::kFailure;
+                }
+
+                if (lockJoints[jnt] == 0) {  // not locked
+                    sumUnlockWeights += fullWeightArray[indexArray_fullWeightArray];
+                }
+                theWeights[indexArray_theWeight] =
+                    fullWeightArray[indexArray_fullWeightArray];  // preset array
+            }
+            double currentW = fullWeightArray[theVert * nbJoints + influence];
+
+            if (((command == ModifierCommands::Remove) || (command == ModifierCommands::Absolute)) &&
+                (currentW > (sumUnlockWeights - .0001))) {  // value is 1(max) we cant do anything
+                continue;                                   // we pass to next vertex
+            }
+
+            double newW = currentW;
+            if (command == ModifierCommands::Add)
+                newW += theVal;
+            else if (command == ModifierCommands::Remove)
+                newW -= theVal;
+            else if (command == ModifierCommands::AddPercent)
+                newW += theVal * newW;
+            else if (command == ModifierCommands::Absolute)
+                newW = theVal;
+
+            newW = std::max(0.0, std::min(newW, sumUnlockWeights));  // clamp
+
+            double newRest = sumUnlockWeights - newW;
+            double oldRest = sumUnlockWeights - currentW;
+            double div = sumUnlockWeights;
+
+            if (newRest != 0.0) div = oldRest / newRest;  // produit en croix
+
+            // do the locks !!
+            double sum = 0.0;
+            for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                if (lockJoints[jnt] == 1) {
+                    continue;
+                }
+                // check the zero val ----------
+                double weightValue = fullWeightArray[theVert * nbJoints + jnt];
+                if (jnt == influence) {
+                    weightValue = newW;
+                } else {
+                    if (newW == sumUnlockWeights) {
+                        weightValue = 0.0;
+                    } else {
+                        weightValue /= div;
+                    }
+                }
+                if (normalize) {
+                    weightValue = std::max(0.0, std::min(weightValue, sumUnlockWeights));  // clamp
+                }
+                sum += weightValue;
+                theWeights[i * nbJoints + jnt] = weightValue;
+            }
+
+            if ((sum == 0) ||
+                (sum <
+                 0.5 * sumUnlockWeights)) {  // zero problem revert weights ----------------------
+                for (int jnt = 0; jnt < nbJoints; ++jnt) {
+                    theWeights[i * nbJoints + jnt] = fullWeightArray[theVert * nbJoints + jnt];
+                }
+            } else if (normalize && (sum != sumUnlockWeights)) {  // normalize ---------------
+                for (int jnt = 0; jnt < nbJoints; ++jnt)
+                    if (lockJoints[jnt] == 0) {
+                        theWeights[i * nbJoints + jnt] /= sum;               // to 1
+                        theWeights[i * nbJoints + jnt] *= sumUnlockWeights;  // to sum weights
+                    }
+            }
+        }
+    }
+    return stat;
+}
+
+MStatus transferPointNurbsToMesh(MFnMesh& msh, MFnNurbsSurface& nurbsFn) {
+    MStatus stat = MS::kSuccess;
+    MPlug mshPnts = msh.findPlug("pnts", false, &stat);
+    MPointArray allpts;
+
+    bool VIsPeriodic_ = nurbsFn.formInV() == MFnNurbsSurface::kPeriodic;
+    bool UIsPeriodic_ = nurbsFn.formInU() == MFnNurbsSurface::kPeriodic;
+    if (VIsPeriodic_ || UIsPeriodic_) {
+        int numCVsInV_ = nurbsFn.numCVsInV();
+        int numCVsInU_ = nurbsFn.numCVsInU();
+        int UDeg_ = nurbsFn.degreeU();
+        int VDeg_ = nurbsFn.degreeV();
+        if (VIsPeriodic_) numCVsInV_ -= VDeg_;
+        if (UIsPeriodic_) numCVsInU_ -= UDeg_;
+        for (int uIndex = 0; uIndex < numCVsInU_; uIndex++) {
+            for (int vIndex = 0; vIndex < numCVsInV_; vIndex++) {
+                MPoint pt;
+                nurbsFn.getCV(uIndex, vIndex, pt);
+                allpts.append(pt);
+            }
+        }
+    } else {
+        stat = nurbsFn.getCVs(allpts);
+    }
+    msh.setPoints(allpts);
+    return stat;
+}
+
+MStatus refreshPointsNormals(
+    const float* mayaRawPoints, // A C-style array pointing to the mesh vertex positions
+    const float* rawNormals, // A C-style array pointing to the mesh vertex positions
+    MIntArray &verticesNormalsIndices,
+    MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
+    int numVertices,
+    MFnMesh &meshFn,
+    MDagPath &meshDag,
+    MObject &skinObj
+) {
+    MStatus status = MStatus::kSuccess;
+
+    if (!skinObj.isNull() && meshDag.isValid(&status)) {
+        meshFn.freeCachedIntersectionAccelerator();  // yes ?
+        mayaRawPoints = meshFn.getRawPoints(&status);
+        rawNormals = meshFn.getRawNormals(&status);
+        int rawNormalsLength = sizeof(rawNormals);
+
+#pragma omp parallel for
+        for (int vertexInd = 0; vertexInd < numVertices; vertexInd++) {
+            int indNormal = verticesNormalsIndices[vertexInd];
+            int rawIndNormal = indNormal * 3 + 2;
+            if (rawIndNormal < rawNormalsLength) {
+                MVector theNormal(
+                    rawNormals[indNormal * 3],
+                    rawNormals[indNormal * 3 + 1],
+                    rawNormals[indNormal * 3 + 2]
+                );
+                verticesNormals.set(theNormal, vertexInd);
+            }
+        }
+    }
+    return status;
+}
 
 MStatus applyCommand(
     int influence,
@@ -1285,7 +1484,11 @@ MStatus applyCommand(
     MFnNurbsSurface &nurbsFn,
     const std::vector<int> &perVertexVerticesSetFLAT,
     const std::vector<int> &perVertexVerticesSetINDEX,
-
+    const float* mayaRawPoints, // A C-style array pointing to the mesh vertex positions
+    const float* rawNormals, // A C-style array pointing to the mesh vertex positions
+    MIntArray &verticesNormalsIndices,
+    MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
+    int numVertices,
     ModifierCommands commandIndex,
     ModifierKeys modifierNoneShiftControl,
     ModifierKeys smoothModifier,  // Constant
@@ -1379,15 +1582,19 @@ MStatus applyCommand(
         }
         // in do press common
         // update values ---------------
-        refreshPointsNormals();
+        refreshPointsNormals(
+            mayaRawPoints,
+            rawNormals,
+            verticesNormalsIndices,
+            verticesNormals,
+            numVertices,
+            meshFn,
+            meshDag,
+            skinObj
+        );
     }
     return status;
 }
-
-
-
-
-
 
 void preparePaint(
     bool postSetting,
@@ -1398,6 +1605,33 @@ void preparePaint(
     int influenceIndex,
     int numVertices,
 
+
+    int nbJoints,
+    int smoothRepeat,
+    bool ignoreLockVal,
+    MDoubleArray &skinWeightList,
+    MIntArray &lockJoints,
+    double smoothStrengthVal,
+    MIntArray &ignoreLockJoints,
+    bool doNormalize,
+    MObject &skinObj,
+    MDoubleArray &skinWeightsForUndo,
+    bool isNurbs,
+    MDagPath &meshDag,
+    MIntArray &influenceIndices,
+    int numCVsInV_,
+    MDagPath nurbsDag,
+    bool normalize,
+    MFnMesh &meshFn,
+    MFnNurbsSurface &nurbsFn,
+    const std::vector<int> &perVertexVerticesSetFLAT,
+    const std::vector<int> &perVertexVerticesSetINDEX,
+    const float* mayaRawPoints, // A C-style array pointing to the mesh vertex positions
+    const float* rawNormals, // A C-style array pointing to the mesh vertex positions
+    MIntArray &verticesNormalsIndices,
+    MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
+    ModifierKeys smoothModifier,  // Constant
+    ModifierKeys removeModifier,  // Constant
 
     std::unordered_map<int, float> &dicVertsDist,
     std::unordered_map<int, float> &dicVertsDistPrevPaint,
@@ -1451,7 +1685,40 @@ void preparePaint(
         if (skinValToSet.size() > 0) {
             int theInfluence = influenceIndex;
             if (mirror) theInfluence = mirrorInfluences[influenceIndex];
-            applyCommand(theInfluence, skinValToSet);
+            applyCommand(
+                theInfluence,
+                nbJoints,
+                smoothRepeat,
+                skinValToSet,
+                ignoreLockVal,
+                skinWeightList,
+                lockJoints,
+                smoothStrengthVal,
+                ignoreLockJoints,
+                doNormalize,
+                skinObj,
+                skinWeightsForUndo,
+                isNurbs,
+                meshDag,
+                influenceIndices,
+                numCVsInV_,
+                nurbsDag,
+                normalize,
+                meshFn,
+                nurbsFn,
+                perVertexVerticesSetFLAT,
+                perVertexVerticesSetINDEX,
+                mayaRawPoints,
+                rawNormals,
+                verticesNormalsIndices,
+                verticesNormals,
+                numVertices,
+                commandIndex,
+                modifierNoneShiftControl,
+                smoothModifier,
+                removeModifier
+            );
+
             intensityValues = std::vector<float>(numVertices, 0);
             dicVertsDistPrevPaint.clear();
             skinValToSet.clear();
@@ -1459,8 +1726,70 @@ void preparePaint(
     }
 }
 
+MStatus refreshColors(
+    int influenceIndex,
+    int nbJoints,
+    int soloColorTypeVal,
+    MColor &lockVertColor,
+    MColorArray &soloCurrentColors,
+    MColorArray &multiCurrentColors,
+    double maxSoloColor,
+    double minSoloColor,
+    MColorArray &jointsColors,
+    MColor &soloColor,
+    MColor &lockJntColor,
+    MIntArray &lockJoints,
+    MDoubleArray &soloColorsValues,
+    MDoubleArray &skinWeightList,
+    MIntArray &lockVertices,
+    MIntArray &editVertsIndices,
+    MColorArray &multiEditColors,
+    MColorArray &soloEditColors
+) {
+    MStatus status = MS::kSuccess;
+    if (multiEditColors.length() != editVertsIndices.length())
+        multiEditColors.setLength(editVertsIndices.length());
+    if (soloEditColors.length() != editVertsIndices.length())
+        soloEditColors.setLength(editVertsIndices.length());
 
+    for (unsigned int i = 0; i < editVertsIndices.length(); ++i) {
+        int theVert = editVertsIndices[i];
+        MColor multiColor, soloColor;
+        bool isVtxLocked = lockVertices[theVert] == 1;
 
+        for (int j = 0; j < nbJoints; ++j) {  // for each joint
+            int ind_swl = theVert * nbJoints + j;
+            if (ind_swl < skinWeightList.length()) {
+                double val = skinWeightList[ind_swl];
+                if (lockJoints[j] == 1)
+                    multiColor += lockJntColor * val;
+                else
+                    multiColor += jointsColors[j] * val;
+                if (j == influenceIndex) {
+                    soloColorsValues[theVert] = val;
+                    soloColor = getASoloColor(
+                        val,
+                        maxSoloColor,
+                        minSoloColor,
+                        soloColorTypeVal,
+                        influenceIndex,
+                        jointsColors
+                    );
+                }
+            }
+        }
+        multiCurrentColors[theVert] = multiColor;
+        soloCurrentColors[theVert] = soloColor;
+        if (isVtxLocked) {
+            multiEditColors[i] = lockVertColor;
+            soloEditColors[i] = lockVertColor;
+        } else {
+            multiEditColors[i] = multiColor;
+            soloEditColors[i] = soloColor;
+        }
+    }
+    return status;
+}
 
 
 
