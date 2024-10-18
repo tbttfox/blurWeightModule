@@ -72,6 +72,8 @@ struct MeshData {
     MFloatMatrix inclusiveMatrix;
     MFloatMatrix inclusiveMatrixInverse;
 
+    int numFaces; // The number of faces on the current mesh
+    int numEdges; // The number of edges on the current mesh
     int numVertices;
     float* mayaOrigRawPoints;
     float* mayaRawPoints;
@@ -95,7 +97,18 @@ struct MeshData {
 struct InfluenceData {
     // Stores the joints (and mirror data)
     // including their colors and locks
+    int nbJoints;
 
+    MIntArray mirrorInfluences;
+    MIntArray influenceIndices;
+
+    MIntArray indicesForInfluenceObjects; // ??? what is this?
+    MStringArray inflNames;
+    MColorArray jointsColors;
+
+    MColor &lockJntColor;
+    MIntArray ignoreLockJoints; // ??? what is this
+    MIntArray lockJoints;
 };
 
 
@@ -104,16 +117,62 @@ struct WeightData {
     // As well as the colors
     // MeshData generally won't change, weightData will, that's why this is separate
     MIntArray lockVertices;
+    MDoubleArray &skinWeightList;
+
+    MColorArray &multiEditColors;
+    MColorArray &multiCurrentColors;
+    MColorArray &soloEditColors;
+    MColorArray &soloCurrentColors;
+
+    MColor &lockVertColor;
+
+    MColor &multColor;
+    MColor &soloColor;
+
 
 };
 
-
-
 struct UserInputData {
+    // The user options from the UI
+    int influenceIndex;
+    double maxSoloColor;
+    double minSoloColor;
+    int soloColorTypeVal;
+    int paintMirror; // The mirror behavior index
+    int soloColorVal; // The solo color index
+    int curveVal;  // The falloff curve value
+
+    bool drawTransparency; // Whether to draw transparency
+    bool drawPoints;  // Whether to draw points
+    bool drawTriangles;  // Whether to draw Triangles
+    bool drawEdges;  // Whether to draw Edges
+
+    bool coverageVal;
+    double sizeVal;
+
+
+    double rangeVal;
+    double strengthVal;
+    double fractionOversamplingVal;
+    double oversamplingVal;
+
+
+
+
+
+
+
+};
+
+struct InteractionData {
     // All of the current data for where the mouse is, and what its interacting with
     // and the current keyboard options
-    // All of this will (hopefully) be pre-processed so we can just ask the struct
-    // whether or not to do "a thing"
+
+    ModifierCommands commandIndex;
+    ModifierKeys modifierNoneShiftControl;
+    ModifierKeys smoothModifier; // Constant
+    ModifierKeys removeModifier; // Constant
+
 };
 
 
