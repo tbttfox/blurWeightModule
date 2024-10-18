@@ -253,8 +253,6 @@ void SkinBrushContext::maya2019RefreshColors(bool toggle) {
 }
 
 void SkinBrushContext::setSoloColorType(int value) {
-    if (verbose) MGlobal::displayInfo(MString("setSoloColorType CALLED ") + value);
-
     if (soloColorTypeVal != value) {
         soloColorTypeVal = value;
         // here we do the redraw
@@ -298,50 +296,37 @@ void SkinBrushContext::setShiftSmooths(bool value) {
 }
 
 void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
-    if (verbose)
-        MGlobal::displayInfo(MString("setInfluenceIndex CALLED value [") + value +
-                             MString("] selectInUI [") + selectInUI + MString("]\n"));
-    if (value != this->influenceIndex) {
-        MString msg = MString("influence index is ") + value + MString(" inflNames.length is ") +
-                      this->inflNames.length();
-        if (value < this->inflNames.length()) {
-            this->influenceIndex = value;
+    if (value == this->influenceIndex) return;
 
-            pickedInfluence = this->inflNames[value];
-            msg += MString(" name is ") + pickedInfluence;
-
-            if (selectInUI) {
-                MUserEventMessage::postUserEvent("brSkinBrush_pickedInfluence");
-            }
+    if (value < this->inflNames.length()) {
+        this->influenceIndex = value;
+        pickedInfluence = this->inflNames[value];
+        if (selectInUI) {
+            MUserEventMessage::postUserEvent("brSkinBrush_pickedInfluence");
         }
-        if (verbose) MGlobal::displayInfo(msg);
-        // here we do the redraw
-
-        if (soloColorVal == 1) {  // solo IF NOT IT CRASHES on a first pick before paint
-            MString currentColorSet = meshFn.currentColorSetName();  // get current soloColor
-            if (currentColorSet != this->soloColorSet)
-                meshFn.setCurrentColorSetName(this->soloColorSet);
-            editSoloColorSet(false);
-        }
-
-        meshFn.updateSurface();  // for proper redraw hopefully
-        maya2019RefreshColors();
     }
+    // here we do the redraw
+
+    if (soloColorVal == 1) {  // solo IF NOT IT CRASHES on a first pick before paint
+        MString currentColorSet = meshFn.currentColorSetName();  // get current soloColor
+        if (currentColorSet != this->soloColorSet) {
+            meshFn.setCurrentColorSetName(this->soloColorSet);
+        }
+        editSoloColorSet(false);
+    }
+
+    meshFn.updateSurface();  // for proper redraw hopefully
+    maya2019RefreshColors();
+
 }
 
 void SkinBrushContext::setInfluenceByName(MString &value) {
-    if (verbose) MGlobal::displayInfo("setInfluenceByName CALLED \"" + value + "\"\n");
     if (this->pickMaxInfluenceVal) return;
 
     int indexInfluence = this->inflNames.indexOf(value);
-    if (verbose)
-        MGlobal::displayInfo(MString("setInfluenceByName - ") + value + MString(" ") +
-                             indexInfluence);
-    if (indexInfluence == -1) {
-        MGlobal::displayWarning("influence not found, ERROR");
-    } else {
-        setInfluenceIndex(indexInfluence, false);
-    }
+    if (indexInfluence == -1) return;
+
+    setInfluenceIndex(indexInfluence, false);
 }
 
 // ---------------------------------------------------------------------
