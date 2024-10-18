@@ -1,7 +1,7 @@
 #include "skinBrushTool.h"
 
 // ---------------------------------------------------------------------
-// legacy viewport
+// Required support for legacy viewport
 // ---------------------------------------------------------------------
 
 MStatus SkinBrushContext::doPress(MEvent &event) {
