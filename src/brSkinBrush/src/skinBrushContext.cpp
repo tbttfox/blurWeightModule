@@ -649,6 +649,255 @@ MStatus SkinBrushContext::refreshPointsNormals() {
 // ---------------------------------------------------------------------
 // common methods for legacy viewport and viewport 2.0
 // ---------------------------------------------------------------------
+
+int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
+    MStatus stat;
+    MPoint nearClipPt, farClipPt;
+    MVector direction, direction2;
+    MPoint orig, orig2;
+    view.viewToWorld(screenX, screenY, orig, direction);
+
+    int lent = this->inflDagPaths.length();
+    int closestInfluence = -1;
+    double closestDistance = -1;
+
+    // We've only ever got a couple hundred of these, so just brute-force it
+    for (unsigned int i = 0; i < lent; i++) {
+        MMatrix matI = BBoxOfDeformers[i].mat.inverse();
+        orig2 = orig * matI;
+        direction2 = direction * matI;
+
+        MPoint minPt = BBoxOfDeformers[i].minPt;
+        MPoint maxPt = BBoxOfDeformers[i].maxPt;
+        MPoint center = BBoxOfDeformers[i].center;
+
+        bool intersect = RayIntersectsBBox(minPt, maxPt, orig2, direction2);
+        if (intersect) {
+            double dst = center.distanceTo(orig2);
+            if ((closestInfluence == -1) || (dst < closestDistance)) {
+                closestDistance = dst;
+                closestInfluence = i;
+            }
+        }
+    }
+    return closestInfluence;
+}
+
+int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint &hitPoint) {
+    // get closest vertex
+    auto verticesSet = getSurroundingVerticesPerFace(faceHit);
+    int indexVertex = -1;
+    float closestDist;
+    for (int ptIndex : verticesSet) {
+        MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
+                             this->mayaRawPoints[ptIndex * 3 + 2]);
+        float dist = posPoint.distanceTo(hitPoint);
+        if (indexVertex == -1 || dist < closestDist) {
+            indexVertex = ptIndex;
+            closestDist = dist;
+        }
+    }
+    // now get highest influence for this vertex
+
+    int biggestInfluence = -1;
+    double biggestVal = 0;
+    std::vector<double> allWeights;
+    for (int indexInfluence = 0; indexInfluence < this->nbJoints; ++indexInfluence) {
+        double theWeight = 0.0;
+        int ind_swl = indexVertex * this->nbJoints + indexInfluence;
+        if (ind_swl < this->skinWeightList.length())
+            theWeight = this->skinWeightList[ind_swl];
+        allWeights.push_back(theWeight);
+        if (theWeight > biggestVal) {
+            biggestVal = theWeight;
+            biggestInfluence = indexInfluence;
+        }
+    }
+    // now sort the allWights array (I found that online hoepfully it works)
+    std::vector<int> indices;
+    indices.resize(this->nbJoints);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(),
+              [&](int i, int j) { return allWeights[i] > allWeights[j]; });
+
+    // now we transfer that to our UI
+    this->orderedIndicesByWeights = MString("");
+    this->orderedIndicesByWeightsVals.clear();
+    for (int ind : indices) {
+        this->orderedIndicesByWeights += MString("") + ind + MString(" ");
+        this->orderedIndicesByWeightsVals.append(ind);
+    }
+    return biggestInfluence;
+}
+
+MStatus SkinBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawManager,
+                                     const MHWRender::MFrameContext &context) {
+    event.getPosition(screenX, screenY);
+    bool displayPickInfluence = this->pickMaxInfluenceVal || this->pickInfluenceVal;
+    if (this->pickInfluenceVal) {
+        // -------------------------------------------------------------------------------------------------
+        // start fill jnts boundingBox
+        // --------------------------------------------------------------------
+        if (this->BBoxOfDeformers.size() == 0) {  // fill it
+            double jointDisplayVal;
+            MGlobal::executeCommand("jointDisplayScale -query", jointDisplayVal);
+
+            int lent = this->inflDagPaths.length();
+            MPoint zero(0, 0, 0);
+            MVector up(0, 1, 0);
+            MVector right(1, 0, 0);
+            MVector side(0, 0, 1);
+            for (unsigned int i = 0; i < lent; i++) {  // for all deformers
+                MDagPath path = this->inflDagPaths[i];
+                drawingDeformers newDef;
+
+                MMatrix worldMatrix = path.inclusiveMatrix();        // worldMatrix
+                MMatrix parentMatrix = path.exclusiveMatrix();       // parentMatrix
+                MMatrix mat = worldMatrix * parentMatrix.inverse();  // matrix
+
+                MBoundingBox bbox;
+
+                right = MVector(worldMatrix[0]);
+                up = MVector(worldMatrix[1]);
+                side = MVector(worldMatrix[2]);
+
+                unsigned int nbShapes;
+                path.numberOfShapesDirectlyBelow(nbShapes);
+                if (nbShapes != 0) {
+                    path.extendToShapeDirectlyBelow(0);
+                    MFnDagNode dag(path);
+                    bbox = dag.boundingBox();  // Returns the bounding box for the dag node in
+                                               // object space.
+
+                    MPoint center = bbox.center() * worldMatrix;
+                    newDef.center = center;
+                    newDef.width = 0.5 * bbox.width() * right.length();
+                    newDef.height = 0.5 * bbox.height() * up.length();
+                    newDef.depth = 0.5 * bbox.depth() * side.length();
+
+                    newDef.mat = worldMatrix;
+                    newDef.minPt = bbox.min();
+                    newDef.maxPt = bbox.max();
+                } else {
+                    MFnDagNode dag(path);
+                    MStatus plugStat;
+                    MPlug radiusPlug = dag.findPlug("radius", false, &plugStat);
+                    double multVal = jointDisplayVal;
+                    if (plugStat == MStatus::kSuccess) {
+                        multVal *= radiusPlug.asDouble();
+                    }
+
+                    newDef.center = zero * worldMatrix;
+                    newDef.width = 0.5 * right.length() * multVal;
+                    newDef.height = 0.5 * up.length() * multVal;
+                    newDef.depth = 0.5 * side.length() * multVal;
+
+                    newDef.mat = worldMatrix;
+                    newDef.minPt = multVal * MPoint(-0.5, -0.5, -0.5);
+                    newDef.maxPt = multVal * MPoint(0.5, 0.5, 0.5);
+                }
+                newDef.up = up;
+                newDef.right = right;
+
+                BBoxOfDeformers.push_back(newDef);
+            }
+        }  // end fill it
+
+        // end fill jnts boundingBox
+        // --------------------------------------------------------------------
+        // -----------------------------------------------------------------------------------------------
+        biggestInfluence = getClosestInfluenceToCursor(screenX, screenY);
+    }
+
+    int faceHit;
+    successFullHit = computeHit(screenX, screenY, true, faceHit, this->centerOfBrush);
+
+    if (!successFullHit && !this->refreshDone) {  // try to re-get accelParams in case no hit
+        refreshPointsNormals();
+        successFullHit = computeHit(screenX, screenY, true, faceHit, this->centerOfBrush);
+        this->refreshDone = true;
+    }
+
+    if (!successFullHit && !displayPickInfluence) return MStatus::kNotFound;
+
+    drawManager.beginDrawable();
+    drawManager.setColor(MColor(0.0, 0.0, 1.0));
+    drawManager.setLineWidth((float)lineWidthVal);
+    MColor biggestInfluenceColor(1.0, 0.0, 0.0);
+
+    if (this->pickMaxInfluenceVal || this->pickInfluenceVal) {
+        if (this->pickInfluenceVal) {
+            // ---------------------------------------------------------------------------------------
+            // start reDraw jnts
+            // --------------------------------------------------------------------
+            int lent = this->inflDagPaths.length();
+            drawManager.setColor(MColor(0.0, 0.0, 0.0));
+            for (unsigned int i = 0; i < lent; i++) {
+                bool fillDraw = i == biggestInfluence;
+                if (i == biggestInfluence) {
+                    drawManager.setColor(biggestInfluenceColor);
+                } else {
+                    if (i == this->influenceIndex) fillDraw = true;
+                    drawManager.setColor(jointsColors[i]);
+                }
+                drawingDeformers bbosDfm = BBoxOfDeformers[i];
+                drawManager.box(bbosDfm.center, bbosDfm.up, bbosDfm.right, bbosDfm.width,
+                                bbosDfm.height, bbosDfm.depth, fillDraw);
+            }
+            // end reDraw jnts
+            // ----------------------------------------------------------------------
+            // ---------------------------------------------------------------------------------------
+        }
+
+        drawManager.setFontSize(14);
+        drawManager.setFontName(MString("MS Shell Dlg 2"));
+        drawManager.setFontWeight(1);
+        MColor Yellow(1.0, 1.0, 0.0);
+
+        if (this->pickMaxInfluenceVal) {
+            Yellow = MColor(1.0, 0.5, 0.0);
+            if (successFullHit)
+                biggestInfluence = getHighestInfluence(faceHit, this->centerOfBrush);
+            else
+                biggestInfluence = -1;
+        }
+        MString text("--");
+        drawManager.setColor(MColor(0.0, 0.0, 0.0));
+
+        int backgroundSize[] = {60, 20};
+        if (biggestInfluence != -1) {
+            text = this->inflNames[biggestInfluence];
+            backgroundSize[0] = this->inflNamePixelSize[2 * biggestInfluence];
+            backgroundSize[1] = this->inflNamePixelSize[2 * biggestInfluence + 1];
+            worldPoint = worldPoint + .1 * worldVector.normal();
+            drawManager.text(worldPoint, text, MHWRender::MUIDrawManager::TextAlignment::kCenter,
+                             backgroundSize, &Yellow);
+            // drawing full front camera
+        } else {
+            drawManager.text2d(MPoint(this->screenX, this->screenY, 0.0), text,
+                               MHWRender::MUIDrawManager::TextAlignment::kCenter, backgroundSize,
+                               &Yellow);
+            // drawing behind bboxes
+        }
+    } else {
+        drawManager.circle(this->centerOfBrush, this->normalVector, sizeVal);
+        MVector worldVector;
+        view.viewToWorld(this->screenX, this->screenY, worldPoint, worldVector);
+
+        if (paintMirror != 0) {  // if mirror is not OFf
+            // here paint the mirror Brush
+            int faceMirrorHit;
+            bool mirroredFound = getMirrorHit(faceMirrorHit, this->centerOfMirrorBrush);
+            if (mirroredFound) {
+                drawManager.setColor(MColor(0.0, 1.0, 1.0));
+                drawManager.circle(this->centerOfMirrorBrush, this->normalMirroredVector, sizeVal);
+            }
+        }
+    }
+    drawManager.endDrawable();
+    return MS::kSuccess;
+}
+
 MStatus SkinBrushContext::doPressCommon(MEvent &event) {
     MStatus status = MStatus::kSuccess;
 
@@ -2197,7 +2446,6 @@ MStatus SkinBrushContext::fillArrayValuesDEP(MObject &skinCluster, bool doColors
 //      int array           The array of all influence indices.
 //
 MIntArray SkinBrushContext::getInfluenceIndices(){
-    unsigned int i;
     MFnSkinCluster skinFn(this->skinObj);
 
     MIntArray influenceIndices;
@@ -2218,7 +2466,7 @@ MIntArray SkinBrushContext::getInfluenceIndices(){
 
     QFontMetrics fontMetrics(QFont("MS Shell Dlg 2", 14));
 
-    for (i = 0; i < lent; i++) {
+    for (unsigned i = 0; i < lent; i++) {
         influenceIndices.append((int)i);
         MFnDependencyNode influenceFn(this->inflDagPaths[i].node(), &stat);
         if (stat != MS::kSuccess) {

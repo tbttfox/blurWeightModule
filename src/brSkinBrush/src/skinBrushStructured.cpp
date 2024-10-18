@@ -116,7 +116,10 @@ struct InfluenceData {
     MColor lockJntColor; // The color to draw when the joint is locked
     MIntArray lockJoints; // 0 where the joint is unlocked. 1 where the joint is locked
     MIntArray ignoreLockJoints; // An array of all "false" that gets passed to functions instead of `lockJoins` when `ignoreLockVal` is set
+
+    MDagPathArray inflDagPaths; // An Array holding dag paths to all the influence objects
 };
+
 
 
 struct WeightData {
@@ -190,7 +193,6 @@ struct UserInputData {
     // double interactiveValue1
     // double interactiveValue2
 };
-
 
 
 struct InteractionData {
@@ -272,7 +274,7 @@ struct InteractionData {
     // The name of the currently picked influence
     MString pickedInfluence;
 
-    std::vector<drawingDeformers> BBoxOfDeformers; // The vector of bounding boxes of all the deformers  // TODO: LOOK INTO THIS, I THINK I DELETED WHERE IT GOT SET
+    std::vector<drawingDeformers> BBoxOfDeformers; // The vector of bounding boxes of all the deformers
     int biggestInfluence; // Storage of the biggest influence index on mouseover
 
     bool firstPaintDone; // Keep track of if we're done ... I think.  This one's weird.  Probably keeping track of if we close out unexpectedly or somethign
@@ -284,13 +286,21 @@ struct InteractionData {
     // needs to be static during the adjustment.
     MFloatPoint surfacePointAdjust;
     MVector worldVectorAdjust;
+
+    MStringArray orderedIndicesByWeights; // An array to hold the list of names of the influences ordered by weights
+    MStringArray orderedIndicesByWeightsVals; // An array to hold the list of indices of the influences ordered by weights
 };
+
+
+
+
+
+
 
 
 
 struct MirrorableData {
     // Need 2 copies of this struct.  One for regular paint, one for mirror
-
     MFloatPointArray AllHitPoints; // The currently hit points
     MFloatPoint centerOfBrush; // Where we should draw the brush in worldspace
     MFloatPoint inMatrixHit; // Where we should apply the brush in localspace
