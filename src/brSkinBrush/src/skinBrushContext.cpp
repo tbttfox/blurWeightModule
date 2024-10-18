@@ -175,7 +175,9 @@ void SkinBrushContext::toolOffCleanup() {
     }
 }
 
-void SkinBrushContext::getClassName(MString &name) const { name.set("brSkinBrush"); }
+void SkinBrushContext::getClassName(MString &name) const {
+    name.set("brSkinBrush");
+}
 
 void SkinBrushContext::refreshJointsLocks() {
     if (!skinObj.isNull()) {
@@ -304,84 +306,7 @@ void SkinBrushContext::refresh() {
 // ---------------------------------------------------------------------
 // viewport 2.0
 // ---------------------------------------------------------------------
-int SkinBrushContext::getClosestInfluenceToCursor(int screenX, int screenY) {
-    MStatus stat;
-    MPoint nearClipPt, farClipPt;
-    MVector direction, direction2;
-    MPoint orig, orig2;
-    view.viewToWorld(screenX, screenY, orig, direction);
 
-    int lent = this->inflDagPaths.length();
-    int closestInfluence = -1;
-    double closestDistance = -1;
-
-    for (unsigned int i = 0; i < lent; i++) {
-        MMatrix matI = BBoxOfDeformers[i].mat.inverse();
-        orig2 = orig * matI;
-        direction2 = direction * matI;
-
-        MPoint minPt = BBoxOfDeformers[i].minPt;
-        MPoint maxPt = BBoxOfDeformers[i].maxPt;
-        MPoint center = BBoxOfDeformers[i].center;
-
-        bool intersect = RayIntersectsBBox(minPt, maxPt, orig2, direction2);
-        if (intersect) {
-            double dst = center.distanceTo(orig2);
-            if ((closestInfluence == -1) || (dst < closestDistance)) {
-                closestDistance = dst;
-                closestInfluence = i;
-            }
-        }
-    }
-    return closestInfluence;
-}
-
-int SkinBrushContext::getHighestInfluence(int faceHit, MFloatPoint &hitPoint) {
-    // get closest vertex
-    auto verticesSet = getSurroundingVerticesPerFace(faceHit);
-    int indexVertex = -1;
-    float closestDist;
-    for (int ptIndex : verticesSet) {
-        MFloatPoint posPoint(this->mayaRawPoints[ptIndex * 3], this->mayaRawPoints[ptIndex * 3 + 1],
-                             this->mayaRawPoints[ptIndex * 3 + 2]);
-        float dist = posPoint.distanceTo(hitPoint);
-        if (indexVertex == -1 || dist < closestDist) {
-            indexVertex = ptIndex;
-            closestDist = dist;
-        }
-    }
-    // now get highest influence for this vertex
-
-    int biggestInfluence = -1;
-    double biggestVal = 0;
-    std::vector<double> allWeights;
-    for (int indexInfluence = 0; indexInfluence < this->nbJoints; ++indexInfluence) {
-        double theWeight = 0.0;
-        int ind_swl = indexVertex * this->nbJoints + indexInfluence;
-        if (ind_swl < this->skinWeightList.length())
-            theWeight = this->skinWeightList[ind_swl];
-        allWeights.push_back(theWeight);
-        if (theWeight > biggestVal) {
-            biggestVal = theWeight;
-            biggestInfluence = indexInfluence;
-        }
-    }
-    // now sort the allWights array (I found that online hoepfully it works)
-    std::vector<int> indices;
-    indices.resize(this->nbJoints);
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(),
-              [&](int i, int j) { return allWeights[i] > allWeights[j]; });
-
-    // now we transfer that to our UI
-    this->orderedIndicesByWeights = MString("");
-    this->orderedIndicesByWeightsVals.clear();
-    for (int ind : indices) {
-        this->orderedIndicesByWeights += MString("") + ind + MString(" ");
-        this->orderedIndicesByWeightsVals.append(ind);
-    }
-    return biggestInfluence;
-}
 
 MStatus SkinBrushContext::doPress(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
                                   const MHWRender::MFrameContext &context) {
@@ -690,276 +615,6 @@ MStatus SkinBrushContext::drawMeshWhileDrag(MHWRender::MUIDrawManager &drawManag
 }
 
 
-MStatus drawMeshWhileDrag(
-    // Pretty sure These are the only two things that change each frame
-    std::set<int> &verticesPainted, // The full set of vertices that are currently being painted
-    std::unordered_map<int, std::pair<float, float>> &mirroredJoinedArray, // An array of weights and mirror weights: <VertexIndex (weightBase, weightMirrored)>
-
-    int numFaces, // The number of faces on the current mesh
-    int numEdges, // The number of edges on the current mesh
-    int numVertices, // The number of vertices in the current mesh
-    int influenceIndex, // The index of the influence currently being painted
-    int paintMirror, // The mirror behavior index
-    int soloColorVal, // The solo color index
-
-    bool drawTransparency, // Whether to draw transparency
-    bool drawPoints,  // Whether to draw points
-    bool drawTriangles,  // Whether to draw Triangles
-    bool drawEdges,  // Whether to draw Edges
-
-    MColor &lockVertColor,  // The color to draw verts if they're locked
-    MColorArray &jointsColors, // An array of joint colors
-    MColorArray &soloCurrentColors, // Per-vertex array of solo colors
-    MColorArray &multiCurrentColors, // Per-vertex array of multi-colors
-
-    float* mayaRawPoints, // A C-style array pointing to the mesh vertex positions
-
-    ModifierCommands theCommandIndex,  // The current command index
-
-    MIntArray &mirrorInfluences,  // A mapping between the current influence, and the mirrored one
-    MFloatMatrix &inclusiveMatrix,  // The worldspace matrix of the current mesh
-    MVectorArray &verticesNormals, // The per-vertex local space normals of the mesh
-
-    std::vector<MIntArray> &perVertexFaces, // The face indices for each vertex
-    std::vector<MIntArray> &perVertexEdges, // The edge indices for each vertex
-    std::vector<std::vector<MIntArray>> &perFaceTriangleVertices, // Somehow get the triangle indices per face
-    std::vector<std::pair<int, int>> &perEdgeVertices, // The endpoint vertex indices of each edge
-
-    MHWRender::MUIDrawManager &drawManager // Maya's DrawManager
-) {
-    // This function is the hottest path when painting
-    // So it can and should be optimized more
-    // I think the endgame for this is to only update the changed vertices each runthrough
-    int nbVtx = verticesPainted.size();
-
-    MFloatPointArray points(nbVtx);
-    MFloatVectorArray normals(nbVtx);
-    MColor theCol(1, 1, 1), white(1, 1, 1, 1), black(0, 0, 0, 1);
-
-    MColorArray pointsColors(nbVtx, theCol);
-
-    MUintArray indices, indicesEdges;  // (nbVtx);
-    MColorArray darkEdges;             // (nbVtx, MColor(0.5, 0.5, 0.5));
-
-    MColor newCol, col;
-
-    std::unordered_map<int, unsigned int> verticesMap;
-    std::vector<bool> fatFaces_bitset;
-    std::vector<bool> fatEdges_bitset;
-    std::vector<bool> vertMap_bitset;
-
-    fatFaces_bitset.resize(numFaces);
-    fatEdges_bitset.resize(numEdges);
-    vertMap_bitset.resize(numVertices);
-
-    MColor baseColor, baseMirrorColor;
-    float h, s, v;
-    // get baseColor ----------------------------------
-    // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
-    // UnLockVertices
-
-    if (drawTransparency || drawPoints) {
-        if (theCommandIndex == ModifierCommands::LockVertices)
-            baseColor = lockVertColor;
-        else if (theCommandIndex == ModifierCommands::Remove)
-            baseColor = black;
-        else if (theCommandIndex == ModifierCommands::UnlockVertices)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::Smooth)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::Sharpen)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::LockVertices)
-            baseColor = white;
-        else if (theCommandIndex == ModifierCommands::UnlockVertices)
-            baseColor = white;
-        else {
-            baseColor = jointsColors[influenceIndex];
-            if (paintMirror != 0) {
-                baseMirrorColor = jointsColors[mirrorInfluences[influenceIndex]];
-                baseMirrorColor.get(MColor::kHSV, h, s, v);
-                baseMirrorColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
-            }
-        }
-        baseColor.get(MColor::kHSV, h, s, v);
-        baseColor.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15));
-        if ((theCommandIndex != ModifierCommands::Add) && (theCommandIndex != ModifierCommands::AddPercent)) {
-            baseMirrorColor = baseColor;
-        }
-    }
-
-    // pull data out of the dictionary
-    // TODO: There's probably a copy-less way to do this
-    std::vector<std::pair<int, std::pair<float, float>>> mja;
-    mja.reserve( mirroredJoinedArray.size());
-    for (const auto &pt : mirroredJoinedArray) {
-        mja.push_back(pt);
-    }
-
-    MColorArray colors, colorsSolo;
-    colors.setLength(mja.size());
-    colorsSolo.setLength(mja.size());
-
-    MColorArray *usedColors;
-    MColorArray *currentColors;
-    if (soloColorVal == 1){
-        usedColors = &colorsSolo;
-        currentColors = &soloCurrentColors;
-    }
-    else {
-        usedColors = &colors;
-        currentColors = &multiCurrentColors;
-    }
-
-    bool doTransparency = drawTransparency;
-    bool applyGamma = true;
-    if (theCommandIndex == ModifierCommands::LockVertices || theCommandIndex == ModifierCommands::UnlockVertices){
-        // Don't do transparency when locking/unlocking vertices
-        doTransparency = false;
-        applyGamma = false;
-    }
-
-#pragma omp parallel for
-    for (unsigned i = 0; i < mja.size(); ++i){
-        const auto &pt = mja[i];
-        int ptIndex = pt.first;
-        MFloatPoint posPoint(
-            mayaRawPoints[ptIndex * 3],
-            mayaRawPoints[ptIndex * 3 + 1],
-            mayaRawPoints[ptIndex * 3 + 2]
-        );
-        posPoint = posPoint * inclusiveMatrix;
-        points.set(posPoint, i);
-        normals.set(verticesNormals[ptIndex], i);
-    }
-
-    if (drawTriangles) {
-#pragma omp parallel for
-        for (unsigned i = 0; i < mja.size(); ++i){
-            const auto &pt = mja[i];
-            int ptIndex = pt.first;
-            float weightBase = pt.second.first;
-            float weightMirror = pt.second.second;
-            MColor multColor, soloColor;
-            // TODO: Extract
-            //getColorWithMirror(ptIndex, weightBase, weightMirror, colors, colorsSolo, multColor, soloColor);
-            colors.set(multColor, i);
-            colorsSolo.set(soloColor, i);
-        }
-
-        if (applyGamma){
-#pragma omp parallel for
-            for (unsigned i = 0; i < mja.size(); ++i){
-                const auto &pt = mja[i];
-                float weightBase = pt.second.first;
-                float weightMirror = pt.second.second;
-                float transparency = (doTransparency) ? weightBase + weightMirror: 1.0;
-                MColor& colRef = (*usedColors)[i];
-                colRef.get(MColor::kHSV, h, s, v);
-                colRef.set(MColor::kHSV, h, pow(s, 0.8), pow(v, 0.15), transparency);
-            }
-        }
-    }
-
-    if (drawPoints) {
-#pragma omp parallel for
-        for (unsigned i = 0; i < mja.size(); ++i){
-            const auto &pt = mja[i];
-            float weight = pt.second.first + pt.second.second;
-            pointsColors[i] = weight * baseColor + (1.0 - weight) * (*currentColors)[pt.first];
-        }
-    }
-
-    if (drawEdges) {
-        darkEdges.setLength(mja.size());
-#pragma omp parallel for
-        for (unsigned i = 0; i < mja.size(); ++i){
-            const auto &pt = mja[i];
-            float transparency = (doTransparency) ? pt.second.first + pt.second.second: 1.0;
-            darkEdges.set(i, 0.5f, 0.5f, 0.5f, transparency);
-        }
-    }
-
-    if (drawTriangles || drawEdges) {
-        for (unsigned i = 0; i < mja.size(); ++i){
-            const auto &pt = mja[i];
-            verticesMap[pt.first] = i;
-            vertMap_bitset[pt.first] = true;
-        }
-    }
-
-    if (drawTriangles) {
-        for (unsigned i = 0; i < mja.size(); ++i){
-            const auto &pt = mja[i];
-            int ptIndex = pt.first;
-            for (int f : perVertexFaces[ptIndex]){
-                fatFaces_bitset[f] = true;
-            }
-        }
-    }
-
-    if (drawEdges) {
-        for (unsigned i = 0; i < mja.size(); ++i){
-            const auto &pt = mja[i];
-            int ptIndex = pt.first;
-            for (int e : perVertexEdges[ptIndex]){
-                fatEdges_bitset[e] = true;
-            }
-        }
-    }
-
-    if (drawTriangles) {
-        // bitset is faster than an unordered_set in this case
-        // may be worth keeping the bitsets around on the brush
-        // so we don't have to constantly allocate memory
-        for (unsigned f = 0; f<fatFaces_bitset.size(); ++f){
-            if (!fatFaces_bitset[f]) continue;
-            for (auto &tri : perFaceTriangleVertices[f]) {
-                if (!vertMap_bitset[tri[0]]) continue;
-                if (!vertMap_bitset[tri[1]]) continue;
-                if (!vertMap_bitset[tri[2]]) continue;
-                auto it0 = verticesMap.find(tri[0]);
-                auto it1 = verticesMap.find(tri[1]);
-                auto it2 = verticesMap.find(tri[2]);
-                indices.append(it0->second);
-                indices.append(it1->second);
-                indices.append(it2->second);
-            }
-        }
-
-        auto style = MHWRender::MUIDrawManager::kFlat;
-        drawManager.setPaintStyle(style);  // kFlat // kShaded // kStippled
-        drawManager.mesh(MHWRender::MUIDrawManager::kTriangles, points, &normals, usedColors, &indices);
-    }
-
-    if (drawEdges) {
-        // bitset is faster than an unordered_set in this case
-        // may be worth keeping the bitsets around on the brush
-        // so we don't have to constantly allocate memory
-        for (unsigned e = 0; e<fatEdges_bitset.size(); ++e){
-            if (!fatEdges_bitset[e]) continue;
-            auto &pairEdges = perEdgeVertices[e];
-
-            if (!vertMap_bitset[pairEdges.first]) continue;
-            if (!vertMap_bitset[pairEdges.second]) continue;
-            auto it0 = verticesMap.find(pairEdges.first);
-            auto it1 = verticesMap.find(pairEdges.second);
-            indicesEdges.append(it0->second);
-            indicesEdges.append(it1->second);
-
-        }
-
-        drawManager.setDepthPriority(2);
-        drawManager.mesh(MHWRender::MUIDrawManager::kLines, points, &normals, &darkEdges, &indicesEdges);
-    }
-
-    if (drawPoints) {
-        drawManager.setPointSize(4);
-        drawManager.mesh(MHWRender::MUIDrawManager::kPoints, points, NULL, &pointsColors);
-    }
-    return MStatus::kSuccess;
-}
-
 MStatus SkinBrushContext::doRelease(MEvent &event, MHWRender::MUIDrawManager &drawMgr,
                                     const MHWRender::MFrameContext &context) {
     return doReleaseCommon(event);
@@ -1102,116 +757,6 @@ MStatus SkinBrushContext::doPressCommon(MEvent &event) {
     }
     return status;
 }
-
-
-
-
-std::vector<int> getSurroundingVerticesPerVert(
-    int vertexIndex,
-    const std::vector<int> &perVertexVerticesSetFLAT,
-    const std::vector<int> &perVertexVerticesSetINDEX
-) {
-    auto first = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex];
-    auto last = perVertexVerticesSetFLAT.begin() + perVertexVerticesSetINDEX[vertexIndex + (int)1];
-    std::vector<int> newVec(first, last);
-    return newVec;
-};
-
-
-
-void growArrayOfHitsFromCenters(
-    bool coverageVal,
-    double sizeVal,
-    const std::vector<int> &perVertexVerticesSetFLAT,
-    const std::vector<int> &perVertexVerticesSetINDEX,
-    const float * mayaRawPoints,
-    const MVectorArray &verticesNormals,
-    const MVector &worldVector,
-    const MFloatPointArray &AllHitPoints,
-
-    std::unordered_map<int, float> &dicVertsDist // Return value
-) {
-    if (AllHitPoints.length() == 0) return;
-
-    // set of visited vertices
-    std::vector<int> vertsVisited, vertsWithinDistance;
-
-    for (const auto& element : dicVertsDist) {
-        vertsVisited.push_back(element.first);
-    }
-    std::sort(vertsVisited.begin(), vertsVisited.end());
-    vertsWithinDistance = vertsVisited;
-
-    // start of growth
-    std::vector<int> borderOfGrowth;
-    borderOfGrowth = vertsVisited;
-
-    // make the std vector points for faster sorting
-    std::vector<point_t> points;
-    for (auto hitPt : AllHitPoints) {
-        points.push_back(std::make_tuple(hitPt.x, hitPt.y, hitPt.z));
-    }
-
-    bool keepGoing = true;
-    while (keepGoing) {
-        keepGoing = false;
-
-        // grow the vertices
-        std::vector<int> setOfVertsGrow;
-        for (const int &vertexIndex : borderOfGrowth) {
-            setOfVertsGrow = setOfVertsGrow + getSurroundingVerticesPerVert(
-                vertexIndex, perVertexVerticesSetFLAT, perVertexVerticesSetINDEX
-            );
-        }
-
-        // get the vertices that are grown
-        std::vector<int> verticesontheborder = setOfVertsGrow - vertsVisited;
-        std::vector<int> foundGrowVertsWithinDistance;
-
-        // for all vertices grown
-        for (int vertexBorder : verticesontheborder) {
-            // First check the normal
-            if (!coverageVal) {
-                MVector vertexBorderNormal = verticesNormals[vertexBorder];
-                double multVal = worldVector * vertexBorderNormal;
-                if (multVal > 0.0) continue;
-            }
-            float closestDist = -1;
-            // find the closestDistance and closest Vertex from visited vertices
-            point_t thisPoint = std::make_tuple(mayaRawPoints[vertexBorder * 3],
-                                                mayaRawPoints[vertexBorder * 3 + 1],
-                                                mayaRawPoints[vertexBorder * 3 + 2]);
-            auto glambda = [&thisPoint](const point_t &a, const point_t &b) {
-                float aRes = distance_sq(a, thisPoint);
-                float bRes = distance_sq(b, thisPoint);
-                return aRes < bRes;
-            };
-            std::partial_sort(points.begin(), points.begin() + 1, points.end(), glambda);
-            auto closestPoint = points.front();
-            closestDist = distance(closestPoint, thisPoint);
-            // get the new distance between the closest visited vertex and the grow vertex
-            if (closestDist <= sizeVal) {  // if in radius of the brush
-                // we found a vertex in the radius
-                // now add to the visited and add the distance to the dictionnary
-                keepGoing = true;
-                foundGrowVertsWithinDistance.push_back(vertexBorder);
-                auto ret = dicVertsDist.insert(std::make_pair(vertexBorder, closestDist));
-                if (!ret.second) ret.first->second = std::min(closestDist, ret.first->second);
-            }
-        }
-        // this vertices has been visited, let's not consider them anymore
-        std::sort(foundGrowVertsWithinDistance.begin(), foundGrowVertsWithinDistance.end());
-        vertsVisited = vertsVisited + verticesontheborder;
-        vertsWithinDistance = vertsWithinDistance + foundGrowVertsWithinDistance;
-
-        borderOfGrowth = foundGrowVertsWithinDistance;
-    }
-}
-
-
-
-
-
 
 void SkinBrushContext::growArrayOfHitsFromCenters(std::unordered_map<int, float> &dicVertsDist,
                                                   MFloatPointArray &AllHitPoints) {
@@ -1757,6 +1302,7 @@ ModifierCommands SkinBrushContext::getCommandIndexModifiers() const {
 
     return theCommandIndex;
 }
+
 void SkinBrushContext::mergeMirrorArray(std::unordered_map<int, float> &valuesBase,
                                         std::unordered_map<int, float> &valuesMirrored) {
     mirroredJoinedArray.clear();
@@ -1781,6 +1327,7 @@ void SkinBrushContext::mergeMirrorArray(std::unordered_map<int, float> &valuesBa
         }
     }
 }
+
 MStatus SkinBrushContext::applyCommandMirror() {
     MStatus status;
     MGlobal::displayInfo(MString("applyCommandMirror "));
@@ -2078,7 +1625,6 @@ MColor SkinBrushContext::getASoloColor(double val) const {
     return soloColor;
 }
 
-
 void copyToFloatMatrix(const MMatrix& src, MFloatMatrix& dst) {
     dst[0][0] = (float)src[0][0];
     dst[0][1] = (float)src[0][1];
@@ -2097,9 +1643,6 @@ void copyToFloatMatrix(const MMatrix& src, MFloatMatrix& dst) {
     dst[3][2] = (float)src[3][2];
     dst[3][3] = (float)src[3][3];
 }
-
-
-
 
 // ---------------------------------------------------------------------
 // brush methods
@@ -2224,192 +1767,6 @@ MStatus SkinBrushContext::getTheOrigMeshForMirror() {
     CHECK_MSTATUS_AND_RETURN_IT(status);  // only returns if bad
     return status;
 }
-/*
-store vertices connections
-*/
-
-
-
-
-
-
-/* Build a class that gives fast read access to arbitrarily sized
-faces by dense index.
-
-
-
-
-
-
-*/
-class FlatCounts {
-private:
-    std::vector<size_t> offsets;  // actually offsets
-    std::vector<int> values;
-
-public:
-    // Constructor from counts/vals pair of vectors
-    FlatCounts(const std::vector<int> &inCounts, const std::vector<int> &inVals){
-        values = inVals;
-
-        offsets.resize(inCounts.size() + 1);
-        offsets[0] = 0;
-        size_t i = 1, v = 0;
-        for (const auto& c : inCounts) {
-            v += c;
-            offsets[i++] = v;
-        }
-    }
-
-    // Constructor from vector-of-vectors
-    FlatCounts(const std::vector<std::vector<int>> &inVals){
-        offsets.resize(inVals.size() + 1);
-        offsets[0] = 0;
-        size_t i = 1, v = 0;
-        for (const auto& sub : inVals) {
-            v += sub.size();
-            offsets[i++] = v;
-            values.insert(values.end(), sub.begin(), sub.end());
-        }
-    }
-
-    // Constructor from unordered_map of vectors
-    FlatCounts(const std::unordered_map<int, std::vector<int>> &inVals){
-        std::vector<int> allkeys;
-        allkeys.reserve(inVals.size());
-        for (const auto& [key, value] : inVas) {
-            allkeys.push_back(key);
-        }
-        std::sort(allkeys.begin(), allkeys.end());
-
-        size_t offset = 0;
-        for (size_t i=0; i<allkeys[allkeys.size() - 1]; ++i){
-            auto search = inVals.find(i);
-            if (search != inVals.end()){
-                offset += search->second.size();
-                values.insert(values.end(), search->second.begin(), search->second.end());
-            }
-            offsets.push_back(offset);
-        }
-    }
-
-    // Constructor from map of vectors
-    FlatCounts(const std::map<int, std::vector<int>> &inVals){
-        size_t offset = 0;
-        size_t prev = 0;
-        for (const auto& [key, value] : inVals){
-            for (size_t k = prev; k < key; k++){
-                // Fill in the sections we skipped
-                offsets.push_back(offset);
-            }
-            prev = k;
-            offset += value.length();
-            values.insert(values.end(), value.begin(), value.end());
-        }
-    }
-
-    const std::span<const int> operator [](size_t i) const {
-        return std::span<const int>(values.begin() + offsets[i], values.begin() + offsets[i + 1]);
-    }
-};
-
-
-
-
-void  getAllConnections(
-    MFnMesh &meshFn,  // For getting the mesh data
-    MDagPath &meshDag,  // So I can get the "maya canonical" edges
-
-    std::vector<std::vector<int>> &perVertexFaces,  // x[vertIdx] -> [list-of-faceIdxs]
-    std::vector<std::vector<int>> &perVertexEdges,  // x[vertIdx] -> [list-of-edgeIdxs]
-    std::vector<std::vector<int>> &perVertexVertices, // x[vertIdx] -> [list-of-vertIdxs that share a face with the input]
-    std::vector<std::vector<int>> &perFaceVertices,  // x[faceIdx] -> [list-of-vertIdxs]
-    std::vector<std::array<int, 2>> &perEdgeVertices, // x[edgeIdx] -> [pair-of-vertIdxs]
-    std::vector<std::vector<std::array<int, 3>>> &perFaceTriangleVertices // x[face][triIdx] -> [list_of_vertIdxs]
-){
-    // Get the data from the mesh and dag path
-    MIntArray counts, flatFaces, triangleCounts, triangleVertices;
-    meshFn.getVertices(counts, flatFaces);
-    meshFn.getTriangles(triangleCounts, triangleVertices);
-    int numVertices = meshFn.numVertices();
-    int numFaces = meshFn.numPolygons();
-    int numEdges = meshFn.numEdges();
-
-    // Reset all the output vectors
-    perVertexFaces.clear();
-    perVertexFaces.resize(numVertices);
-    perVertexEdges.clear();
-    perVertexEdges.resize(numVertices);
-    perVertexVertices.clear();
-    perVertexVertices.resize(numVertices);
-
-    perFaceVertices.clear();
-    perFaceVertices.resize(numFaces);
-    perFaceTriangleVertices.clear();
-    perFaceTriangleVertices.resize(numFaces);
-
-    perEdgeVertices.clear();
-    perEdgeVertices.resize(numEdges);
-
-
-    // Get the face/vert correlations
-    unsigned int iter = 0, triIter = 0;
-    for (unsigned int faceId = 0; faceId < numFaces; ++faceId) {
-        for (int i = 0; i < counts[faceId]; ++i, ++iter) {
-            int indVertex = flatFaces[iter];
-            perFaceVertices[faceId].push_back(indVertex);
-            perVertexFaces[indVertex].push_back(faceId);
-        }
-        perFaceTriangleVertices[faceId].resize(triangleCounts[faceId]);
-        for (int triId = 0; triId < triangleCounts[faceId]; ++triId) {
-            perFaceTriangleVertices[faceId][triId][0] = triangleVertices[triIter++];
-            perFaceTriangleVertices[faceId][triId][1] = triangleVertices[triIter++];
-            perFaceTriangleVertices[faceId][triId][2] = triangleVertices[triIter++];
-        }
-    }
-
-    // Get the edge/vert correlations
-    MItMeshEdge edgeIter(meshDag);
-    for (unsigned i = 0; !edgeIter.isDone(); edgeIter.next(), ++i) {
-        int pt0Index = edgeIter.index(0);
-        int pt1Index = edgeIter.index(1);
-        perVertexEdges[pt0Index].push_back(i);
-        perVertexEdges[pt1Index].push_back(i);
-        perEdgeVertices[i][0] = pt0Index;
-        perEdgeVertices[i][1] = pt1Index;
-    }
-
-    // Build the face-growing neighbors
-#pragma omp parallel for
-    for (int vertIdx = 0; vertIdx < numVertices; ++vertIdx) {
-        std::vector<int> &toAdd = perVertexVertices[vertIdx];
-        for (int faceIdx: perVertexFaces[vertIdx]){
-            std::vector<int> &faceVerts = perFaceVertices[faceIdx];
-            toAdd.insert(toAdd.end(), faceVerts.begin(), faceVerts.end());
-        }
-        // For such a short vec, sorting then erasing is the fastest
-        std::sort(toAdd.begin(), toAdd.end());
-        toAdd.erase(std::unique(toAdd.begin(), toAdd.end()), toAdd.end());
-    }
-
-    // TODO: Flatten all connections
-    // And make a class type that provides easy access to count/connect data
-    FlatCounts pvFaces(perVertexFaces);
-    FlatCounts pvEdges(perVertexEdges);
-    FlatCounts pvVerts(perVertexVertices);
-    FlatCounts pfVerts(perFaceVertices);
-}
-
-
-
-
-
-
-
-
-
-
-
 
 void SkinBrushContext::getConnectedVertices() {
     MStatus status;
@@ -2759,21 +2116,6 @@ MStatus SkinBrushContext::fillArrayValues(MObject &skinCluster, bool doColors) {
     }
 
     return status;
-}
-
-MStatus SkinBrushContext::displayWeightValue(int vertexIndex, bool displayZero) const {
-    MString toDisplay = MString("weigth of vtx (") + vertexIndex + MString(") : ");
-    for (unsigned int indexInfluence = 0; indexInfluence < this->nbJoints;
-         indexInfluence++) {  // for each joint
-        double theWeight = 0.0;
-        int ind_swl = vertexIndex * this->nbJoints + indexInfluence;
-        if (ind_swl < this->skinWeightList.length())
-            theWeight = this->skinWeightList[ind_swl];
-        if (theWeight == 0 && !displayZero) continue;
-        toDisplay += MString("[") + indexInfluence + MString(": ") + theWeight + MString("] ");
-    }
-    MGlobal::displayInfo(toDisplay);
-    return MS::kSuccess;
 }
 
 MStatus SkinBrushContext::fillArrayValuesDEP(MObject &skinCluster, bool doColors) {
@@ -3193,7 +2535,6 @@ void SkinBrushContext::getColorWithMirror(int vertexIndex, float valueBase, floa
     }
 }
 
-
 void SkinBrushContext::preparePaint(std::unordered_map<int, float> &dicVertsDist,
                                        std::unordered_map<int, float> &dicVertsDistPrevPaint,
                                        std::vector<float> &intensityValues,
@@ -3251,6 +2592,7 @@ void SkinBrushContext::preparePaint(std::unordered_map<int, float> &dicVertsDist
         }
     }
 }
+
 MStatus SkinBrushContext::doPerformPaint() {
     MStatus status = MStatus::kSuccess;
 
@@ -3317,45 +2659,6 @@ MObject SkinBrushContext::allVertexComponents(){
     }
     return vtxComponents;
 }
-
-//
-// Description:
-//      Return the vertex indices of the brush volume which are within
-//      the range of the current index.
-//
-// Input Arguments:
-//      index               The vertex index.
-//      volumeIndices       The array of all indices of the brush
-//                          volume.
-//      rangeIndices        The array of indices which are in range of
-//                          the vertex.
-//      values              The array of falloff values based on the
-//                          distance to the center vertex.
-//
-// Return Value:
-//      None
-//
-
-
-
-
-double getFalloffValue(int curveVal, double value, double strength) {
-    switch (curveVal) {
-        case 0: // no falloff
-            return strength;
-        case 1: // linear
-            return value * strength;
-        case 2: // smoothstep
-            return (value * value * (3 - 2 * value)) * strength;
-        case 3: // narrow - quadratic
-            return (1 - pow((1 - value) / 1, 0.4)) * strength;
-        default:
-            return value;
-    }
-}
-
-
-
 
 //
 // Description:
