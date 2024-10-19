@@ -2690,19 +2690,37 @@ bool SkinBrushContext::expandHit(int faceHit, MFloatPoint &hitPoint,
     return foundHit;
 }
 
+// Just get a reference to the function for reuse
+double fo_noFalloff(double v, double s){return s;};
+double fo_linearFalloff(double v, double s){return v * s;};
+double fo_smoothstepFalloff(double v, double s){return (v * v * (3 - 2 * v)) * s;};
+double fo_narrowFalloff(double v, double s){return (1 - pow((1 - v) / 1, 0.4)) * s;};
+double fo_defaultFalloff(double v, double s){return v;};
+
 void SkinBrushContext::addBrushShapeFallof(std::unordered_map<int, float> &dicVertsDist) const {
     double valueStrength = strengthVal;
     if (this->modifierNoneShiftControl == ModifierKeys::ControlShift || this->commandIndex == ModifierCommands::Smooth) {
-        valueStrength = smoothStrengthVal;  // smooth always we use the smooth value different of
-                                            // the regular value
+        valueStrength = smoothStrengthVal;  // smooth always we use the smooth value different of the regular value
     }
 
     if (fractionOversamplingVal) valueStrength /= oversamplingVal;
 
+    // PROFILED HOT PATH
+    // Should be faster than putting this switch case in the tight loop
+    // if not, then we could just make a bunch of tight loops
+    double (*fo_pointer)(double, double);
+    switch (curveVal) {
+        case 0: fo_pointer = fo_noFalloff; break;
+        case 1: fo_pointer = fo_linearFalloff; break;
+        case 2: fo_pointer = fo_smoothstepFalloff; break;
+        case 3: fo_pointer = fo_narrowFalloff; break;
+        default: fo_pointer = fo_defaultFalloff; break;
+    }
+
+    double svi = 1.0 / this->sizeVal;
     for (auto &element : dicVertsDist) {
-        float value = 1.0 - (element.second / this->sizeVal);
-        value = (float)getFalloffValue(value, valueStrength);
-        element.second = value;
+        double val = 1.0 - (element.second * svi);
+        element.second = (float)fo_pointer(val, valueStrength);
     }
 }
 
@@ -2895,7 +2913,6 @@ MObject SkinBrushContext::allVertexComponents(){
         MFnSingleIndexedComponent compFn;
         vtxComponents = compFn.create(MFn::kMeshVertComponent);
         compFn.setCompleteData((int)numVertices);
-        numElements = numVertices;
     } else {
         MFnDoubleIndexedComponent allCVs;
         int sizeInV = nurbsFn.numCVsInV();
@@ -2903,7 +2920,6 @@ MObject SkinBrushContext::allVertexComponents(){
 
         vtxComponents = allCVs.create(MFn::kSurfaceCVComponent);
         allCVs.setCompleteData(sizeInU, sizeInV);
-        numElements = allCVs.elementCount();
     }
     return vtxComponents;
 }
@@ -2920,23 +2936,8 @@ MObject SkinBrushContext::allVertexComponents(){
 // Return Value:
 //      double              The brush curve-based falloff value.
 //
-double SkinBrushContext::getFalloffValue(double value, double strength) const {
-    switch (curveVal) {
-        case 0: // no falloff
-            return strength;
-        case 1: // linear
-            return value * strength;
-        case 2: // smoothstep
-            return (value * value * (3 - 2 * value)) * strength;
-        case 3: // narrow - quadratic
-            return (1 - pow((1 - value) / 1, 0.4)) * strength;
-        default:
-            return value;
-    }
-}
 
 void SkinBrushContext::setInViewMessage(bool display) const {
-    // TODO: Update this dynamically based on hotkey prefs
     if (display && messageVal){
         MString cmd = "inViewMessage -position topCenter -statusMessage \""
             "<hl>LMB</hl> to add  |  "
