@@ -56,13 +56,14 @@ struct MeshData {
 
     MDagPath meshDag; // The MDagPath pointing to a mesh
     MFnMesh meshFn; // The Mesh Functionset for this mesh
+    int numFaces; // The number of faces on the current mesh
+    int numEdges; // The number of edges on the current mesh
+    int numVertices; // The number of vertices on the current mesh
+
     MMeshIsectAccelParams accelParams; // Octree for speeding up raycasting
     MFloatMatrix inclusiveMatrix;  // The worldspace matrix of this mesh
     MFloatMatrix inclusiveMatrixInverse; // The inverse worldspace matrix of this mesh
 
-    int numFaces; // The number of faces on the current mesh
-    int numEdges; // The number of edges on the current mesh
-    int numVertices; // The number of vertices on the current mesh
     float* mayaOrigRawPoints; // The flattened point positions of the UNDEFORMED mesh
     float* mayaRawPoints; // The flattened point positions of the mesh
     float* rawNormals; // The flattened per-face-vertex normals
@@ -86,10 +87,10 @@ struct MeshData {
 
 
 struct NurbsData {
-    int numCVsInU_; // The U dimensions of CVs when painting nurbs
-    int numCVsInV_; // The V dimensions of CVs when painting nurbs
     MDagPath nurbsDag;  // The dagpath to the nurbs object
     MFnNurbsSurface nurbsFn; // The nurbs funciton set to the dagpath
+    int numCVsInU_; // The U dimensions of CVs when painting nurbs
+    int numCVsInV_; // The V dimensions of CVs when painting nurbs
 };
 
 
@@ -135,43 +136,43 @@ struct WeightData {
 
 struct UserInputData {
     // The user options from the UI
-    MColor colorVal; // -colorR -colorG -colorB // The color of the brush circle
-    int curveVal;  // -curve // The falloff curve value
-    bool drawBrushVal; // -drawBrush // Whether to draw the brush value to the screen for setting size/weight
-    bool drawRangeVal; // -drawRange // Whether to draw the range of the brusn when painting (??)
-    MString moduleImportString; // -importPython // Where is the python module for this tool
-    MString enterToolCommandVal; // -enterToolCommand // A mel command to run when entering the tool
-    MString exitToolCommandVal; // -exitToolCommand // A mel command to run when exiting the tool
-    bool ignoreLockVal; // -ignoreLock // Whether to ignore the lock value when painting
-    int lineWidthVal; // The width of the line drawn to screen
-    bool messageVal; // Show the usage message at the top of the screen
-    double oversamplingVal; // Value to scale the *effect* of the brush falloff by. Basically, make the falloffs quicker or slower
-    double fractionOversamplingVal; // Whether to take the oversampling val into account (THIS IS A TERRIBLE NAME!)
-    double sizeVal; // -size // The current size of the brush
-    double smoothStrengthVal; // -smoothStrength // The current smoothing strength value
-    double strengthVal; // -strength // the current strength value
-    int undersamplingVal; // -undersampling // The number of drag-steps between evaluation when MMB dragging
-    bool volumeVal; // -volume // whether to draw the volume range of the brush
-    double mirrorMinDist; // -toleranceMirror //The tolerance for finding the mirrored vertices
-    MIntArray mirrorInfluences; // -mirrorInfluences // A list of influences in-order of the skincluster that are the mirrors at the same index
-    int paintMirror; // -mirrorPaint // The mirror behavior index
-    bool useColorSetsWhilePainting; // -useColorSetsWhilePainting // Whether to use colorsets while painting
-    bool drawTriangles;  // -meshdrawTriangles // Whether to draw Triangles
-    bool drawEdges;  // -meshdrawEdges // Whether to draw Edges
-    bool drawPoints;  // -meshdrawPoints // Whether to draw points
-    bool drawTransparency; // -meshdrawTransparency // Whether to draw transparency
-    double minSoloColor;  // -minColor // The minimum DISPLAY value for nonzero solo colors
-    double maxSoloColor;  // -maxColor // The maximum DISPLAY value for nonzero solo colors
-    ModifierCommands commandIndex;  // -commandIndex // The command index to run
-    int smoothRepeat;  // -smoothRepeat // The number of iterations of smooth while dragging
-    int soloColorVal; // -soloColor // Whether we color solo, or we color rainbow (SHOULD BE BOOL)
-    int soloColorTypeVal; // The "enum" of the color type for soloing (lava, color, black/white (stuff like that))
-    bool pickMaxInfluenceVal; // -pickMaxInfluence // Whether we're picking the largest influence of the verts under the mouse
-    bool pickInfluenceVal; // -pickInfluence // Whether to pick the influence based on the influence object bounding box
-    bool postSetting; // -postSetting // whether to set the weights every loop, or wait until mouse release
-    ModifierKeys smoothModifier; // -shiftSmooths // What key smooths
-    ModifierKeys removeModifier; // -shiftSmooths // What key removes
-    int influenceIndex;  // -influenceIndex // The current influence index we're painting to
+    MColor colorVal;                // -colorR -colorG -colorB      The color of the brush circle
+    int curveVal;                   // -curve                       The falloff curve value
+    bool drawBrushVal;              // -drawBrush                   Whether to draw the brush value to the screen for setting size/weight
+    bool drawRangeVal;              // -drawRange                   Whether to draw the range of the brusn when painting (??)
+    MString moduleImportString;     // -importPython                Where is the python module for this tool
+    MString enterToolCommandVal;    // -enterToolCommand            A mel command to run when entering the tool
+    MString exitToolCommandVal;     // -exitToolCommand             A mel command to run when exiting the tool
+    bool ignoreLockVal;             // -ignoreLock                  Whether to ignore the lock value when painting
+    int lineWidthVal;               // -lineWidth                   The width of the line drawn to screen
+    bool messageVal;                // -message                     Show the usage message at the top of the screen
+    double oversamplingVal;         // -oversampling                Value to scale the *effect* of the brush falloff by. Basically, make the falloffs quicker or slower
+    double fractionOversamplingVal; // -fractionOversampling        Whether to take the oversampling val into account (THIS IS A TERRIBLE NAME!)
+    double sizeVal;                 // -size                        The current size of the brush
+    double smoothStrengthVal;       // -smoothStrength              The current smoothing strength value
+    double strengthVal;             // -strength                    the current strength value
+    int undersamplingVal;           // -undersampling               The number of drag-steps between evaluation when MMB dragging
+    bool volumeVal;                 // -volume                      whether to draw the volume range of the brush
+    double mirrorMinDist;           // -toleranceMirror             The tolerance for finding the mirrored vertices
+    MIntArray mirrorInfluences;     // -mirrorInfluences            A list of influences in-order of the skincluster that are the mirrors at the same index
+    int paintMirror;                // -mirrorPaint                 The mirror behavior index
+    bool useColorSetsWhilePainting; // -useColorSetsWhilePainting   Whether to use colorsets while painting
+    bool drawTriangles;             // -meshdrawTriangles           Whether to draw Triangles
+    bool drawEdges;                 // -meshdrawEdges               Whether to draw Edges
+    bool drawPoints;                // -meshdrawPoints              Whether to draw points
+    bool drawTransparency;          // -meshdrawTransparency        Whether to draw transparency
+    double minSoloColor;            // -minColor                    The minimum DISPLAY value for nonzero solo colors
+    double maxSoloColor;            // -maxColor                    The maximum DISPLAY value for nonzero solo colors
+    ModifierCommands commandIndex;  // -commandIndex                The command index to run
+    int smoothRepeat;               // -smoothRepeat                The number of iterations of smooth while dragging
+    int soloColorVal;               // -soloColor                   Whether we color solo, or we color rainbow (SHOULD BE BOOL)
+    int soloColorTypeVal;           // -soloColorType               The "enum" of the color type for soloing (lava, color, black/white (stuff like that))
+    bool pickMaxInfluenceVal;       // -pickMaxInfluence            Whether we're picking the largest influence of the verts under the mouse
+    bool pickInfluenceVal;          // -pickInfluence               Whether to pick the influence based on the influence object bounding box
+    bool postSetting;               // -postSetting                 whether to set the weights every loop, or wait until mouse release
+    ModifierKeys smoothModifier;    // -shiftSmooths                What key smooths
+    ModifierKeys removeModifier;    // -shiftSmooths                What key removes
+    int influenceIndex;             // -influenceIndex              The current influence index we're painting to
 
     // NEVER SET
     // double rangeVal;  // -range // A multiplier on the adjustment.  Unused, hard-coded to 0.5
@@ -283,10 +284,6 @@ struct InteractionPerFrameData {
     short screenX;
     short screenY;
 };
-
-
-
-
 
 
 struct MirrorableData {
