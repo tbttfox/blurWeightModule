@@ -8,7 +8,6 @@
 #include <vector>
 #include <span>
 #include <array>
-#include <unordered_map>
 #include <algorithm>
 
 
@@ -34,6 +33,20 @@ public:
         }
     }
 
+    void set(const MIntArray &inCounts, const MIntArray &inVals){
+        offsets.clear();
+        values.clear();
+        values = inVals;
+
+        offsets.resize(inCounts.length() + 1);
+        offsets[0] = 0;
+        size_t i = 1, v = 0;
+        for (const auto& c : inCounts) {
+            v += c;
+            offsets[i++] = v;
+        }
+    }
+
     // Setter from vector-of-vectors
     void set(const std::vector<std::vector<T>> &inVals){
         offsets.clear();
@@ -45,28 +58,6 @@ public:
             v += sub.size();
             offsets[i++] = v;
             values.insert(values.end(), sub.begin(), sub.end());
-        }
-    }
-
-    // Setter from unordered_map of vectors
-    template <typename K>
-    void set(const std::unordered_map<K, std::vector<T>> &inVals){
-        offsets.clear();
-        values.clear();
-
-        const auto maxit = std::max_element(inVals.begin(), inVals.end());
-        K maxkey = maxit->first;
-
-        offsets.reserve(maxkey + 1);
-        offsets.push_back(0);
-        size_t offset = 0;
-        for (size_t i=0; i<maxkey; ++i){
-            auto search = inVals.find(i);
-            if (search != inVals.end()){
-                offset += search->second.size();
-                values.insert(values.end(), search->second.begin(), search->second.end());
-            }
-            offsets.push_back(offset);
         }
     }
 
@@ -115,20 +106,20 @@ private:
     std::vector<T> values;
 
 public:
-    void set(const std::vector<std::vector<std::array<T, C>>> &perEdgeVertices){
+    void set(const MIntArray &counts, const MIntArray &flattris){
         values.clear();
+        values.reserve(flattris.length());
+        for (size_t i=0; i<flattris.length(); ++i){
+            values.push_back(flattris[i]);
+        }
+
         offsets.clear();
+        offsets.reserve(counts.length() + 1);
         offsets.push_back(0);
-        size_t offset = 0;
-        values.reserve(perEdgeVertices.size() * C);
-        for (const auto & eev : perEdgeVertices){
-            offset += eev.size();
-            offsets.push_back(offset);
-            for (const auto & ev : eev){
-                for (const auto & v : ev){
-                    values.push_back(v);
-                }
-            }
+        size_t v = 0;
+        for (size_t i=0; i<counts.length(); ++i){
+            v += counts[i];
+            offsets.push_back(v);
         }
     }
 
@@ -146,97 +137,7 @@ public:
 };
 
 
-
-void  getAllConnections(
-    MFnMesh &meshFn,  // For getting the mesh data
-    MDagPath &meshDag,  // So I can get the "maya canonical" edges
-
-    FlatCounts<int> &pvFaces,  // x[vertIdx] -> [list-of-faceIdxs]
-    FlatCounts<int> &pvEdges,  // x[vertIdx] -> [list-of-edgeIdxs]
-    FlatCounts<int> &pvVerts,  // x[vertIdx] -> [list-of-vertIdxs that share a face with the input]
-    FlatCounts<int> &pfVerts,  // x[faceIdx] -> [list-of-vertIdxs]
-    FlatChunks<int> &peVerts,  // x[edgeIdx] -> [pair-of-vertIdxs]
-    DoubleChunks<int> &pftVerts  // x(face, triIdx) -> [list_of_vertIdxs]
-){
-    // Get the data from the mesh and dag path
-    MIntArray counts, flatFaces, triangleCounts, triangleVertices;
-    meshFn.getVertices(counts, flatFaces);
-    meshFn.getTriangles(triangleCounts, triangleVertices);
-    int numVertices = meshFn.numVertices();
-    int numFaces = meshFn.numPolygons();
-    int numEdges = meshFn.numEdges();
-
-    std::vector<std::vector<int>> perVertexFaces;
-    std::vector<std::vector<int>> perVertexEdges;
-    std::vector<std::vector<int>> perVertexVertices;
-    std::vector<std::vector<int>> perFaceVertices;
-    std::vector<std::array<int, 2>> perEdgeVertices;
-    std::vector<std::vector<std::array<int, 3>>> perFaceTriangleVertices;
-
-    // Reset all the output vectors
-    perVertexFaces.resize(numVertices);
-    perVertexEdges.resize(numVertices);
-    perVertexVertices.resize(numVertices);
-    perFaceVertices.resize(numFaces);
-    perFaceTriangleVertices.resize(numFaces);
-    perEdgeVertices.resize(numEdges);
-
-    // Get the face/vert correlations
-    unsigned int iter = 0, triIter = 0;
-    for (unsigned int faceId = 0; faceId < numFaces; ++faceId) {
-        for (int i = 0; i < counts[faceId]; ++i, ++iter) {
-            int indVertex = flatFaces[iter];
-            perFaceVertices[faceId].push_back(indVertex);
-            perVertexFaces[indVertex].push_back(faceId);
-        }
-        perFaceTriangleVertices[faceId].resize(triangleCounts[faceId]);
-        for (int triId = 0; triId < triangleCounts[faceId]; ++triId) {
-            perFaceTriangleVertices[faceId][triId][0] = triangleVertices[triIter++];
-            perFaceTriangleVertices[faceId][triId][1] = triangleVertices[triIter++];
-            perFaceTriangleVertices[faceId][triId][2] = triangleVertices[triIter++];
-        }
-    }
-
-    // Get the edge/vert correlations
-    MItMeshEdge edgeIter(meshDag);
-    for (unsigned i = 0; !edgeIter.isDone(); edgeIter.next(), ++i) {
-        int pt0Index = edgeIter.index(0);
-        int pt1Index = edgeIter.index(1);
-        perVertexEdges[pt0Index].push_back(i);
-        perVertexEdges[pt1Index].push_back(i);
-        perEdgeVertices[i][0] = pt0Index;
-        perEdgeVertices[i][1] = pt1Index;
-    }
-
-    // Build the face-growing neighbors
-#pragma omp parallel for
-    for (int vertIdx = 0; vertIdx < numVertices; ++vertIdx) {
-        std::vector<int> &toAdd = perVertexVertices[vertIdx];
-        for (int faceIdx: perVertexFaces[vertIdx]){
-            std::vector<int> &faceVerts = perFaceVertices[faceIdx];
-            toAdd.insert(toAdd.end(), faceVerts.begin(), faceVerts.end());
-        }
-        // For such a short vec, sorting then erasing is the fastest
-        std::sort(toAdd.begin(), toAdd.end());
-        toAdd.erase(std::unique(toAdd.begin(), toAdd.end()), toAdd.end());
-    }
-
-    // Put all the data in flattened arrays
-    pvFaces.set(perVertexFaces);
-    pvEdges.set(perVertexEdges);
-    pvVerts.set(perVertexVertices);
-    pfVerts.set(perFaceVertices);
-    peVerts.set(perEdgeVertices);
-    pftVerts.set(perFaceTriangleVertices);
-}
-
-
-
-
-
-
 class MeshData{
-
 private:
     const MDagPath &dag;
     MFnMesh meshFn;
@@ -248,16 +149,15 @@ private:
     MMatrix inclusiveMatrix;  // The worldspace matrix of this mesh
     MMatrix inclusiveMatrixInverse; // The inverse worldspace matrix of this mesh
 
-    FlatChunks<float, 3> origPoints;
-    FlatChunks<float, 3> rawPoints;
-    FlatChunks<float, 3> rawNormals;
-    FlatCounts<int> pvFaces;  // x[vertIdx] -> [list-of-faceIdxs]
-    FlatCounts<int> pvEdges;  // x[vertIdx] -> [list-of-edgeIdxs]
-    FlatCounts<int> pvVerts;  // x[vertIdx] -> [list-of-vertIdxs that share a face with the input]
-    FlatCounts<int> pfVerts;  // x[faceIdx] -> [list-of-vertIdxs]
-    FlatChunks<int> peVerts;  // x[edgeIdx] -> [pair-of-vertIdxs]
-    DoubleChunks<int> pftVerts;  // x(face, triIdx) -> [list_of_vertIdxs]
-
+    FlatChunks<float, 3> origPoints; // The undeformed mesh points
+    FlatChunks<float, 3> rawPoints; // The possibly deformed mesh points
+    FlatChunks<float, 3> rawNormals; // The undeformed per-face-vert normals
+    FlatCounts<int> pvFaces;  // x[vertIdx] -> [span-of-faceIdxs] faces that connect to the input vert
+    FlatCounts<int> pvEdges;  // x[vertIdx] -> [span-of-edgeIdxs] edges that connect to the input vert
+    FlatCounts<int> pvVerts;  // x[vertIdx] -> [span-of-vertIdxs] verts that share a face with the input vert
+    FlatCounts<int> pfVerts;  // x[faceIdx] -> [span-of-vertIdxs] verts that are part of the input face
+    FlatChunks<int> peVerts;  // x[edgeIdx] -> [2span-of-vertIdxs] verts that are part of the input edge
+    DoubleChunks<int> pftVerts;  // x(face, triIdx) -> [3span-of-vertIdxs] verts that are part of the tri at the inputs
 
 public:
     MeshData(MDagPath &indag): dag(indag){
@@ -269,55 +169,67 @@ public:
         numVertices = meshFn.numVertices();
         numEdges = meshFn.numEdges();
         numFaces = meshFn.numPolygons();
-        numFaces = meshFn.numPolygons();
         numNormals = meshFn.numNormals();
         rawPoints.set(meshFn.getRawPoints(&status), numVertices);
         rawNormals.set(meshFn.getRawNormals(&status), numNormals);
 
+        // Get the data from the mesh and dag path
+        MIntArray counts, flatFaces, triangleCounts, triangleVertices;
+
+        meshFn.getVertices(counts, flatFaces);
+        pfVerts.set(counts, flatFaces);
+
+        meshFn.getTriangles(triangleCounts, triangleVertices);
+        pftVerts.set(triangleCounts, triangleVertices);
+
+        // Get the face/vert correlations
+        std::vector<std::vector<int>> perVertexFaces;
+        perVertexFaces.resize(numVertices);
+        for (unsigned int faceId = 0; faceId < numFaces; ++faceId) {
+            for (int i = 0; i < counts[faceId]; ++i) {
+                perVertexFaces[flatFaces[i]].push_back(faceId);
+            }
+        }
+        pvFaces.set(perVertexFaces);
+
+        // Get the edge/vert correlations
+        std::vector<int> perEdgeVertices;
+        std::vector<std::vector<int>> perVertexEdges;
+        perVertexEdges.resize(numVertices);
+        perEdgeVertices.resize(numEdges * 2);
+        MItMeshEdge edgeIter(dag);
+        for (unsigned i = 0; !edgeIter.isDone(); edgeIter.next(), ++i) {
+            int pt0Index = edgeIter.index(0);
+            int pt1Index = edgeIter.index(1);
+            perVertexEdges[pt0Index].push_back(i);
+            perVertexEdges[pt1Index].push_back(i);
+            perEdgeVertices[2 * i] = pt0Index;
+            perEdgeVertices[2 * i + 1] = pt1Index;
+        }
+        pvEdges.set(perVertexEdges);
+        peVerts.set(&(perEdgeVertices[0]), numEdges);
+
+        // Build the face-growing neighbors
+        std::vector<std::vector<int>> perVertexVertices;
+        perVertexVertices.resize(numVertices);
+        #pragma omp parallel for
+        for (int vertIdx = 0; vertIdx < numVertices; ++vertIdx) {
+            std::vector<int> &toAdd = perVertexVertices[vertIdx];
+            for (int faceIdx: pvFaces[vertIdx]){
+                // I don't know whether the span should be a reference
+                const std::span<const int> faceVerts = pfVerts[faceIdx];
+                toAdd.insert(toAdd.end(), faceVerts.begin(), faceVerts.end());
+            }
+            // For such a short vec, sorting then erasing is the fastest
+            std::sort(toAdd.begin(), toAdd.end());
+            toAdd.erase(std::unique(toAdd.begin(), toAdd.end()), toAdd.end());
+        }
+        pvVerts.set(perVertexVertices);
+
     }
 
     // Explicitly delete the copy constructor since we're storing references
+    // to the dag path and (consequently) the mesh function set
     MeshData(const MeshData&) = delete;
-
 };
-
-
-
-
-
-struct MeshData_OLD {
-    // Holds unchanging variables related to the mesh
-    // like the quick accessors and octree
-
-    MDagPath meshDag; // The MDagPath pointing to a mesh
-    MFnMesh meshFn; // The Mesh Functionset for this mesh
-    int numFaces; // The number of faces on the current mesh
-    int numEdges; // The number of edges on the current mesh
-    int numVertices; // The number of vertices on the current mesh
-
-    MMeshIsectAccelParams accelParams; // Octree for speeding up raycasting
-    MFloatMatrix inclusiveMatrix;  // The worldspace matrix of this mesh
-    MFloatMatrix inclusiveMatrixInverse; // The inverse worldspace matrix of this mesh
-
-    float* mayaOrigRawPoints; // The flattened point positions of the UNDEFORMED mesh
-    float* mayaRawPoints; // The flattened point positions of the mesh
-    float* rawNormals; // The flattened per-face-vertex normals
-
-    MIntArray verticesNormalsIndices; // takes input of vertex index, produces output of normal index
-    MVectorArray verticesNormals; // The per-vertex local space normals of the mesh (already used verticesNormalIndices to reorder so verts/normals are matched per index)
-
-    std::vector<MIntArray> perVertexFaces; // The face indices for each vertex
-    std::vector<MIntArray> perVertexEdges; // The edge indices for each vertex
-    std::vector<std::vector<MIntArray>> perFaceTriangleVertices; // Somehow get the triangle indices per face
-    std::vector<std::pair<int, int>> perEdgeVertices; // The endpoint vertex indices of each edge
-
-    // A values/counts array pair for the vertices belonging to each face
-    std::vector<int> perFaceVerticesSetFLAT;
-    std::vector<int> perFaceVerticesSetINDEX;
-
-    // A values/counts array pair for the vertices neighboring each vertex
-    std::vector<int> perVertexVerticesSetFLAT;
-    std::vector<int> perVertexVerticesSetINDEX;
-};
-
 
