@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/mitsuba-renderer/enoki.git
+revision = 63a5f4c0a35a8513a39393a9ee92646ce44a386e
+method = cmake
+depth=1
+
+[provide]
+enoki = enoki_dep

@@ -1,0 +1,9 @@
+[wrap-git]
+url = https://github.com/rohan-sawhney/fcpw
+revision = v1.1.2
+method = cmake
+depth=1
+clone-recursive = true
+
+[provide]
+fcpw = fcpw_dep
