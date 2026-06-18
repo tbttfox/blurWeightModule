@@ -68,3 +68,7 @@ compile_commands.json
 
 builddir*/
 output_Maya*/
+subprojects/packagecache/
+subprojects/rapidjson-1.1.0/
+subprojects/.wraplock
+pylibs/

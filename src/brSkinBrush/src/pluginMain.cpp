@@ -24,7 +24,8 @@
 // initialization
 // ---------------------------------------------------------------------
 
-MStatus initializePlugin(MObject obj) {
+MStatus initializePlugin(MObject obj)
+{
     MStatus status;
     MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 
@@ -49,7 +50,8 @@ MStatus initializePlugin(MObject obj) {
     return status;
 }
 
-MStatus uninitializePlugin(MObject obj) {
+MStatus uninitializePlugin(MObject obj)
+{
     MStatus status;
     MFnPlugin plugin(obj, "Blur Studio", VERSION_STRING, "Any");
 

@@ -108,6 +108,9 @@
 #define kSkinClusterNameFlag "-skn"
 #define kSkinClusterNameFlagLong "-skinClusterName"
 
+#define kSwapSkinClusterFlag "-swp"
+#define kSwapSkinClusterFlagLong "-swapSkinName"
+
 #define kMeshNameFlag "-msh"
 #define kMeshNameFlagLong "-meshName"
 
@@ -158,6 +161,15 @@
 #define kImportPythonFlag "-imp"
 #define kImportPythonFlagLong "-importPython"
 
+#define kSewVerticesFlag "-sew"
+#define kSewVerticesFlagLong "-sewVertices"
+
+#define kSewVerticesOffsetFlag "-swf"
+#define kSewVerticesOffsetFlagLong "-sewVerticesOffset"
+
+#define kUiOptionVarFlag "-uio"
+#define kUiOptionVarFlagLong "-uiOptionVar"
+
 #define kVerboseFlag "-vrb"
 #define kVerboseFlagLong "-verbose"
 
@@ -169,3 +181,9 @@
 
 #define kAdjustValueFlag "-dv"
 #define kAdjustValueFlagLong "-dragValue"
+
+#define kFastReEnterFlag "-fre"
+#define kFastReEnterFlagLong "-fastReenter"
+
+#define kSkipSkinValuesFlag "-ssv"
+#define kSkipSkinValuesFlagLong "-skipSkinValues"
