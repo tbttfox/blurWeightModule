@@ -65,3 +65,10 @@ Temporary Items
 
 # Don't store my symlink to compile_commands.json
 compile_commands.json
+
+builddir*/
+output_Maya*/
+subprojects/packagecache/
+subprojects/rapidjson-1.1.0/
+subprojects/.wraplock
+pylibs/

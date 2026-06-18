@@ -3,32 +3,38 @@
 // ---------------------------------------------------------------------
 // setting values from the command flags
 // ---------------------------------------------------------------------
-void SkinBrushContext::setColorR(float value) {
+void SkinBrushContext::setColorR(float value)
+{
     colorVal.r = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setColorG(float value) {
+void SkinBrushContext::setColorG(float value)
+{
     colorVal.g = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setColorB(float value) {
+void SkinBrushContext::setColorB(float value)
+{
     colorVal.b = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setCurve(int value) {
+void SkinBrushContext::setCurve(int value)
+{
     curveVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDrawBrush(bool value) {
+void SkinBrushContext::setDrawBrush(bool value)
+{
     drawBrushVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDrawRange(bool value) {
+void SkinBrushContext::setDrawRange(bool value)
+{
     drawRangeVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
@@ -48,7 +54,8 @@ void SkinBrushContext::setExitToolCommand(MString &value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setFlood() {
+void SkinBrushContext::setFlood()
+{
     this->verticesPainted.clear();
     this->skinValuesToSet.clear();
     double value = strengthVal;
@@ -56,79 +63,94 @@ void SkinBrushContext::setFlood() {
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // UnLockVertices
     ModifierCommands theCommandIndex = this->commandIndex;
-    if (this->modifierNoneShiftControl == ModifierKeys::Shift)
-        theCommandIndex = ModifierCommands::Smooth;  // smooth always
-    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift)
-        theCommandIndex = ModifierCommands::Sharpen;  // sharpen always
+    if (this->modifierNoneShiftControl == ModifierKeys::Control) {
+        theCommandIndex = ModifierCommands::Smooth; // smooth always
+    }
+    if (this->modifierNoneShiftControl == ModifierKeys::ControlShift) {
+        theCommandIndex = ModifierCommands::Sharpen; // sharpen always
+    }
 
-    if (
-        theCommandIndex == ModifierCommands::Smooth
-        || this->modifierNoneShiftControl == ModifierKeys::Shift
-        || this->modifierNoneShiftControl == ModifierKeys::ControlShift
-    )
+    if (theCommandIndex == ModifierCommands::Smooth ||
+        this->modifierNoneShiftControl == ModifierKeys::Control ||
+        this->modifierNoneShiftControl == ModifierKeys::ControlShift) {
         value = smoothStrengthVal;
+    }
 
     for (int i = 0; i < this->numVertices; ++i) {
         this->verticesPainted.insert(i);
         this->skinValuesToSet.insert(std::make_pair(i, value));
     }
     doTheAction();
-    if (verbose)
-        MGlobal::displayInfo(MString("SET FLOOD IS CALLED command ") + static_cast<int>(theCommandIndex) +
-                             MString(" value ") + value);
+    if (verbose) {
+        MGlobal::displayInfo(
+            MString("SET FLOOD IS CALLED command ") + static_cast<int>(theCommandIndex) +
+            MString(" value ") + value
+        );
+    }
     MToolsInfo::setDirtyFlag(*this);
 }
 
 void SkinBrushContext::setVerbose(bool value) { verbose = value; }
 
-void SkinBrushContext::setFractionOversampling(bool value) {
+void SkinBrushContext::setFractionOversampling(bool value)
+{
     fractionOversamplingVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setIgnoreLock(bool value) {
+void SkinBrushContext::setIgnoreLock(bool value)
+{
     ignoreLockVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setLineWidth(int value) {
+void SkinBrushContext::setLineWidth(int value)
+{
     lineWidthVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setMessage(int value) {
+void SkinBrushContext::setMessage(int value)
+{
     messageVal = value;
     MToolsInfo::setDirtyFlag(*this);
 
     setInViewMessage(true);
 }
 
-void SkinBrushContext::setOversampling(int value) {
+void SkinBrushContext::setOversampling(int value)
+{
     oversamplingVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setRange(double value) {
+void SkinBrushContext::setRange(double value)
+{
     rangeVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setSize(double value) {
+void SkinBrushContext::setSize(double value)
+{
     sizeVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setStrength(double value) {
+void SkinBrushContext::setStrength(double value)
+{
     // 0 Add - 1 Remove - 2 AddPercent - 3 Absolute - 4 Smooth - 5 Sharpen - 6 LockVertices - 7
     // unlockVertices
-    if (commandIndex == ModifierCommands::Smooth)
+    if (commandIndex == ModifierCommands::Smooth) {
         smoothStrengthVal = value;
-    else  // others
+    }
+    else { // others
         strengthVal = value;
+    }
 
     MToolsInfo::setDirtyFlag(*this);
 }
-void SkinBrushContext::setSmoothStrength(double value) {
+void SkinBrushContext::setSmoothStrength(double value)
+{
     smoothStrengthVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
@@ -136,29 +158,35 @@ void SkinBrushContext::setSmoothStrength(double value) {
 void SkinBrushContext::setInteractiveValue(double value, int ind) {
     if (ind == 0)
         this->interactiveValue = value;
-    else if (ind == 1)
+    else if (ind == 1) {
         this->interactiveValue1 = value;
-    else if (ind == 2)
+    }
+    else if (ind == 2) {
         this->interactiveValue2 = value;
+    }
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setUndersampling(int value) {
+void SkinBrushContext::setUndersampling(int value)
+{
     undersamplingVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setVolume(bool value) {
+void SkinBrushContext::setVolume(bool value)
+{
     volumeVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setMirrorTolerance(double value) {
+void SkinBrushContext::setMirrorTolerance(double value)
+{
     mirrorMinDist = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setPaintMirror(int value) {
+void SkinBrushContext::setPaintMirror(int value)
+{
     paintMirror = value;
     if (value != 0) {
         getTheOrigMeshForMirror();
@@ -166,38 +194,63 @@ void SkinBrushContext::setPaintMirror(int value) {
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setUseColorSetsWhilePainting(bool value) {
+
+void SkinBrushContext::setSewTolerance(double value)
+{
+    sewVerticesMinDist = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+void SkinBrushContext::setSewVertices(bool value)
+{
+    sewVertices = value;
+    if (value) {
+        getConnectedBorderVertices();
+    }  
+    MToolsInfo::setDirtyFlag(*this);
+}
+
+
+
+void SkinBrushContext::setUseColorSetsWhilePainting(bool value)
+{
     useColorSetsWhilePainting = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDrawTriangles(bool value) {
+void SkinBrushContext::setDrawTriangles(bool value)
+{
     drawTriangles = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDrawEdges(bool value) {
+void SkinBrushContext::setDrawEdges(bool value)
+{
     drawEdges = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDrawPoints(bool value) {
+void SkinBrushContext::setDrawPoints(bool value)
+{
     drawPoints = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setDrawTransparency(bool value) {
+void SkinBrushContext::setDrawTransparency(bool value)
+{
     drawTransparency = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setMinColor(double value) {
+void SkinBrushContext::setMinColor(double value)
+{
     minSoloColor = value;
     refreshDeformerColor(this->influenceIndex);
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setMaxColor(double value) {
+void SkinBrushContext::setMaxColor(double value)
+{
     maxSoloColor = value;
     refreshDeformerColor(this->influenceIndex);
     MToolsInfo::setDirtyFlag(*this);
@@ -215,12 +268,13 @@ void SkinBrushContext::setSmoothRepeat(int value) {
 
 void SkinBrushContext::setSoloColor(int value) {
     soloColorVal = value;
-    MString currentColorSet = meshFn.currentColorSetName();  // set multiColor as current Color
+    MString currentColorSet = meshFn.currentColorSetName(); // set multiColor as current Color
 
-    if (soloColorVal == 1) {  // solo
+    if (soloColorVal == 1) { // solo
         meshFn.setCurrentColorSetName(this->soloColorSet);
         editSoloColorSet(true);
-    } else {
+    }
+    else {
         meshFn.setCurrentColorSetName(this->fullColorSet);
     }
     maya2019RefreshColors();
@@ -228,16 +282,20 @@ void SkinBrushContext::setSoloColor(int value) {
     //}
 }
 
-void SkinBrushContext::maya2019RefreshColors(bool toggle) {
+void SkinBrushContext::maya2019RefreshColors(bool toggle)
+{
     meshFn.updateSurface();
     view = M3dView::active3dView();
     // first swap
-    if (toggle) toggleColorState = !toggleColorState;
+    if (toggle) {
+        toggleColorState = !toggleColorState;
+    }
 
     if (!toggle || toggleColorState) {
         if (soloColorVal == 1) {
             meshFn.setCurrentColorSetName(this->soloColorSet2);
-        } else {
+        }
+        else {
             meshFn.setCurrentColorSetName(this->fullColorSet2);
         }
         view.refresh(false, true);
@@ -245,15 +303,19 @@ void SkinBrushContext::maya2019RefreshColors(bool toggle) {
     if (!toggle || !toggleColorState) {
         if (soloColorVal == 1) {
             meshFn.setCurrentColorSetName(this->soloColorSet);
-        } else {
+        }
+        else {
             meshFn.setCurrentColorSetName(this->fullColorSet);
         }
         view.refresh(false, true);
     }
 }
 
-void SkinBrushContext::setSoloColorType(int value) {
-    if (verbose) MGlobal::displayInfo(MString("setSoloColorType CALLED ") + value);
+void SkinBrushContext::setSoloColorType(int value)
+{
+    if (verbose) {
+        MGlobal::displayInfo(MString("setSoloColorType CALLED ") + value);
+    }
 
     if (soloColorTypeVal != value) {
         soloColorTypeVal = value;
@@ -266,17 +328,20 @@ void SkinBrushContext::setSoloColorType(int value) {
     }
 }
 
-void SkinBrushContext::setCoverage(bool value) {
+void SkinBrushContext::setCoverage(bool value)
+{
     coverageVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setPickMaxInfluence(bool value) {
+void SkinBrushContext::setPickMaxInfluence(bool value)
+{
     pickMaxInfluenceVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
 
-void SkinBrushContext::setPickInfluence(bool value) {
+void SkinBrushContext::setPickInfluence(bool value)
+{
     pickInfluenceVal = value;
     MToolsInfo::setDirtyFlag(*this);
 }
@@ -297,6 +362,24 @@ void SkinBrushContext::setShiftSmooths(bool value) {
     }
 }
 
+void SkinBrushContext::setFastReenter(int value)
+{
+    MGlobal::displayInfo(MString("setFastReenter CALLED ") + value);
+    if (value <= 0) {
+        reenterMesh = false;
+        reenterSkin = false;
+    }
+    else if (value == 1) {
+        reenterMesh = true;
+        reenterSkin = false;
+    }else{
+        reenterMesh = true;
+        reenterSkin = true;
+    }
+    fastReenter = value;
+    MToolsInfo::setDirtyFlag(*this);
+}
+
 void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
     if (verbose)
         MGlobal::displayInfo(MString("setInfluenceIndex CALLED value [") + value +
@@ -314,17 +397,20 @@ void SkinBrushContext::setInfluenceIndex(int value, bool selectInUI) {
                 MUserEventMessage::postUserEvent("brSkinBrush_pickedInfluence");
             }
         }
-        if (verbose) MGlobal::displayInfo(msg);
+        if (verbose) {
+            MGlobal::displayInfo(msg);
+        }
         // here we do the redraw
 
-        if (soloColorVal == 1) {  // solo IF NOT IT CRASHES on a first pick before paint
-            MString currentColorSet = meshFn.currentColorSetName();  // get current soloColor
-            if (currentColorSet != this->soloColorSet)
+        if (soloColorVal == 1) { // solo IF NOT IT CRASHES on a first pick before paint
+            MString currentColorSet = meshFn.currentColorSetName(); // get current soloColor
+            if (currentColorSet != this->soloColorSet) {
                 meshFn.setCurrentColorSetName(this->soloColorSet);
+            }
             editSoloColorSet(false);
         }
 
-        meshFn.updateSurface();  // for proper redraw hopefully
+        meshFn.updateSurface(); // for proper redraw hopefully
         maya2019RefreshColors();
     }
 }
@@ -334,14 +420,33 @@ void SkinBrushContext::setInfluenceByName(MString &value) {
     if (this->pickMaxInfluenceVal) return;
 
     int indexInfluence = this->inflNames.indexOf(value);
-    if (verbose)
-        MGlobal::displayInfo(MString("setInfluenceByName - ") + value + MString(" ") +
-                             indexInfluence);
+    if (verbose) {
+        MGlobal::displayInfo(
+            MString("setInfluenceByName - ") + value + MString(" ") + indexInfluence
+        );
+    }
     if (indexInfluence == -1) {
         MGlobal::displayWarning("influence not found, ERROR");
-    } else {
+    }
+    else {
         setInfluenceIndex(indexInfluence, false);
     }
+}
+void SkinBrushContext::setSkinClusterByName(MString& value)
+{
+    if (verbose) {
+        MGlobal::displayInfo("setSkinClusterByName CALLED \"" + value + "\"\n");
+    }
+    getSkinFromName = true;
+    passedSkinName = value;
+}
+void SkinBrushContext::setMeshByName(MString &value)
+{
+    if (verbose) {
+        MGlobal::displayInfo("setMeshByName CALLED \"" + value + "\"\n");
+    }
+    getMeshFromName = true;
+    passedMeshName = value;
 }
 
 // ---------------------------------------------------------------------
@@ -369,10 +474,15 @@ double SkinBrushContext::getSize() { return sizeVal; }
 double SkinBrushContext::getStrength() { return strengthVal; }
 double SkinBrushContext::getSmoothStrength() { return smoothStrengthVal; }
 
-double SkinBrushContext::getInteractiveValue(int ind) {
-    if (ind == 0) return this->interactiveValue;
-    else if (ind == 1) return this->interactiveValue1;
-    //if (ind == 2)
+double SkinBrushContext::getInteractiveValue(int ind)
+{
+    if (ind == 0) {
+        return this->interactiveValue;
+    }
+    else if (ind == 1) {
+        return this->interactiveValue1;
+    }
+    // if (ind == 2)
     return this->interactiveValue2;
 }
 
@@ -381,9 +491,16 @@ bool SkinBrushContext::getVolume() { return volumeVal; }
 ModifierCommands SkinBrushContext::getCommandIndex() { return commandIndex; }
 int SkinBrushContext::getSmoothRepeat() { return smoothRepeat; }
 int SkinBrushContext::getSoloColor() { return soloColorVal; }
+int SkinBrushContext::getFastReenter() { return fastReenter; }
 
 double SkinBrushContext::getMirrorTolerance() { return mirrorMinDist; }
 int SkinBrushContext::getPaintMirror() { return paintMirror; }
+bool SkinBrushContext::getSkipSkinValues() { return skipSkinValues; }
+
+
+double SkinBrushContext::getSewVerticesOffset() { return sewVerticesMinDist; }
+bool SkinBrushContext::getSewVertices() { return sewVertices; }
+
 bool SkinBrushContext::getUseColorSetsWhilePainting() { return useColorSetsWhilePainting; }
 bool SkinBrushContext::getDrawTriangles() { return drawTriangles; }
 bool SkinBrushContext::getDrawEdges() { return drawEdges; }
@@ -398,17 +515,20 @@ double SkinBrushContext::getMaxColor() { return maxSoloColor; }
 
 MString SkinBrushContext::getInfluenceName() {
     MString influenceName("FAILED");
-    if (this->influenceIndex < this->inflNames.length())
+    if (this->influenceIndex < this->inflNames.length()) {
         influenceName = this->inflNames[this->influenceIndex];
+    }
 
     return influenceName;
 }
 
-MString SkinBrushContext::getSkinClusterName() {
+MString SkinBrushContext::getSkinClusterName()
+{
     if (!skinObj.isNull()) {
         MFnDependencyNode skinDep(this->skinObj);
         return skinDep.name();
-    } else {
+    }
+    else {
         return MString("");
     }
 }
@@ -418,3 +538,20 @@ bool SkinBrushContext::getPostSetting() { return postSetting; }
 MIntArray SkinBrushContext::getWeightOrderedIndices() { return orderedIndicesByWeightsVals; }
 double SkinBrushContext::getAdjustValue() { return adjustValue; }
 MString SkinBrushContext::getPickedInfluence() { return pickedInfluence; }
+
+
+using namespace std::chrono;
+
+void SkinBrushContext::catchTimeStamp()
+{
+    startTimeStamp = high_resolution_clock::now();
+}
+void SkinBrushContext::endTimeStamp( MString infos)
+{
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - startTimeStamp);
+    float dura = float(duration.count() / 10000) * 0.01f;
+    MGlobal::displayInfo(infos+
+        MString(" executed in ") + dura + MString(" seconds")
+    );
+}
