@@ -65,3 +65,6 @@ Temporary Items
 
 # Don't store my symlink to compile_commands.json
 compile_commands.json
+
+builddir*/
+output_Maya*/
